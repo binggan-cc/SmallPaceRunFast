@@ -2,11 +2,11 @@
 
 ## 当前状态
 
-**阶段：** 方法论文档整理与软件开发推进模型细化
+**阶段：** 方法论文档整理、软件开发推进模型细化与视觉提示词系统 Skill 化
 
 **最近更新时间：** 2026-05-12
 
-当前项目已经从原始讨论资料整理为一个以“小步快跑 Small Pace, Run Fast”为核心的方法论文档库，并开始将软件开发场景沉淀为可执行模型和 Skill。
+当前项目已经从原始讨论资料整理为一个以“小步快跑 Small Pace, Run Fast”为核心的方法论文档库，并开始将软件开发场景和视觉提示词场景沉淀为可执行模型和 Skill。
 
 ---
 
@@ -40,6 +40,20 @@
 - [x] 将 `external/` 加入 `.gitignore`，避免第三方源码进入当前仓库提交
 - [x] 将 GitHub 克隆加速规则沉淀为通用 Skill
 
+### 视觉提示词系统
+
+- [x] 识别 `提示词/` 目录中的图片与视频生成提示词
+- [x] 识别 `learned/` 目录中的图片、视频、分镜、PPT 和社媒视觉生产相关笔记
+- [x] 扫描父仓库 `prompts/` 中可复用的视觉生成提示词
+- [x] 扫描父仓库 `notes/` 中与 GPT Image 2、图像工作流、视频原型相关的笔记
+- [x] 新增 `docs/visual-generation-prompt-extraction.md`
+- [x] 将抽取文档加入 README 文档地图
+- [x] 将抽取文档引用的 69 份来源文档复制到 `prompts/` 目录
+- [x] 基于抽取文档升级 `docs/visual-prompt-system.md` 的 v1.0 落地层
+- [x] 提取视觉提示词总入口 Skill
+- [x] 提取图片生成与图片逆向 Skill
+- [x] 提取视频生成与图生视频 Skill
+
 ---
 
 ## 进行中
@@ -57,6 +71,12 @@
 - [x] 扩展 `docs/software-delivery-model.md`
 - [x] 新增 `skills/small-pace-run-fast-development/SKILL.md`
 - [x] 新增 `skills/git-clone-accelerator/SKILL.md`
+- [x] 新增 `docs/visual-generation-prompt-extraction.md`
+- [x] 扩展 `docs/visual-prompt-system.md`，增加多入口路由、模板选择地图和输出契约
+- [x] 新增 `skills/visual-prompt-architect/SKILL.md`
+- [x] 新增 `skills/image-prompt-architect/SKILL.md`
+- [x] 新增 `skills/video-prompt-architect/SKILL.md`
+- [x] 新增 `prompts/`，保存视觉生成提示词系统引用的本地参考副本
 
 ---
 
@@ -65,8 +85,10 @@
 1. 试用 `skills/small-pace-run-fast-development/SKILL.md` 处理一个真实开发任务。
 2. 试用 `skills/git-clone-accelerator/SKILL.md` 处理一次 GitHub 仓库克隆。
 3. 根据试用结果压缩 Skill 文本，必要时拆出 `references/`。
-4. 继续沉淀视觉提示词系统对应 Skill。
-5. 决定是否将 `docs/software-delivery-model.md` 中的模板拆成独立模板文件。
+4. 试用 `skills/visual-prompt-architect/SKILL.md` 处理一次真实图片逆向任务。
+5. 试用 `skills/video-prompt-architect/SKILL.md` 处理一次图生视频或短视频分镜任务。
+6. 决定是否将视觉 Prompt 模板拆成图片、视频、分镜、品牌解构四份子文档。
+7. 决定是否将 `docs/software-delivery-model.md` 中的模板拆成独立模板文件。
 
 ---
 
@@ -76,7 +98,12 @@
 - `docs/methodology.md`：小步快跑总方法论
 - `docs/software-delivery-model.md`：软件开发推进模型
 - `docs/visual-prompt-system.md`：视觉提示词系统
+- `docs/visual-generation-prompt-extraction.md`：图片与视频生成提示词抽取文档
 - `docs/references.md`：参考资料与推导记录
 - `docs/progress.md`：项目进度
+- `prompts/`：视觉生成提示词系统引用的来源文档本地副本
 - `skills/small-pace-run-fast-development/SKILL.md`：软件开发推进模型 Skill
 - `skills/git-clone-accelerator/SKILL.md`：GitHub 克隆加速 Skill
+- `skills/visual-prompt-architect/SKILL.md`：视觉提示词总入口与任务路由 Skill
+- `skills/image-prompt-architect/SKILL.md`：图片生成与图片逆向 Skill
+- `skills/video-prompt-architect/SKILL.md`：视频生成与图生视频 Skill

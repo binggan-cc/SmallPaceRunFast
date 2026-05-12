@@ -7,13 +7,13 @@
 **核心角色原型：** Iterative Prompt Architect（IPA）
 **历史版本基底：** IPA v3.0
 **文档版本：** v1.0
-**文档性质：** 方法论文档 / Skill 设计基础 / 视觉 Prompt 系统原型说明
+**文档性质：** 方法论文档 / Skill 设计基础 / 视觉 Prompt 系统原型说明 / 图片与视频创作工作流
 
 ---
 
 ## 1. 一句话定义
 
-> **“小步快跑 · 图片逆向提示词系统”是一套面向视觉生成的迭代式提示词架构方法：它以参考图片或优质提示词为起点，通过深度解码、结构重建、生成验证、精细调参与模板沉淀，把一次偶然生成的 Lucky Hit，升级为可复用、可迁移、可稳定复现的 Golden Formula。**
+> **“小步快跑 · 图片逆向提示词 / 视觉提示词系统”是一套面向图片、视频、图生视频、分镜与视觉风格复用的迭代式提示词架构方法：它以参考图片、优质提示词、创作目标或生成结果为起点，通过深度解码、结构重建、生成验证、精细调参与模板沉淀，把一次偶然生成的 Lucky Hit，升级为可复用、可迁移、可稳定复现的 Golden Formula。**
 
 ---
 
@@ -663,9 +663,214 @@ Observe → Deconstruct → Structure → Optimize
 
 ---
 
-## 16. 后续可产品化的方向
+## 16. v1.0 落地扩展：多入口视觉 Prompt 系统
 
-### 16.1 Skill 形态
+`docs/visual-generation-prompt-extraction.md` 已经把 `提示词/`、`learned/`、父仓库 `prompts/` 和 `notes/` 中的图片、视频、图生视频、分镜、社媒视觉、PPT 视觉与风格解构材料抽取为素材中间层。v1.0 的升级目标，是把这些材料从“模板集合”组织成“按任务入口自动路由的创作系统”。
+
+---
+
+### 16.1 入口路由
+
+| 用户输入 | 进入模块 | 首要动作 | 输出物 |
+| --- | --- | --- | --- |
+| 参考图、好图、已有 Prompt | Reverse Engineering | 解码 Style DNA 与可迁移结构 | Style DNA Report、V1 Prompt、Golden Template |
+| 想生成一张图 | Image Prompt Architecture | 选择图片模板族并构造视觉约束 | Image Prompt Pack |
+| 想让图片动起来 | Image-to-Video Architecture | 锁定主体身份、运动、镜头与时长 | I2V Prompt Pack |
+| 想生成视频 | Video Prompt Architecture | 拆成镜头、动作、时间、节奏 | Video Prompt Pack |
+| 想做分镜、动作页、角色设定 | Storyboard / Sheet Architecture | 转换为画格、镜头、姿态与一致性约束 | Storyboard Prompt Pack |
+| 已经出图或出片但不满意 | Tuning Loop | 定位偏差维度并小步修正 | Updated Prompt、Adjustment Notes |
+| 想形成一套长期风格 | Style System | 提炼 Style Shell、可变槽位与禁止项 | Visual Style System |
+
+---
+
+### 16.2 模板选择地图
+
+| 创作目标 | 优先参考抽取文档章节 | 适合场景 |
+| --- | --- | --- |
+| 知识科普图、教育海报 | `3.1 Knowledge Infographic`、`3.2 Apple-style Science Poster` | 知识号、课程、科普图文 |
+| 标本图、解剖图、结构图 | `3.3 Specimen / Anatomical Plate` | 生物、器物、产品结构展示 |
+| 字体海报、水滴字、宏观文字 | `3.4 Typography / Macro Water Typography` | 品牌字效、封面、视觉实验 |
+| 时尚大片、产品摄影 | `3.5 Fashion / Product Editorial` | 电商、品牌视觉、广告图 |
+| 主题肖像、人物大片 | `3.6 Theme-driven Editorial Portrait` | 头像、IP 人设、人物封面 |
+| 世界观设定、概念场景 | `3.7 Worldbuilding Visual System` | 游戏、影视、小说设定 |
+| 纸雕、微缩、立体书 | `3.8 Paper Diorama / Miniature World` | 趣味场景、儿童内容、展示图 |
+| 小红书四宫格、社媒封面 | `3.9 Xiaohongshu 2x2 Wellness Grid`、`7. Social / Ad / PPT` | 社媒种草、轻知识、生活方式 |
+| 动作页、角色设定、专业分镜 | `4. Storyboard / Action Sheet` | 动画、短片、游戏动作设计 |
+| 15 秒短片、VFX 视频、图生视频 | `5. Video Prompt Templates`、`6. Camera Presets` | Seedance、Veo、Runway、Kling 类工作流 |
+| 风格逆向、品牌视觉 DNA | `8. Style DNA / Reverse Engineering` | 参考图拆解、品牌模板沉淀 |
+
+---
+
+### 16.3 图片 Prompt 输出契约
+
+图片生成任务不只输出一段 Prompt，而应输出一个可迭代包：
+
+```markdown
+## Image Prompt Pack
+
+### 1. Visual Goal
+- ...
+
+### 2. Selected Template Family
+- ...
+
+### 3. Core Prompt
+...
+
+### 4. Style Shell
+- Medium:
+- Composition:
+- Lighting:
+- Camera / Lens:
+- Material:
+- Palette:
+- Detail Density:
+
+### 5. Content Slots
+- {SUBJECT}
+- {SCENE}
+- {OBJECT}
+- {TEXT}
+- {COLOR_ACCENT}
+
+### 6. Negative Constraints
+- ...
+
+### 7. Variants
+- Safer:
+- More editorial:
+- More realistic:
+
+### 8. First Test Focus
+- This round should verify ...
+```
+
+---
+
+### 16.4 视频与图生视频 Prompt 输出契约
+
+视频任务必须显式控制时间、动作和镜头，不能只把图片 Prompt 改成动态描述。
+
+```markdown
+## Video Prompt Pack
+
+### 1. Format
+- Text-to-video / Image-to-video / Multi-shot storyboard
+- Duration:
+- Aspect ratio:
+- Platform:
+
+### 2. Subject Lock
+- Identity:
+- Clothing / object consistency:
+- Scene consistency:
+
+### 3. Timeline
+- 0-3s:
+- 3-6s:
+- 6-10s:
+- 10-15s:
+
+### 4. Motion
+- Subject motion:
+- Environmental motion:
+- Transition:
+
+### 5. Camera
+- Framing:
+- Movement:
+- Lens behavior:
+
+### 6. Visual Style
+- ...
+
+### 7. Negative Constraints
+- no identity drift
+- no warped anatomy
+- no unstable text
+- no flicker
+- no sudden scene jump
+
+### 8. Verification Focus
+- This round should verify ...
+```
+
+---
+
+### 16.5 图片逆向与风格复用输出契约
+
+逆向任务要先解释视觉成立机制，再生成可迁移模板。
+
+```markdown
+## Reverse Prompt Pack
+
+### 1. Style DNA Report
+- Core visual identity:
+- Non-negotiable keywords:
+- Implicit visual features:
+- Magic ingredient:
+- Weaknesses to improve:
+
+### 2. Reconstructed Prompt
+...
+
+### 3. Style Shell
+- Keep:
+- Avoid changing:
+
+### 4. Replaceable Slots
+- ...
+
+### 5. Upgrade Direction
+- Strict replication:
+- Elevated version:
+
+### 6. Golden Template
+...
+```
+
+---
+
+### 16.6 调优回路
+
+当用户提供生成结果时，必须先定位偏差，再改 Prompt。
+
+| 偏差类型 | 优先检查 | 修正方向 |
+| --- | --- | --- |
+| 主体不像 | Subject Lock / Content Slot | 加强身份、比例、关键特征、参考约束 |
+| 风格不像 | Style Shell | 强化媒介、光线、材质、镜头、构图 |
+| 画面乱 | Composition / Negative Constraints | 收紧背景、层级、色彩、元素数量 |
+| 视频跳变 | Timeline / Camera / Subject Lock | 减少镜头切换、锁定服装和环境、简化动作 |
+| 图生视频变形 | Motion Strength / Identity Lock | 降低运动幅度、明确不可变化区域 |
+| 字体或文字错误 | Text Strategy | 减少可生成文字，必要时后期排版 |
+
+每轮调优只改变最关键的 1-3 个变量，并说明：
+
+```markdown
+Problem → Cause → Adjustment → Expected Effect
+```
+
+---
+
+### 16.7 Skill 拆分
+
+v1.0 建议沉淀为三类可执行 Skill：
+
+1. `visual-prompt-architect`：总入口与路由，负责判断任务类型、选择输出契约、管理小步快跑调优。
+2. `image-prompt-architect`：图片生成、图片逆向、视觉模板化与风格复用。
+3. `video-prompt-architect`：视频生成、图生视频、分镜、动作页与镜头节奏控制。
+
+未来如果素材继续增长，可继续拆出：
+
+* `visual-style-reverse-engineering`：专注参考图、品牌视觉和 Style DNA。
+* `storyboard-prompt-architect`：专注短片、广告、动画和游戏分镜。
+* `social-visual-prompt-architect`：专注小红书、TikTok、PPT 和社媒广告视觉。
+
+---
+
+## 17. 后续可产品化的方向
+
+### 17.1 Skill 形态
 
 可做成：
 
@@ -676,7 +881,7 @@ Observe → Deconstruct → Structure → Optimize
 
 ---
 
-### 16.2 产品功能形态
+### 17.2 产品功能形态
 
 可进一步产品化为：
 
@@ -691,7 +896,7 @@ Observe → Deconstruct → Structure → Optimize
 
 ---
 
-### 16.3 资产库形态
+### 17.3 资产库形态
 
 最终可沉淀：
 
@@ -704,7 +909,7 @@ Observe → Deconstruct → Structure → Optimize
 
 ---
 
-## 17. v1.0 总结
+## 18. v1.0 总结
 
 “小步快跑 · 图片逆向提示词系统”不是“看图写描述”，而是：
 
