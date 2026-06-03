@@ -17,6 +17,7 @@
 - **Reporter**：执行前/后输出模板（协议 §6 + §7）
 - **task.plan Skill**：三档方案（保守/推荐/深度），R0 只读
 - **开发进度文档**：docs/development-progress.md
+- **CLI 入口**：`smartdev scan/plan/list` 命令行工具
 
 ### Changed
 
@@ -25,5 +26,5 @@
 
 ### Test
 
-- 64 个测试全部通过
-- 覆盖：Skill 基类、三个检测器、repo.scan、Risk Controller、Reporter、task.plan
+- 71 个测试全部通过
+- 覆盖：Skill 基类、三个检测器、repo.scan、Risk Controller、Reporter、task.plan、CLI
