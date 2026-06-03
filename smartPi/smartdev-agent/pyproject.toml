@@ -1,0 +1,19 @@
+[project]
+name = "smartdev-agent"
+version = "0.1.0"
+description = "SmartDev Agent — 项目开发与仓库改进 AI Agent"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+    # Phase 1 只读诊断 Agent，零外部依赖
+    # 后续按需添加：pyyaml, click, rich 等
+]
+
+[project.scripts]
+smartdev = "smartdev.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]

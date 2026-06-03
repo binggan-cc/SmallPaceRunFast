@@ -1,0 +1,18 @@
+"""SmartDev Agent Skill 系统
+
+所有 Skill 模块必须在此导入，以触发 __init_subclass__ 自动注册。
+新增 Skill 时，只需在此添加一行 import 即可。
+"""
+
+from smartdev.skills.base import Skill
+
+# ── 导入所有 Skill 模块 ──────────────────────────────────
+# 为什么需要显式导入？
+#   __init_subclass__ 只在类定义执行时触发。
+#   如果模块从未被 import，类定义不会执行，注册不会发生。
+#   这里统一导入，确保 `from smartdev.skills import Skill` 时
+#   所有 Skill 都已注册到 Skill._registry 中。
+
+from smartdev.skills import repo_scan  # noqa: F401
+
+__all__ = ["Skill"]
