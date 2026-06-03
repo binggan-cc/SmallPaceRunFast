@@ -1,0 +1,36 @@
+# SmartDev Skill: qa.checklist
+# 验收清单 — 根据任务类型生成验收检查项
+
+id: qa.checklist
+name: 验收清单
+capability: qa_verify
+risk: R0
+mode: read_only
+
+description: >
+  根据任务类型和风险等级，生成对应的验收检查清单。
+  只读操作。
+
+inputs:
+  required:
+    - task_description
+  optional:
+    - risk_level
+    - task_type
+
+outputs:
+  - checklist       # 验收检查项列表
+  - categories      # 检查类别
+
+preconditions:
+  - task_description_not_empty
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
+
+validation:
+  - 输出验收清单
+  - 清单项有明确的通过/失败判定
