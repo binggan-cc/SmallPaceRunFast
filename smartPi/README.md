@@ -90,3 +90,23 @@ python -m pytest tests/ -v     # 运行测试（31 个）
 | 检测逻辑 | 独立 detector 层 | 单一职责，可独立测试，可跨 Skill 复用 |
 | 技术检测 | 标记文件 | 快速、低开销，准确率够用于诊断场景 |
 | 目录树 | 只扫 2 层 | 避免 node_modules 等大目录拖慢扫描 |
+
+## 开发规范
+
+本项目遵循 [执行协议](docs/smartdev-agent-protocol.md) 开发，每小步必须：
+
+1. **运行测试** — `python -m pytest tests/ -v`
+2. **提交 git** — 验证通过后立即 commit，不累积
+3. **执行前说明** — 范围、风险、验收标准
+4. **执行后总结** — 变更文件、关键变更、下一步
+
+commit message 格式：`<type>: <description>`
+
+```
+feat:     新功能
+fix:      Bug 修复
+docs:     文档变更
+refactor: 重构（不改变功能）
+test:     测试
+chore:    构建/工具变更
+```
