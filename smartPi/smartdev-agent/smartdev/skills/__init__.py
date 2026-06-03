@@ -13,6 +13,6 @@ from smartdev.skills.base import Skill
 #   这里统一导入，确保 `from smartdev.skills import Skill` 时
 #   所有 Skill 都已注册到 Skill._registry 中。
 
-from smartdev.skills import repo_scan  # noqa: F401
+from smartdev.skills.repo_scan import skill as _repo_scan_skill  # noqa: F401
 
 __all__ = ["Skill"]

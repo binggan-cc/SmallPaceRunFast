@@ -1,0 +1,45 @@
+# SmartDev Skill: repo.scan
+# 仓库扫描 — 扫描项目目录，识别技术栈、入口文件和文档状态
+
+id: repo.scan
+name: 仓库扫描
+capability: project_diagnose
+risk: R0
+mode: read_only
+
+description: >
+  扫描项目目录，识别技术栈、入口文件、文档状态和目录结构。
+  只读操作，不修改任何文件。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - max_depth
+    - include_patterns
+    - exclude_patterns
+
+outputs:
+  - tech_stack        # 按类别分组的技术检测结果
+  - entrypoints       # 项目入口文件清单
+  - docs_status       # 文档覆盖率和缺失清单
+  - directory_tree    # 2 层深度的目录结构
+
+preconditions:
+  - project_path_exists
+  - project_path_is_directory
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - smartfav
+  - chrome_extension
+  - fastapi
+  - generic
+
+validation:
+  - 输出技术栈列表
+  - 输出入口文件清单
+  - 输出文档覆盖率
+  - 输出目录结构
