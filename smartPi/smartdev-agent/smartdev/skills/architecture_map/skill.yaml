@@ -1,0 +1,42 @@
+# SmartDev Skill: architecture.map
+# 架构分析 — 分析模块关系、依赖和数据流
+
+id: architecture.map
+name: 架构分析
+capability: architecture_analyze
+risk: R0
+mode: read_only
+
+description: >
+  分析项目模块之间的依赖关系，检测循环依赖，
+  识别核心模块和外部依赖。只读操作。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - include_patterns
+    - exclude_patterns
+
+outputs:
+  - modules         # 模块列表（名称、路径、依赖、行数）
+  - dependencies    # 依赖关系图
+  - circular_deps   # 循环依赖检测
+  - core_modules    # 核心模块识别
+  - external_deps   # 外部依赖清单
+
+preconditions:
+  - project_path_exists
+  - project_contains_python_files
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
+
+validation:
+  - 输出模块列表
+  - 输出依赖关系
+  - 检测循环依赖
+  - 识别核心模块
