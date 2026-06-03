@@ -95,10 +95,11 @@ python -m pytest tests/ -v     # 运行测试（31 个）
 
 本项目遵循 [执行协议](docs/smartdev-agent-protocol.md) 开发，每小步必须：
 
-1. **运行测试** — `python -m pytest tests/ -v`
-2. **提交 git** — 验证通过后立即 commit，不累积
-3. **执行前说明** — 范围、风险、验收标准
-4. **执行后总结** — 变更文件、关键变更、下一步
+1. **边讲边做** — 解释原理和理由，不说黑盒执行器
+2. **运行测试** — `python -m pytest tests/ -v`
+3. **提交 git** — 验证通过后立即 commit，不累积
+4. **执行前说明** — 范围、风险、验收标准
+5. **执行后总结** — 变更文件、关键变更、下一步
 
 commit message 格式：`<type>: <description>`
 
