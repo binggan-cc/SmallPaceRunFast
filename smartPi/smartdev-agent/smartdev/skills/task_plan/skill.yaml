@@ -1,0 +1,42 @@
+# SmartDev Skill: task.plan
+# 任务规划 — 将需求拆解为多档方案
+
+id: task.plan
+name: 任务规划
+capability: task_decomposition
+risk: R0
+mode: read_only
+
+description: >
+  将用户需求拆解为可执行的小任务，并输出保守/推荐/深度三档方案。
+  只读操作，不修改任何文件。
+
+inputs:
+  required:
+    - project_path
+    - task_description
+  optional:
+    - constraints
+    - scan_result
+
+outputs:
+  - conservative   # 保守方案：改动最小，风险最低
+  - recommended    # 推荐方案：改动适中，解决根因
+  - deep           # 深度方案：改动较大，适合长期架构
+  - task_breakdown # 推荐方案的任务拆解
+
+preconditions:
+  - project_path_exists
+  - task_description_not_empty
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
+
+validation:
+  - 输出三档方案
+  - 每档方案有明确的改动范围
+  - 每档方案有风险评估
+  - 推荐方案有任务拆解
