@@ -17,5 +17,6 @@ from smartdev.skills.repo_scan import skill as _repo_scan_skill  # noqa: F401
 from smartdev.skills.task_plan import skill as _task_plan_skill  # noqa: F401
 from smartdev.skills.architecture_map import skill as _architecture_map_skill  # noqa: F401
 from smartdev.skills.token_audit import skill as _token_audit_skill  # noqa: F401
+from smartdev.skills.risk_check import skill as _risk_check_skill  # noqa: F401
 
 __all__ = ["Skill"]

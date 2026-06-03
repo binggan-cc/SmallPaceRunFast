@@ -1,0 +1,43 @@
+# SmartDev Skill: risk.check
+# 风险检查 — 分析任务风险等级，输出前置检查清单
+
+id: risk.check
+name: 风险检查
+capability: risk_assessment
+risk: R0
+mode: read_only
+
+description: >
+  分析任务的风险等级（R0-R3），输出前置检查清单和回滚建议。
+  只读操作。
+
+inputs:
+  required:
+    - project_path
+    - task_description
+  optional:
+    - scan_result
+    - architecture_result
+
+outputs:
+  - risk_level          # 建议的风险等级
+  - risk_factors        # 风险因素分析
+  - pre_check_list      # 前置检查清单
+  - rollback_suggestion # 回滚建议
+  - reasoning           # 判定理由
+
+preconditions:
+  - project_path_exists
+  - task_description_not_empty
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
+
+validation:
+  - 输出风险等级（R0-R3）
+  - 输出风险因素
+  - 输出前置检查清单
+  - 输出判定理由
