@@ -1,0 +1,43 @@
+# SmartDev Skill: token.audit
+# Token 审计 — 检查设计令牌来源、重复定义、硬编码颜色
+
+id: token.audit
+name: Token 审计
+capability: token_governance
+risk: R0
+mode: read_only
+
+description: >
+  检查项目中的设计令牌来源、重复 tokens.css、硬编码颜色、
+  Tailwind 重复配置和 token 覆盖率。只读操作。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - include_patterns
+    - exclude_patterns
+
+outputs:
+  - token_sources      # Token 来源文件
+  - hardcoded_colors   # 硬编码颜色清单
+  - coverage_rate      # Token 覆盖率
+  - recommendations    # 替换建议
+
+preconditions:
+  - project_path_exists
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - smartfav
+  - chrome_extension
+  - web_app
+  - generic
+
+validation:
+  - 输出 Token 来源
+  - 输出硬编码颜色清单
+  - 输出覆盖率
+  - 输出替换建议
