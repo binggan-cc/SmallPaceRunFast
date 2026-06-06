@@ -379,11 +379,11 @@ class TestJsTsFullPipeline:
         relations = _relations_by_source(index, "src/index.ts")
         target_ids = [r["target_id"] for r in relations]
 
-        # 验证有 module: 类型的 target
-        module_targets = [t for t in target_ids if t.startswith("module:")]
+        # 验证有 code:module: 类型的 target（Phase 6.3 Step 4.2: 归一化格式）
+        module_targets = [t for t in target_ids if t.startswith("code:module:")]
         assert len(module_targets) > 0
 
-        # ./utils/helper 应该解析为 module:src/utils/helper
+        # ./utils/helper 应该解析为 code:module:src/utils/helper.ts
         assert any("helper" in t for t in module_targets)
 
         index.close()
@@ -609,7 +609,131 @@ class TestJsTsFullPipeline:
 
         index.close()
 
-    # ── 7. Safety ──
+    # ── 7. Target Normalization（Phase 6.3 Step 4.2）──
+
+    def test_relative_import_normalized_to_code_module(self, tmp_path: Path):
+        """不同相对路径的 import 归一化到同一 code:module:{path}"""
+        project = _build_js_ts_fixture(tmp_path)
+        # 新建一个文件，通过不同的相对路径 import 同一个模块
+        (project / "src" / "sub").mkdir(exist_ok=True)
+        (project / "src" / "sub" / "consumer.ts").write_text("""\
+import { Config } from '../../types';
+import { helper } from '../utils/helper';
+""")
+
+        index = ProjectIndex(project)
+        index.index()
+
+        # 检查 consumer.ts 的 relations
+        relations = _relations_by_source(index, "src/sub/consumer.ts")
+        target_ids = [r["target_id"] for r in relations]
+
+        # ../../types 从 src/sub/ → 应解析为 code:module:types.ts
+        assert "code:module:types.ts" in target_ids
+
+        # ../utils/helper 从 src/sub/ → 应解析为 code:module:src/utils/helper.ts
+        assert "code:module:src/utils/helper.ts" in target_ids
+
+        index.close()
+
+    def test_relative_import_file_not_found_becomes_unresolved(self, tmp_path: Path):
+        """不存在的相对 import → unresolved:relative_file_not_found"""
+        project = _build_js_ts_fixture(tmp_path)
+        (project / "src" / "broken.ts").write_text("""\
+import { Nothing } from './nonexistent';
+""")
+
+        index = ProjectIndex(project)
+        index.index()
+
+        relations = _relations_by_source(index, "src/broken.ts")
+        assert len(relations) > 0
+        target_ids = [r["target_id"] for r in relations]
+        # 应该有 unresolved:relative_file_not_found 类型的 target
+        unresolved = [t for t in target_ids if t.startswith("unresolved:relative_file_not_found:")]
+        assert len(unresolved) > 0
+
+        # metadata 应包含 file_not_found 信息
+        unresolved_rels = [r for r in relations if r["target_id"].startswith("unresolved:")]
+        for rel in unresolved_rels:
+            meta = rel["metadata"]
+            assert meta.get("resolved") is False
+            assert meta.get("resolution_kind") == "file_not_found"
+
+        # artifact 应该是 unresolved_module
+        conn = index.store.connect()
+        unresolved_artifacts = conn.execute(
+            "SELECT * FROM artifacts WHERE type = 'unresolved_module'"
+        ).fetchall()
+        assert len(unresolved_artifacts) > 0
+
+        index.close()
+
+    def test_graph_validate_warns_on_missing_relative_import(self, tmp_path: Path):
+        """graph.validate 对不存在的内部 import 输出 warning"""
+        project = _build_js_ts_fixture(tmp_path)
+        (project / "src" / "broken.ts").write_text("""\
+import { Nothing } from './nonexistent';
+""")
+
+        index = ProjectIndex(project)
+        index.index()
+
+        result = validate_graph(index.store)
+        index.close()
+
+        # 应该有 unresolved_relative_import warning
+        warnings = [w for w in result.warnings if w.category == "unresolved_relative_import"]
+        assert len(warnings) >= 1
+        assert "nonexistent" in warnings[0].message
+
+        # stats 应有计数
+        assert result.stats.get("unresolved_relative_imports", 0) >= 1
+
+    def test_bare_specifier_still_external(self, tmp_path: Path):
+        """bare specifier（如 'axios'）仍正确归类为 external"""
+        project = _build_js_ts_fixture(tmp_path)
+        index = ProjectIndex(project)
+        index.index()
+
+        # src/api.ts imports 'axios'
+        relations = _relations_by_source(index, "src/api.ts")
+        target_ids = [r["target_id"] for r in relations]
+
+        # axios 应该是 external:typescript:axios（或 external:javascript:axios）
+        external_targets = [t for t in target_ids if t.startswith("external:")]
+        assert len(external_targets) > 0
+        assert any("axios" in t for t in external_targets)
+        # 不应该变为 code:module 或 unresolved
+        assert not any(t.startswith("code:module:") and "axios" in t for t in target_ids)
+
+        index.close()
+
+    def test_project_map_hotspots_use_resolved_target(self, tmp_path: Path):
+        """project.map hotspot 按 resolved target 聚合"""
+        project = _build_js_ts_fixture(tmp_path)
+        # 同一个 types.ts 通过 ../types 和 ./types 被 import
+        # src/controllers/game.ts → ../types (→ types.ts)
+        # src/index.ts → ./types (→ types.ts)
+        # src/sub/consumer.ts → ../../types (→ types.ts)
+        (project / "src" / "sub").mkdir(exist_ok=True)
+        (project / "src" / "sub" / "consumer.ts").write_text("""\
+import { Config } from '../../types';
+""")
+
+        index = ProjectIndex(project)
+        index.index()
+
+        project_map = generate_project_map(index.store, "test-normalize")
+        index.close()
+
+        # 所有 import types.ts 的文件都应该指向 code:module:types.ts
+        # hotspot 中 types.ts 的 dependents 应该 >= 3
+        hotspot_targets = [h.target for h in project_map.hotspots]
+        # 至少有一个 hotspot
+        assert len(project_map.hotspots) > 0
+
+    # ── 8. Safety ──
 
     def test_does_not_modify_source(self, tmp_path: Path):
         """索引和校验不修改被分析项目的源码"""

@@ -29,6 +29,7 @@ Phase 6-MVP 支持 8 种 artifact 类型：
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -544,37 +545,92 @@ def _is_js_ts_file(file_path: str) -> bool:
     return Path(file_path).suffix.lower() in _JS_TS_EXTENSIONS
 
 
-def _resolve_js_ts_module(rel_path: str, module_spec: str) -> tuple[str, bool, str]:
-    """解析 JS/TS 模块说明符
+# ── JS/TS import 文件扩展名候选（按优先级）──
+_JS_TS_EXT_CANDIDATES = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]
+_JS_TS_INDEX_CANDIDATES = ["/index.ts", "/index.tsx", "/index.js", "/index.jsx"]
+
+
+def _resolve_js_ts_import_target(
+    rel_path: str, module_spec: str, project_path: Path
+) -> tuple[str, bool, str, dict]:
+    """解析 JS/TS 模块说明符，归一化到 code:module:{path} 或 unresolved
+
+    Phase 6.3 Step 4.2: 对 relative import 做文件系统解析，
+    确保同一文件的不同 relative path 收敛到同一个 target_id。
 
     参数：
         rel_path: 当前文件的相对路径
         module_spec: import 的模块说明符（如 'hono', './utils', '../types'）
+        project_path: 项目根目录
 
     返回：
-        (target_id, is_external, resolved_name)
-        - target_id: external:{lang}:{pkg} 或 module:{resolved_path}
+        (target_id, is_external, resolved_name, resolution_meta)
+        - target_id: code:module:{path} | external:{lang}:{pkg} | unresolved:relative_file_not_found:{source}:{specifier}
         - is_external: 是否为外部依赖
-        - resolved_name: 解析后的模块名
+        - resolved_name: 解析后的名称（用于 artifact name）
+        - resolution_meta: {
+            "raw_specifier": str,
+            "resolution_kind": "bare_specifier" | "relative_file" | "relative_index" | "file_not_found",
+            "resolved": bool,
+            "tried_paths": [...],  # 仅在 file_not_found 时有值
+          }
     """
+    lang = "typescript" if rel_path.endswith((".ts", ".tsx")) else "javascript"
+
     # Bare specifier → external (npm package / node builtin)
     if not module_spec.startswith("./") and not module_spec.startswith("../"):
         top_level = module_spec.split("/")[0]
         if top_level.startswith("@"):
-            # Scoped package: @scope/name
             parts = module_spec.split("/")
             top_level = parts[0] + "/" + parts[1] if len(parts) > 1 else top_level
-        lang = "typescript" if rel_path.endswith((".ts", ".tsx")) else "javascript"
-        return (f"external:{lang}:{top_level}", True, module_spec)
+        meta = {
+            "raw_specifier": module_spec,
+            "resolution_kind": "bare_specifier",
+            "resolved": True,
+        }
+        return (f"external:{lang}:{top_level}", True, module_spec, meta)
 
-    # Relative import → resolve to project file path (without extension)
+    # Relative import → resolve against file system
     current_dir = Path(rel_path).parent
-    # 处理目录 index 文件（如 ./utils → ./utils/index）
-    # 但不做文件系统检查，只做路径解析
-    resolved = (current_dir / module_spec).as_posix()
-    # Normalize with Path
-    resolved = Path(resolved).as_posix()
-    return (f"module:{resolved}", False, resolved)
+    base = os.path.normpath(str(current_dir / module_spec))
+
+    tried_paths = []
+
+    # 1. Try exact path with extensions
+    for ext in _JS_TS_EXT_CANDIDATES:
+        candidate_path = base + ext
+        tried_paths.append(candidate_path)
+        if (project_path / candidate_path).is_file():
+            meta = {
+                "raw_specifier": module_spec,
+                "resolved_path": candidate_path,
+                "resolution_kind": "relative_file",
+                "resolved": True,
+            }
+            return (f"code:module:{candidate_path}", False, candidate_path, meta)
+
+    # 2. Try directory index files
+    for idx in _JS_TS_INDEX_CANDIDATES:
+        candidate_path = base + idx
+        tried_paths.append(candidate_path)
+        if (project_path / candidate_path).is_file():
+            meta = {
+                "raw_specifier": module_spec,
+                "resolved_path": candidate_path,
+                "resolution_kind": "relative_index",
+                "resolved": True,
+            }
+            return (f"code:module:{candidate_path}", False, candidate_path, meta)
+
+    # 3. File not found → unresolved
+    meta = {
+        "raw_specifier": module_spec,
+        "resolution_kind": "file_not_found",
+        "resolved": False,
+        "tried_paths": tried_paths,
+    }
+    target_id = f"unresolved:relative_file_not_found:{rel_path}:{module_spec}"
+    return (target_id, False, module_spec, meta)
 
 
 def _parse_js_ts_imports(import_sig: str, base_line: int = 1) -> list[dict]:
@@ -826,11 +882,13 @@ def _build_import_relations(
     rel_path: str,
     symbols: list[CodeSymbol],
     all_artifacts: list[ArtifactRecord],
+    project_path: Path | None = None,
 ) -> tuple[list[ArtifactRecord], list[RelationRecord]]:
     """从 import symbols 构建 relation candidates
 
     支持 Python（from X import Y）和 JS/TS（import { X } from 'Y'）。
     Phase 6.3: JS/TS 分支使用 _parse_js_ts_imports 解析 ES module 语法。
+    Phase 6.3 Step 4.2: JS/TS relative import 归一化到 code:module:{path}。
 
     返回：
         (placeholder_artifacts, relations)
@@ -891,19 +949,24 @@ def _build_import_relations(
 
             # ── 构建 target_id（JS/TS 与 Python 分支）──
             if is_js_ts:
-                # JS/TS: 使用 _resolve_js_ts_module 分类
-                target_id, is_external, resolved_name = _resolve_js_ts_module(rel_path, module)
+                # Phase 6.3 Step 4.2: 归一化到 code:module:{path}
+                target_id, is_external, resolved_name, resolution_meta = \
+                    _resolve_js_ts_import_target(rel_path, module,
+                                                 project_path or Path("."))
                 metadata = json.dumps({
                     "import_kind": imp["import_kind"],
                     "module": module,
+                    "raw_specifier": resolution_meta.get("raw_specifier", module),
                     "names": names,
                     "aliases": aliases,
                     "line": imp["line"],
                     "external": is_external,
+                    "resolved": resolution_meta.get("resolved", True),
+                    "resolution_kind": resolution_meta.get("resolution_kind", ""),
                     "confidence": symbol.confidence,
                     "extractor": symbol.extractor,
                 })
-                # 为 external/internal 创建 placeholder（如果不存在）
+                # 为 external / unresolved 创建 placeholder
                 if target_id not in artifact_index:
                     if is_external:
                         placeholders.append(ArtifactRecord(
@@ -917,17 +980,21 @@ def _build_import_relations(
                                 "module": module,
                             }),
                         ))
-                    else:
+                    elif not resolution_meta.get("resolved", True):
+                        # 文件不存在 → unresolved_module
                         placeholders.append(ArtifactRecord(
                             id=target_id,
-                            type="module",
-                            name=resolved_name,
-                            file_path="",
+                            type="unresolved_module",
+                            name=module,
+                            file_path=rel_path,
                             metadata_json=json.dumps({
-                                "resolved": True,
-                                "module": resolved_name,
+                                "resolved": False,
+                                "resolution_failure": "file_not_found",
+                                "tried_paths": resolution_meta.get("tried_paths", []),
+                                "raw_specifier": module,
                             }),
                         ))
+                    # resolved=True + internal → module artifact 已存在（由 index 创建），不重复创建
             else:
                 # Python: 原有逻辑
                 relative_level = imp["relative_level"]
@@ -1119,9 +1186,9 @@ class ArtifactExtractor:
                     for symbol in struct_result.symbols:
                         artifacts.append(_symbol_to_artifact(symbol, rel_path))
 
-                    # ── Import 关系构建（Phase 6.2 Step 2A）──
+                    # ── Import 关系构建（Phase 6.2 Step 2A / Phase 6.3 Step 4.2）──
                     placeholders, file_relations = _build_import_relations(
-                        rel_path, struct_result.symbols, artifacts,
+                        rel_path, struct_result.symbols, artifacts, project_path,
                     )
                     artifacts.extend(placeholders)
                     relations.extend(file_relations)

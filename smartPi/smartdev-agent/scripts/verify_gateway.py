@@ -172,15 +172,17 @@ for rel in js_ts_relations:
             unresolved_targets[module_name].append(source_id)
         else:
             internal_count += 1
-            if module_name not in internal_targets:
-                internal_targets[module_name] = []
-            internal_targets[module_name].append(source_id)
+            # Phase 6.3 Step 4.2: 使用归一化的 target_id（如 src/types.ts）而非 raw specifier（../types）
+            display_name = target_id[len("code:module:"):] if target_id.startswith("code:module:") else module_name
+            if display_name not in internal_targets:
+                internal_targets[display_name] = []
+            internal_targets[display_name].append(source_id)
 
-# 检查 module: target 与 artifact 对应关系
+# 检查 code:module: target 与 artifact 对应关系
 module_targets = set()
 for rel in js_ts_relations:
     tid = rel["target_id"]
-    if tid.startswith("module:"):
+    if tid.startswith("code:module:"):
         module_targets.add(tid)
 
 orphan_module_targets = []

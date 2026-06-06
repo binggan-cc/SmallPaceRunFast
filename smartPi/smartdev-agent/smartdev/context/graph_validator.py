@@ -87,6 +87,15 @@ class GraphValidationResult:
                 lines.append(f"- **[{issue.category}]** {issue.message}")
             lines.append("")
 
+        # Unresolved relative imports (Phase 6.3 Step 4.2)
+        unresolved_rel = [w for w in self.warnings if w.category == "unresolved_relative_import"]
+        if unresolved_rel:
+            lines.append("## Unresolved Relative Imports (Internal)")
+            lines.append("")
+            for issue in unresolved_rel:
+                lines.append(f"- {issue.message}")
+            lines.append("")
+
         # Hotspots
         hotspot_issues = [i for i in self.warnings if i.category == "hotspot"]
         if hotspot_issues:
@@ -155,6 +164,25 @@ def validate_graph(store: IndexStore, hotspot_threshold: int = 20) -> GraphValid
         rel_type = rel["type"]
         meta_str = rel["metadata_json"]
         meta = __import__("json").loads(meta_str) if meta_str else {}
+
+        # ── 0. Unresolved relative import（Phase 6.3 Step 4.2 新增）──
+        # 内部相对 import 指向不存在的文件 → warning
+        if meta.get("resolution_kind") == "file_not_found":
+            result.warnings.append(ValidationIssue(
+                severity="warning",
+                category="unresolved_relative_import",
+                message=(
+                    f"Relative import '{meta.get('raw_specifier', target_id)}' "
+                    f"in {source_id} could not be resolved to a file. "
+                    f"Tried: {meta.get('tried_paths', [])}"
+                ),
+                details={
+                    "source_id": source_id,
+                    "target_id": target_id,
+                    "raw_specifier": meta.get("raw_specifier", ""),
+                    "tried_paths": meta.get("tried_paths", []),
+                },
+            ))
 
         # ── 1. Orphan source ──
         if source_id not in artifact_ids:
@@ -250,6 +278,7 @@ def validate_graph(store: IndexStore, hotspot_threshold: int = 20) -> GraphValid
     result.stats["duplicates"] = len([w for w in result.warnings if w.category == "duplicate"])
     result.stats["missing_metadata"] = len([w for w in result.warnings if w.category == "missing_metadata"])
     result.stats["hotspots"] = len([w for w in result.warnings if w.category == "hotspot"])
+    result.stats["unresolved_relative_imports"] = len([w for w in result.warnings if w.category == "unresolved_relative_import"])
     result.stats["unresolved"] = unresolved_artifacts + unresolved_count
     result.stats["external"] = external_count
 

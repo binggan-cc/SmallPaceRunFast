@@ -240,7 +240,11 @@ def generate_project_map(store: IndexStore, project_name: str = "project") -> Pr
     for rel in import_rels:
         target_id = rel["target_id"]
         meta = json.loads(rel["metadata_json"]) if rel["metadata_json"] else {}
-        module_name = meta.get("module", target_id)
+        # Phase 6.3 Step 4.2: 优先使用 normalized target_id（避免 ../types 和 ./types 被拆开统计）
+        if target_id.startswith("code:module:"):
+            module_name = target_id[len("code:module:"):]  # e.g., "src/types.ts"
+        else:
+            module_name = meta.get("module", target_id)
         source_file = ""
         if rel["source_id"].startswith("code:module:"):
             source_file = rel["source_id"][len("code:module:"):]
