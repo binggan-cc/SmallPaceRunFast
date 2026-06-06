@@ -29,9 +29,9 @@ from smartdev.context.structure_extractor import (
 class TestProviderMechanism:
     """Provider 注册和选择机制"""
 
-    def test_default_providers(self):
-        """默认 Provider 包含 Python ast 和 JS/TS regex"""
-        extractor = StructureExtractor()
+    def test_default_providers_without_auto_detect(self):
+        """默认 Provider 包含 Python ast 和 JS/TS regex（禁用 auto detect）"""
+        extractor = StructureExtractor(auto_detect_node=False)
         py_provider = extractor.get_provider("python")
         js_provider = extractor.get_provider("javascript")
         ts_provider = extractor.get_provider("typescript")
@@ -39,6 +39,12 @@ class TestProviderMechanism:
         assert isinstance(py_provider, PythonAstExtractor)
         assert isinstance(js_provider, JsTsRegexFallbackExtractor)
         assert isinstance(ts_provider, JsTsRegexFallbackExtractor)
+
+    def test_python_ast_always_present(self):
+        """无论是否开启 auto_detect，PythonAstExtractor 始终存在"""
+        extractor = StructureExtractor()  # auto_detect_node=True (default)
+        py_provider = extractor.get_provider("python")
+        assert isinstance(py_provider, PythonAstExtractor)
 
     def test_unsupported_returns_null(self):
         """不支持的语言返回 NullStructureExtractor"""
@@ -325,12 +331,23 @@ class TestExtractConvenienceFunction:
         assert len(result.symbols) == 1
         assert result.symbols[0].confidence == 1.0
 
-    def test_javascript(self):
-        """JS 提取"""
+    def test_javascript_regex_fallback(self):
+        """JS 提取 — regex fallback（禁用 auto detect）"""
         content = "function f() {}\n"
-        result = extract_structure(Path("a.js"), content, "javascript")
+        extractor = StructureExtractor(auto_detect_node=False)
+        result = extractor.extract(Path("a.js"), content, "javascript")
         assert len(result.symbols) == 1
         assert result.symbols[0].confidence == 0.55
+        assert result.symbols[0].extractor == "regex_js_ts_fallback"
+
+    def test_javascript_node_bridge(self):
+        """JS 提取 — Node bridge（如果可用）"""
+        content = "function f() {}\n"
+        # 默认 auto_detect_node=True，Node 可用时使用 NodeBridgeExtractor
+        result = extract_structure(Path("a.js"), content, "javascript")
+        assert len(result.symbols) >= 1
+        # confidence 取决于环境：Node bridge = 0.95, regex fallback = 0.55
+        assert result.symbols[0].confidence in (0.55, 0.95)
 
     def test_unsupported(self):
         """不支持语言"""
@@ -407,9 +424,11 @@ const helper = () => {};
         assert "function" in kinds
 
     def test_mixed_confidence(self):
-        """混合语言时 confidence 不同"""
+        """Python confidence=1.0，JS/TS confidence 因 extractor 而异"""
         py_result = extract_structure(Path("a.py"), "def f(): pass\n", "python")
         js_result = extract_structure(Path("a.js"), "function f() {}\n", "javascript")
 
         assert py_result.symbols[0].confidence == 1.0
-        assert js_result.symbols[0].confidence == 0.55
+        # JS/TS confidence 取决于环境：Node bridge = 0.95, regex fallback = 0.55
+        assert js_result.symbols[0].confidence in (0.55, 0.95)
+        assert js_result.symbols[0].confidence < py_result.symbols[0].confidence

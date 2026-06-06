@@ -447,6 +447,32 @@ def _build_provider_map(providers: list[StructureExtractorProvider]) -> None:
 _build_provider_map(_DEFAULT_PROVIDERS)
 
 
+# ── Node bridge 自动检测 ───────────────────────────────────
+# Phase 6.3: 检测 Node.js 运行时，如果可用则自动注册高置信度 JS/TS Provider
+
+def _node_bridge_available() -> bool:
+    """检测 Node bridge 是否完整可用（Node 已安装 + 脚本存在 + npm 依赖已安装）"""
+    from smartdev.context.node_bridge import is_node_available
+    if not is_node_available():
+        return False
+    bridge_script = Path(__file__).parent / "node_bridge" / "extract_structure.js"
+    node_modules = Path(__file__).parent / "node_bridge" / "node_modules"
+    return bridge_script.exists() and node_modules.exists()
+
+
+def _try_create_node_extractor() -> StructureExtractorProvider | None:
+    """尝试创建 NodeBridgeExtractor
+
+    失败时静默返回 None（不抛异常，不中断索引流程）。
+    Node bridge 的可用性在首次 extract() 时验证（单文件失败不影响索引）。
+    """
+    try:
+        from smartdev.context.node_bridge import NodeBridgeExtractor
+        return NodeBridgeExtractor()
+    except Exception:
+        return None
+
+
 class StructureExtractor:
     """结构提取器（Provider 管理）
 
@@ -458,12 +484,41 @@ class StructureExtractor:
 
     注册新 Provider：
         extractor.register_provider(TypeScriptCompilerExtractor())
+
+    Phase 6.3 自动检测：
+        初始化时自动检测 Node.js 运行时。
+        如果可用 → 注册 NodeBridgeExtractor (confidence=0.95)
+        如果不可用 → 保持 JsTsRegexFallbackExtractor (confidence=0.55)
     """
 
-    def __init__(self, providers: list[StructureExtractorProvider] | None = None) -> None:
+    def __init__(
+        self,
+        providers: list[StructureExtractorProvider] | None = None,
+        auto_detect_node: bool = True,
+    ) -> None:
         self._providers = list(providers or _DEFAULT_PROVIDERS)
         self._map: dict[str, StructureExtractorProvider] = {}
         self._rebuild_map()
+
+        if auto_detect_node:
+            self._try_register_node_bridge()
+
+    def _try_register_node_bridge(self) -> None:
+        """检测并注册 Node bridge（如果可用）
+
+        检测顺序：
+        1. Node.js 已安装（shutil.which）
+        2. extract_structure.js 脚本存在
+        3. npm 依赖已安装（node_modules/ 存在）
+        4. Node 进程可启动
+
+        任何一步失败 → 静默跳过，保持 regex fallback。
+        """
+        if not _node_bridge_available():
+            return
+        provider = _try_create_node_extractor()
+        if provider is not None:
+            self.register_provider(provider)
 
     def _rebuild_map(self) -> None:
         self._map.clear()
@@ -517,7 +572,12 @@ def extract_structure(file_path: Path, content: str,
                       language: str) -> StructureExtractionResult:
     """提取文件的代码结构（便捷函数）
 
-    使用默认 Provider 集合。
+    使用默认 Provider 集合（含 Phase 6.3 自动检测的 Node bridge）。
+
+    注意：
+        - Python 使用 ast，confidence = 1.0
+        - JS/TS 优先使用 Node bridge（confidence = 0.95），fallback 到 regex（confidence = 0.55）
+        - 不支持的语言返回空结果，无错误
     """
     extractor = StructureExtractor()
     return extractor.extract(file_path, content, language)
