@@ -176,6 +176,55 @@ def _cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_diagnose(args: argparse.Namespace) -> int:
+    """诊断项目：加载适配器 + 运行 repo.scan"""
+    from smartdev.core.adapter import find_adapter
+    from smartdev.skills.base import Skill
+
+    project_path = Path(args.project).resolve()
+
+    # 检测适配器
+    adapter = find_adapter(project_path)
+    if adapter:
+        print(f"检测到适配器: {adapter.name} ({adapter.project_type})")
+        print(f"技术栈: {', '.join(adapter.tech_stack)}")
+        print(f"可编辑区域: {len(adapter.editable_regions)} 个")
+        print(f"禁止区域: {len(adapter.forbidden_regions)} 个")
+        if adapter.known_issues:
+            print(f"已知问题: {len(adapter.known_issues)} 个")
+        print()
+    else:
+        print("未检测到项目适配器，使用通用模式")
+        print()
+
+    # 运行 repo.scan
+    context = ProjectContext(project_path=project_path)
+    try:
+        skill = Skill.create("repo.scan")
+    except KeyError as e:
+        print(f"错误: {e}", file=sys.stderr)
+        return 1
+
+    if not skill.can_run(context):
+        print(f"错误: 项目路径不存在或不是目录: {project_path}", file=sys.stderr)
+        return 1
+
+    result = skill.run(context)
+    print(result.summary)
+
+    if result.risks:
+        print("\n发现的问题:")
+        for risk in result.risks:
+            print(f"  - {risk}")
+
+    if adapter and adapter.current_priorities:
+        print("\n适配器优先任务:")
+        for priority in adapter.current_priorities:
+            print(f"  - {priority}")
+
+    return 0
+
+
 def main() -> None:
     """CLI 主入口"""
     parser = argparse.ArgumentParser(
@@ -202,6 +251,11 @@ def main() -> None:
     # list 命令
     list_parser = subparsers.add_parser("list", help="列出所有可用 Skill")
     list_parser.set_defaults(func=_cmd_list)
+
+    # diagnose 命令
+    diagnose_parser = subparsers.add_parser("diagnose", help="诊断项目：加载适配器 + 扫描项目")
+    diagnose_parser.add_argument("--project", "-p", required=True, help="项目根目录路径")
+    diagnose_parser.set_defaults(func=_cmd_diagnose)
 
     args = parser.parse_args()
 
