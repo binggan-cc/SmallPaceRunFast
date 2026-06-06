@@ -501,6 +501,231 @@ _IMPORT_RELATIVE = re.compile(
     re.MULTILINE,
 )
 
+# ── JS/TS ES Module import 解析模式 ─────────────────────────
+# 与 Python import 解析平行，用于 _build_import_relations 的 JS/TS 分支
+
+_JS_IMPORT_NAMED = re.compile(
+    r'import\s+\{([^}]*)\}\s+from\s+[\'"]([^\'"]+)[\'"]',
+    re.MULTILINE,
+)
+_JS_IMPORT_DEFAULT = re.compile(
+    r'import\s+(\w+)\s+from\s+[\'"]([^\'"]+)[\'"]',
+    re.MULTILINE,
+)
+_JS_IMPORT_NAMESPACE = re.compile(
+    r'import\s+\*\s+as\s+(\w+)\s+from\s+[\'"]([^\'"]+)[\'"]',
+    re.MULTILINE,
+)
+_JS_IMPORT_SIDE_EFFECT = re.compile(
+    r'import\s+[\'"]([^\'"]+)[\'"]',
+    re.MULTILINE,
+)
+_JS_REEXPORT = re.compile(
+    r'export\s+\{[^}]*\}\s+from\s+[\'"]([^\'"]+)[\'"]',
+    re.MULTILINE,
+)
+_JS_REQUIRE = re.compile(
+    r'(?:const|let|var)\s+(?:\{[^}]*\}|\w+)\s*=\s*require\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)',
+    re.MULTILINE,
+)
+_JS_DYNAMIC_IMPORT = re.compile(
+    r'import\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)',
+    re.MULTILINE,
+)
+
+_JS_TS_EXTENSIONS = {".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".vue", ".svelte"}
+
+# 常见的 npm 包名（不以下划线开头即为 external）
+# JS/TS 中不以 ./ 或 ../ 开头的 import 都是 external
+
+
+def _is_js_ts_file(file_path: str) -> bool:
+    """判断文件是否为 JS/TS 家族"""
+    return Path(file_path).suffix.lower() in _JS_TS_EXTENSIONS
+
+
+def _resolve_js_ts_module(rel_path: str, module_spec: str) -> tuple[str, bool, str]:
+    """解析 JS/TS 模块说明符
+
+    参数：
+        rel_path: 当前文件的相对路径
+        module_spec: import 的模块说明符（如 'hono', './utils', '../types'）
+
+    返回：
+        (target_id, is_external, resolved_name)
+        - target_id: external:{lang}:{pkg} 或 module:{resolved_path}
+        - is_external: 是否为外部依赖
+        - resolved_name: 解析后的模块名
+    """
+    # Bare specifier → external (npm package / node builtin)
+    if not module_spec.startswith("./") and not module_spec.startswith("../"):
+        top_level = module_spec.split("/")[0]
+        if top_level.startswith("@"):
+            # Scoped package: @scope/name
+            parts = module_spec.split("/")
+            top_level = parts[0] + "/" + parts[1] if len(parts) > 1 else top_level
+        lang = "typescript" if rel_path.endswith((".ts", ".tsx")) else "javascript"
+        return (f"external:{lang}:{top_level}", True, module_spec)
+
+    # Relative import → resolve to project file path (without extension)
+    current_dir = Path(rel_path).parent
+    # 处理目录 index 文件（如 ./utils → ./utils/index）
+    # 但不做文件系统检查，只做路径解析
+    resolved = (current_dir / module_spec).as_posix()
+    # Normalize with Path
+    resolved = Path(resolved).as_posix()
+    return (f"module:{resolved}", False, resolved)
+
+
+def _parse_js_ts_imports(import_sig: str, base_line: int = 1) -> list[dict]:
+    """解析 JS/TS import 语句
+
+    参数：
+        import_sig: import 语句文本
+        base_line: 起始行号偏移
+
+    返回结构化 import 信息列表（与 _parse_imports 兼容）：
+    [{
+        "module": "hono",           # 模块说明符
+        "names": ["Hono", "cors"],  # 导入的名称列表
+        "aliases": {},              # 名称→别名映射
+        "is_relative": False,       # 是否为相对路径
+        "relative_level": 0,        # 相对层级（JS/TS 不适用，保持 0）
+        "import_kind": "named",     # named/default/namespace/side_effect/re_export/require
+        "line": 12,
+        "raw": "import { Hono } from 'hono'",
+    }]
+    """
+    imports = []
+    line = base_line + import_sig[:0].count("\n")  # 实际行号由外部提供
+
+    # 辅助：合并 names 和 aliases
+    def _parse_named_specifiers(spec_str: str) -> tuple[list[str], dict[str, str]]:
+        names = []
+        aliases = {}
+        for part in spec_str.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            if " as " in part:
+                orig, alias = part.split(" as ", 1)
+                names.append(orig.strip())
+                aliases[orig.strip()] = alias.strip()
+            else:
+                names.append(part)
+        return names, aliases
+
+    # 1. Re-export: export { X } from 'module'（优先匹配，避免与 named import 冲突）
+    for m in _JS_REEXPORT.finditer(import_sig):
+        source = m.group(1)
+        imports.append({
+            "module": source,
+            "names": [],
+            "aliases": {},
+            "is_relative": source.startswith("./") or source.startswith("../"),
+            "relative_level": 0,
+            "import_kind": "re_export",
+            "line": base_line,
+            "raw": import_sig.strip(),
+        })
+        return imports  # re-export 不会同时是其他类型
+
+    # 2. Named import: import { X, Y } from 'module'
+    for m in _JS_IMPORT_NAMED.finditer(import_sig):
+        spec_str = m.group(1)
+        source = m.group(2)
+        names, aliases = _parse_named_specifiers(spec_str)
+        imports.append({
+            "module": source,
+            "names": names,
+            "aliases": aliases,
+            "is_relative": source.startswith("./") or source.startswith("../"),
+            "relative_level": 0,
+            "import_kind": "named",
+            "line": base_line,
+            "raw": import_sig.strip(),
+        })
+        return imports
+
+    # 3. Default import: import X from 'module'
+    for m in _JS_IMPORT_DEFAULT.finditer(import_sig):
+        name = m.group(1)
+        source = m.group(2)
+        imports.append({
+            "module": source,
+            "names": [name],
+            "aliases": {},
+            "is_relative": source.startswith("./") or source.startswith("../"),
+            "relative_level": 0,
+            "import_kind": "default",
+            "line": base_line,
+            "raw": import_sig.strip(),
+        })
+        return imports
+
+    # 4. Namespace import: import * as X from 'module'
+    for m in _JS_IMPORT_NAMESPACE.finditer(import_sig):
+        alias = m.group(1)
+        source = m.group(2)
+        imports.append({
+            "module": source,
+            "names": [],
+            "aliases": {"*": alias},
+            "is_relative": source.startswith("./") or source.startswith("../"),
+            "relative_level": 0,
+            "import_kind": "namespace",
+            "line": base_line,
+            "raw": import_sig.strip(),
+        })
+        return imports
+
+    # 5. Side-effect import: import 'module'（无 specifiers）
+    for m in _JS_IMPORT_SIDE_EFFECT.finditer(import_sig):
+        source = m.group(1)
+        imports.append({
+            "module": source,
+            "names": [],
+            "aliases": {},
+            "is_relative": source.startswith("./") or source.startswith("../"),
+            "relative_level": 0,
+            "import_kind": "side_effect",
+            "line": base_line,
+            "raw": import_sig.strip(),
+        })
+        return imports
+
+    # 6. CommonJS require: const x = require('module')
+    for m in _JS_REQUIRE.finditer(import_sig):
+        source = m.group(1)
+        imports.append({
+            "module": source,
+            "names": [],
+            "aliases": {},
+            "is_relative": source.startswith("./") or source.startswith("../"),
+            "relative_level": 0,
+            "import_kind": "require",
+            "line": base_line,
+            "raw": import_sig.strip(),
+        })
+        return imports
+
+    # 7. Dynamic import: import('module')
+    for m in _JS_DYNAMIC_IMPORT.finditer(import_sig):
+        source = m.group(1)
+        imports.append({
+            "module": source,
+            "names": [],
+            "aliases": {},
+            "is_relative": source.startswith("./") or source.startswith("../"),
+            "relative_level": 0,
+            "import_kind": "dynamic",
+            "line": base_line,
+            "raw": import_sig.strip(),
+        })
+        return imports
+
+    return imports
+
 
 def _parse_alias(names_str: str) -> tuple[list[str], dict[str, str]]:
     """解析 import 名称和 alias
@@ -604,6 +829,9 @@ def _build_import_relations(
 ) -> tuple[list[ArtifactRecord], list[RelationRecord]]:
     """从 import symbols 构建 relation candidates
 
+    支持 Python（from X import Y）和 JS/TS（import { X } from 'Y'）。
+    Phase 6.3: JS/TS 分支使用 _parse_js_ts_imports 解析 ES module 语法。
+
     返回：
         (placeholder_artifacts, relations)
         placeholder_artifacts: 为 module / external / unresolved import 创建的 artifact
@@ -612,10 +840,17 @@ def _build_import_relations(
     placeholders: list[ArtifactRecord] = []
     relations: list[RelationRecord] = []
 
-    # 当前文件的 module 名（如 smartdev/context/artifact_extractor.py → smartdev.context.artifact_extractor）
-    module_name = rel_path.replace("/", ".").replace("\\", ".")
-    if module_name.endswith(".py"):
-        module_name = module_name[:-3]
+    # ── 检测文件类型 ──
+    is_js_ts = _is_js_ts_file(rel_path)
+    if is_js_ts:
+        language = "typescript" if rel_path.endswith((".ts", ".tsx")) else "javascript"
+        # module 名：去掉后缀
+        module_name = str(Path(rel_path).with_suffix("")).replace("\\", "/")
+    else:
+        language = "python"
+        module_name = rel_path.replace("/", ".").replace("\\", ".")
+        if module_name.endswith(".py"):
+            module_name = module_name[:-3]
 
     # ── P0-1：为当前文件创建 module artifact ──
     module_artifact_id = f"code:module:{rel_path}"
@@ -625,7 +860,7 @@ def _build_import_relations(
         name=module_name,
         file_path=rel_path,
         metadata_json=json.dumps({
-            "language": "python",
+            "language": language,
             "module_name": module_name,
         }),
     ))
@@ -641,8 +876,11 @@ def _build_import_relations(
 
         sig = symbol.signature
 
-        # 解析 import 语句（传入真实行号）
-        parsed = _parse_imports(sig, base_line=symbol.start_line)
+        # ── 解析 import 语句（根据文件类型 dispatch）──
+        if is_js_ts:
+            parsed = _parse_js_ts_imports(sig, base_line=symbol.start_line)
+        else:
+            parsed = _parse_imports(sig, base_line=symbol.start_line)
         if not parsed:
             continue
 
@@ -650,42 +888,24 @@ def _build_import_relations(
             module = imp["module"]
             names = imp["names"]
             aliases = imp["aliases"]
-            relative_level = imp["relative_level"]
 
-            # 构建 target_id
-            if imp["is_relative"]:
-                # 相对 import：暂时标记为 unresolved
-                target_id = f"unresolved:relative:{rel_path}:{module}:{','.join(names)}"
+            # ── 构建 target_id（JS/TS 与 Python 分支）──
+            if is_js_ts:
+                # JS/TS: 使用 _resolve_js_ts_module 分类
+                target_id, is_external, resolved_name = _resolve_js_ts_module(rel_path, module)
                 metadata = json.dumps({
-                    "relative_level": relative_level,
-                    "resolved": False,
+                    "import_kind": imp["import_kind"],
                     "module": module,
                     "names": names,
                     "aliases": aliases,
                     "line": imp["line"],
+                    "external": is_external,
                     "confidence": symbol.confidence,
                     "extractor": symbol.extractor,
                 })
-                # 创建 placeholder
-                placeholders.append(ArtifactRecord(
-                    id=target_id,
-                    type="unresolved_module",
-                    name=f"{'.' * relative_level}{module}",
-                    file_path=rel_path,
-                    metadata_json=json.dumps({
-                        "relative_level": relative_level,
-                        "resolved": False,
-                        "external": False,
-                    }),
-                ))
-            else:
-                # 绝对 import
-                is_external = _is_external_module(module)
-                target_id = f"module:{module}"
-
+                # 为 external/internal 创建 placeholder（如果不存在）
                 if target_id not in artifact_index:
                     if is_external:
-                        target_id = f"external:python:{module}"
                         placeholders.append(ArtifactRecord(
                             id=target_id,
                             type="external_module",
@@ -698,28 +918,80 @@ def _build_import_relations(
                             }),
                         ))
                     else:
-                        # 项目内模块，创建 placeholder
                         placeholders.append(ArtifactRecord(
                             id=target_id,
                             type="module",
-                            name=module,
+                            name=resolved_name,
                             file_path="",
                             metadata_json=json.dumps({
-                                "resolved": False,
-                                "module": module,
+                                "resolved": True,
+                                "module": resolved_name,
                             }),
                         ))
-
-                metadata = json.dumps({
-                    "import_kind": imp["import_kind"],
-                    "module": module,
-                    "names": names,
-                    "aliases": aliases,
-                    "line": imp["line"],
-                    "external": is_external,
-                    "confidence": symbol.confidence,
-                    "extractor": symbol.extractor,
-                })
+            else:
+                # Python: 原有逻辑
+                relative_level = imp["relative_level"]
+                if imp["is_relative"]:
+                    target_id = f"unresolved:relative:{rel_path}:{module}:{','.join(names)}"
+                    metadata = json.dumps({
+                        "relative_level": relative_level,
+                        "resolved": False,
+                        "module": module,
+                        "names": names,
+                        "aliases": aliases,
+                        "line": imp["line"],
+                        "confidence": symbol.confidence,
+                        "extractor": symbol.extractor,
+                    })
+                    placeholders.append(ArtifactRecord(
+                        id=target_id,
+                        type="unresolved_module",
+                        name=f"{'.' * relative_level}{module}",
+                        file_path=rel_path,
+                        metadata_json=json.dumps({
+                            "relative_level": relative_level,
+                            "resolved": False,
+                            "external": False,
+                        }),
+                    ))
+                else:
+                    is_external = _is_external_module(module)
+                    target_id = f"module:{module}"
+                    if target_id not in artifact_index:
+                        if is_external:
+                            target_id = f"external:python:{module}"
+                            placeholders.append(ArtifactRecord(
+                                id=target_id,
+                                type="external_module",
+                                name=module,
+                                file_path="",
+                                metadata_json=json.dumps({
+                                    "external": True,
+                                    "resolved": True,
+                                    "module": module,
+                                }),
+                            ))
+                        else:
+                            placeholders.append(ArtifactRecord(
+                                id=target_id,
+                                type="module",
+                                name=module,
+                                file_path="",
+                                metadata_json=json.dumps({
+                                    "resolved": False,
+                                    "module": module,
+                                }),
+                            ))
+                    metadata = json.dumps({
+                        "import_kind": imp["import_kind"],
+                        "module": module,
+                        "names": names,
+                        "aliases": aliases,
+                        "line": imp["line"],
+                        "external": is_external,
+                        "confidence": symbol.confidence,
+                        "extractor": symbol.extractor,
+                    })
 
             relations.append(RelationRecord(
                 source_id=module_artifact_id,

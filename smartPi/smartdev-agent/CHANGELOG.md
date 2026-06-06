@@ -62,6 +62,41 @@ Phase 6.2 的目标是让 SmartDev 能从"搜索相关文件"升级为"基于项
 
 ---
 
+### Added — Phase 6.3 Step 1: Node Bridge 骨架（同日）
+
+- **node_bridge/ 模块**：独立 Node 解析实验模块（`smartdev/context/node_bridge/`）
+- **package.json**：@babel/parser 依赖，零其他 npm 依赖
+- **extract_structure.js**：JSONL 协议，`--batch` 模式，`errorRecovery: true`
+- **test_extract_structure.js**：6 场景 Node 侧测试（import/export/function/class/arrow/type）
+- **README.md**：安装说明 + 协议文档
+- 边界：不碰 Python，不碰索引链路
+
+### Added — Phase 6.3 Step 2: Python NodeBridgeExtractor 集成（同日）
+
+- **NodeBridgeProcess**：长期 Node 子进程单例管理，JSONL 协议通信，自动重启恢复
+- **NodeBridgeExtractor**：实现 StructureExtractorProvider 接口，confidence=0.95
+- **auto_detect_node**：StructureExtractor 初始化时自动检测 Node.js，可用时自动注册
+- **三层 fallback**：Node 未安装 → 不注册；启动失败 → 静默跳过；单文件超时 → 返回空
+- 新增 2 文件 + 修改 2 文件，22 tests（含 skipif 保护的真实集成测试）
+
+### Added — Phase 6.3 Step 3: JS/TS 全链路验证（同日）
+
+- **JS/TS import relation 构建**：`artifact_extractor.py` 新增 ES module import 解析，支持 7 种导入模式（named/default/namespace/side_effect/re-export/require/dynamic）
+- **语言感知 dispatch**：`_build_import_relations()` 根据文件后缀自动选择 Python/JS/TS import 解析器
+- **相对路径解析**：`./foo` / `../bar` 解析为 project 内路径，bare specifier 归类为 external
+- **JS/TS 全链路集成测试**：18 tests 覆盖 index → search → project.map → graph.validate 端到端
+- 修改 1 文件 + 新增 1 文件，无 breaking changes
+
+### Changed
+
+- `code:module` artifact 的 metadata 中 `language` 字段从硬编码 `"python"` 改为动态检测（`python`/`typescript`/`javascript`）
+
+### Test
+
+- 350 个测试全部通过（332 原有 + 18 新增）
+
+---
+
 ## [0.1.0] - 2026-06-03
 
 ### Added
