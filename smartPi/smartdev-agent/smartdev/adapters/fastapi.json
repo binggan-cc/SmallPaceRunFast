@@ -1,0 +1,57 @@
+{
+  "adapter": "fastapi",
+  "version": "1.0",
+  "project": {
+    "name": "",
+    "type": "fastapi",
+    "tech_stack": [
+      "Python",
+      "FastAPI",
+      "SQLite"
+    ]
+  },
+  "paths": {
+    "source": ".",
+    "docs": "docs",
+    "tests": "tests",
+    "assets": ""
+  },
+  "editable_regions": [
+    "routers",
+    "services",
+    "schemas",
+    "utils"
+  ],
+  "cautious_regions": [
+    "main.py",
+    "database.py",
+    "models.py",
+    "config.py"
+  ],
+  "forbidden_regions": [
+    "*.db",
+    "*.sqlite",
+    ".env"
+  ],
+  "constraints": [
+    "FastAPI 必须轻量，避免过度工程",
+    "SQLite 优先，不引入复杂数据库",
+    "API 路由必须有类型提示",
+    "错误处理必须返回合理的 HTTP 状态码",
+    "CORS 配置必须明确允许的来源",
+    "数据库操作必须有事务保护"
+  ],
+  "validation": [
+    "服务可启动",
+    "OpenAPI 文档可访问 (/docs)",
+    "核心 API 可调用",
+    "数据库可读写",
+    "错误响应格式正确",
+    "中文内容正常"
+  ],
+  "known_issues": [
+    "SQLite 不支持并发写入",
+    "FastAPI 的 background task 不保证执行"
+  ],
+  "current_priorities": []
+}

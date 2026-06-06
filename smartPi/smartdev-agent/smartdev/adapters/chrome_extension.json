@@ -1,0 +1,61 @@
+{
+  "adapter": "chrome_extension",
+  "version": "1.0",
+  "project": {
+    "name": "",
+    "type": "chrome-extension",
+    "tech_stack": [
+      "Chrome Extension Manifest V3",
+      "JavaScript",
+      "HTML",
+      "CSS"
+    ]
+  },
+  "paths": {
+    "source": ".",
+    "docs": "docs",
+    "tests": "tests",
+    "assets": "icons"
+  },
+  "editable_regions": [
+    "sidepanel",
+    "popup",
+    "options",
+    "styles",
+    "utils",
+    "services"
+  ],
+  "cautious_regions": [
+    "manifest.json",
+    "background",
+    "content_scripts"
+  ],
+  "forbidden_regions": [
+    "*.db",
+    "*.sqlite"
+  ],
+  "constraints": [
+    "Manifest V3: Service Worker 替代 Background Page",
+    "Service Worker 不能使用 DOM API",
+    "Service Worker 生命周期短暂，不能保持全局状态",
+    "Content Script 不能直接访问 chrome.storage",
+    "Content Script 和 Background 通过消息通信",
+    "权限最小化原则：只申请必要权限",
+    "Side Panel 需要 side_panel 权限"
+  ],
+  "validation": [
+    "manifest.json 格式正确",
+    "扩展加载成功",
+    "Service Worker 注册成功",
+    "Side Panel / Popup 可打开",
+    "Content Script 可注入",
+    "chrome.storage 读写正常",
+    "消息路由正常"
+  ],
+  "known_issues": [
+    "Service Worker 可能被浏览器休眠",
+    "Content Script 和页面脚本隔离",
+    "MV3 不支持 background page 的持久连接"
+  ],
+  "current_priorities": []
+}

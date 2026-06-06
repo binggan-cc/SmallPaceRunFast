@@ -1,0 +1,72 @@
+{
+  "adapter": "smartfav",
+  "version": "1.0",
+  "project": {
+    "name": "SmartFav",
+    "type": "chrome-extension-local-first",
+    "tech_stack": [
+      "Chrome Extension Manifest V3",
+      "Vanilla JS",
+      "CSS Custom Properties",
+      "FastAPI",
+      "SQLite"
+    ]
+  },
+  "paths": {
+    "source": "apps/extension",
+    "docs": "docs",
+    "tests": "tests",
+    "assets": "assets"
+  },
+  "editable_regions": [
+    "apps/extension/sidepanel",
+    "apps/extension/popup",
+    "apps/extension/services",
+    "apps/extension/utils",
+    "apps/server",
+    "docs",
+    "demo"
+  ],
+  "cautious_regions": [
+    "apps/extension/manifest.json",
+    "apps/extension/background/index.js",
+    "apps/extension/content/index.js",
+    "apps/server/database.py",
+    "apps/server/models.py"
+  ],
+  "forbidden_regions": [
+    "old",
+    "*.db",
+    "*.sqlite",
+    "config.json"
+  ],
+  "constraints": [
+    "Chrome Extension Manifest V3 限制",
+    "Service Worker 不能使用 DOM API",
+    "Content Script 不能直接访问扩展存储",
+    "Side Panel 宽度必须支持 320px/400px/480px",
+    "FastAPI 必须轻量，SQLite 优先",
+    "不引入大型前端框架（React/Vue）"
+  ],
+  "validation": [
+    "扩展加载成功",
+    "Service Worker 注册成功",
+    "Side Panel 可打开",
+    "Popup 可打开",
+    "Content Script 可注入",
+    "Storage 正常读写",
+    "FastAPI 服务可启动",
+    "OpenAPI 文档可访问"
+  ],
+  "known_issues": [
+    "tokens.css 在 Demo 和扩展中存在重复",
+    "Side Panel 在 320px 下布局可能错位",
+    "Material Symbols CDN 在离线环境不可用"
+  ],
+  "current_priorities": [
+    "统一 tokens.css 为单一来源",
+    "替换硬编码颜色为 CSS 变量",
+    "生成 README",
+    "规划 v1.7 Dark Mode"
+  ]
+}
