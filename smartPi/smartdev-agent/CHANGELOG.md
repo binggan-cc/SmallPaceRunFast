@@ -30,6 +30,27 @@
 
 ---
 
+### Added — Phase 6.2: Code Intelligence v1（同日完成）
+
+- **StructureExtractor（Provider 机制）**：PythonAstExtractor (confidence=1.0) + JsTsRegexFallbackExtractor (confidence=0.55) + NullStructureExtractor
+- **Python import relations**：import → relations 表，module artifact，去重 upsert，alias 保留，external/unresolved placeholder
+- **Import relation hardening**：source/target ID 对齐，DB 去重，相对 import 不重复，metadata line 信息修正
+- **ImpactAnalyzer 升级**：消费 imports relation 做 reverse lookup，支持 module/file/symbol 三种 target resolve
+- **project.map 导出**：JSON + Markdown 项目地图，hotspots / external deps / unresolved 统计
+- **graph.validate v0**：6 类校验（orphan source/target、duplicate、missing metadata、hotspot、unresolved）
+- **CLAUDE.md**：项目行为规则（7 条核心约束）
+
+### Changed
+
+- ProjectIndex 新增 `index()` 方法（一步完成 scan + extract + write）
+- IndexStore 新增 `upsert_relation()` 去重方法
+
+### Test
+
+- 310 个测试全部通过（165 原有 + 145 新增）
+
+---
+
 ## [0.1.0] - 2026-06-03
 
 ### Added

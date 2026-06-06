@@ -180,7 +180,7 @@ smartdev-agent/
 
 ## 当前阶段
 
-Phase 6.2 — Code Intelligence v1
+Phase 6.2 — Code Intelligence v1（已完成）
 
 已完成：
 - ✅ Phase 1-5：8 Skill + Workflow + Adapter
@@ -188,8 +188,11 @@ Phase 6.2 — Code Intelligence v1
 - ✅ Phase 6.2 Step 1：多语言结构提取（Provider 机制）
 - ✅ Phase 6.2 Step 2A：Python import relations
 - ✅ Phase 6.2 Step 2A.1：Import relation graph hardening
+- ✅ Phase 6.2 Step 3：ImpactAnalyzer 消费 import relations
+- ✅ Phase 6.2 Step 4：project.map 导出（JSON + Markdown）
+- ✅ Phase 6.2 Step 5：graph.validate v0
 
-下一步：Step 3 — ImpactAnalyzer 消费 import relations
+下一步：Phase 6.3 — JS/TS Parser Provider
 
 ---
 
