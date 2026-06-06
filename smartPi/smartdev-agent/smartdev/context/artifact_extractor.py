@@ -37,6 +37,21 @@ from pathlib import Path
 from smartdev.context.index_store import ArtifactRecord, RelationRecord
 from smartdev.context.structure_extractor import CodeSymbol, extract_structure
 
+# ── tsconfig resolver 缓存（Phase 6.3 Step 5）──
+_tsconfig_resolver_cache: dict[str, object] = {}
+
+
+def _get_tsconfig_resolver(project_path: Path):
+    """懒加载 + 缓存 TsConfigResolver（同一批次索引只读一次 tsconfig）"""
+    key = str(project_path.resolve())
+    if key not in _tsconfig_resolver_cache:
+        try:
+            from smartdev.context.tsconfig_resolver import TsConfigResolver
+            _tsconfig_resolver_cache[key] = TsConfigResolver(project_path)
+        except Exception:
+            _tsconfig_resolver_cache[key] = None
+    return _tsconfig_resolver_cache[key]
+
 
 # ── Artifact 类型常量 ──────────────────────────────────────
 
@@ -551,86 +566,159 @@ _JS_TS_INDEX_CANDIDATES = ["/index.ts", "/index.tsx", "/index.js", "/index.jsx"]
 
 
 def _resolve_js_ts_import_target(
-    rel_path: str, module_spec: str, project_path: Path
+    rel_path: str,
+    module_spec: str,
+    project_path: Path,
+    tsconfig_resolver=None,
 ) -> tuple[str, bool, str, dict]:
     """解析 JS/TS 模块说明符，归一化到 code:module:{path} 或 unresolved
 
-    Phase 6.3 Step 4.2: 对 relative import 做文件系统解析，
-    确保同一文件的不同 relative path 收敛到同一个 target_id。
+    Phase 6.3 Step 4.2: relative import 文件系统解析 + 扩展名/index 候选。
+    Phase 6.3 Step 5: tsconfig paths alias 解析（@/foo → src/foo）。
 
     参数：
         rel_path: 当前文件的相对路径
-        module_spec: import 的模块说明符（如 'hono', './utils', '../types'）
+        module_spec: import 的模块说明符（如 'hono', './utils', '@/lib/x'）
         project_path: 项目根目录
+        tsconfig_resolver: TsConfigResolver 实例（可选，用于 alias 解析）
 
     返回：
         (target_id, is_external, resolved_name, resolution_meta)
-        - target_id: code:module:{path} | external:{lang}:{pkg} | unresolved:relative_file_not_found:{source}:{specifier}
+        - target_id: code:module:{path} | external:{lang}:{pkg} | unresolved:...
         - is_external: 是否为外部依赖
         - resolved_name: 解析后的名称（用于 artifact name）
         - resolution_meta: {
             "raw_specifier": str,
-            "resolution_kind": "bare_specifier" | "relative_file" | "relative_index" | "file_not_found",
+            "resolution_kind": str,
             "resolved": bool,
-            "tried_paths": [...],  # 仅在 file_not_found 时有值
+            ...
           }
     """
     lang = "typescript" if rel_path.endswith((".ts", ".tsx")) else "javascript"
 
-    # Bare specifier → external (npm package / node builtin)
-    if not module_spec.startswith("./") and not module_spec.startswith("../"):
-        top_level = module_spec.split("/")[0]
-        if top_level.startswith("@"):
-            parts = module_spec.split("/")
-            top_level = parts[0] + "/" + parts[1] if len(parts) > 1 else top_level
+    # ── Relative import → resolve against file system ──
+    if module_spec.startswith("./") or module_spec.startswith("../"):
+        current_dir = Path(rel_path).parent
+        base = os.path.normpath(str(current_dir / module_spec))
+
+        tried_paths = []
+
+        # 1. Try exact path with extensions
+        for ext in _JS_TS_EXT_CANDIDATES:
+            candidate_path = base + ext
+            tried_paths.append(candidate_path)
+            if (project_path / candidate_path).is_file():
+                meta = {
+                    "raw_specifier": module_spec,
+                    "resolved_path": candidate_path,
+                    "resolution_kind": "relative_file",
+                    "resolved": True,
+                }
+                return (f"code:module:{candidate_path}", False, candidate_path, meta)
+
+        # 2. Try directory index files
+        for idx in _JS_TS_INDEX_CANDIDATES:
+            candidate_path = base + idx
+            tried_paths.append(candidate_path)
+            if (project_path / candidate_path).is_file():
+                meta = {
+                    "raw_specifier": module_spec,
+                    "resolved_path": candidate_path,
+                    "resolution_kind": "relative_index",
+                    "resolved": True,
+                }
+                return (f"code:module:{candidate_path}", False, candidate_path, meta)
+
+        # 3. File not found → unresolved
         meta = {
             "raw_specifier": module_spec,
-            "resolution_kind": "bare_specifier",
-            "resolved": True,
+            "resolution_kind": "file_not_found",
+            "resolved": False,
+            "tried_paths": tried_paths,
         }
-        return (f"external:{lang}:{top_level}", True, module_spec, meta)
+        target_id = f"unresolved:relative_file_not_found:{rel_path}:{module_spec}"
+        return (target_id, False, module_spec, meta)
 
-    # Relative import → resolve against file system
-    current_dir = Path(rel_path).parent
-    base = os.path.normpath(str(current_dir / module_spec))
+    # ── Phase 6.3 Step 5: tsconfig paths alias 解析 ──
+    if tsconfig_resolver is not None:
+        alias_result = tsconfig_resolver.resolve(module_spec)
+        if alias_result is not None:
+            mapped = alias_result["mapped_path"]
+            # 结合 baseUrl
+            base_url = getattr(tsconfig_resolver.paths, "base_url", ".")
+            if base_url != ".":
+                resolved_base = os.path.normpath(str(Path(base_url) / mapped))
+            else:
+                resolved_base = os.path.normpath(mapped)
 
-    tried_paths = []
+            tried_paths = []
 
-    # 1. Try exact path with extensions
-    for ext in _JS_TS_EXT_CANDIDATES:
-        candidate_path = base + ext
-        tried_paths.append(candidate_path)
-        if (project_path / candidate_path).is_file():
+            # 0. Try as-is (mapping may already include extension)
+            if (project_path / resolved_base).is_file():
+                meta = {
+                    "raw_specifier": module_spec,
+                    "resolved_path": resolved_base,
+                    "resolution_kind": "tsconfig_paths",
+                    "resolved": True,
+                    "matched_alias": alias_result["matched_alias"],
+                    "mapped_pattern": alias_result["mapping"],
+                }
+                return (f"code:module:{resolved_base}", False, resolved_base, meta)
+            tried_paths.append(resolved_base)
+
+            # 1. Try file with extensions
+            for ext in _JS_TS_EXT_CANDIDATES:
+                candidate_path = resolved_base + ext
+                tried_paths.append(candidate_path)
+                if (project_path / candidate_path).is_file():
+                    meta = {
+                        "raw_specifier": module_spec,
+                        "resolved_path": candidate_path,
+                        "resolution_kind": "tsconfig_paths",
+                        "resolved": True,
+                        "matched_alias": alias_result["matched_alias"],
+                        "mapped_pattern": alias_result["mapping"],
+                    }
+                    return (f"code:module:{candidate_path}", False, candidate_path, meta)
+
+            # 2. Try index files
+            for idx in _JS_TS_INDEX_CANDIDATES:
+                candidate_path = resolved_base + idx
+                tried_paths.append(candidate_path)
+                if (project_path / candidate_path).is_file():
+                    meta = {
+                        "raw_specifier": module_spec,
+                        "resolved_path": candidate_path,
+                        "resolution_kind": "tsconfig_paths_index",
+                        "resolved": True,
+                        "matched_alias": alias_result["matched_alias"],
+                        "mapped_pattern": alias_result["mapping"],
+                    }
+                    return (f"code:module:{candidate_path}", False, candidate_path, meta)
+
+            # Alias matched but file not found
             meta = {
                 "raw_specifier": module_spec,
-                "resolved_path": candidate_path,
-                "resolution_kind": "relative_file",
-                "resolved": True,
+                "resolution_kind": "tsconfig_paths_file_not_found",
+                "resolved": False,
+                "matched_alias": alias_result["matched_alias"],
+                "mapped_pattern": alias_result["mapping"],
+                "tried_paths": tried_paths,
             }
-            return (f"code:module:{candidate_path}", False, candidate_path, meta)
+            target_id = f"unresolved:alias_file_not_found:{rel_path}:{module_spec}"
+            return (target_id, False, module_spec, meta)
 
-    # 2. Try directory index files
-    for idx in _JS_TS_INDEX_CANDIDATES:
-        candidate_path = base + idx
-        tried_paths.append(candidate_path)
-        if (project_path / candidate_path).is_file():
-            meta = {
-                "raw_specifier": module_spec,
-                "resolved_path": candidate_path,
-                "resolution_kind": "relative_index",
-                "resolved": True,
-            }
-            return (f"code:module:{candidate_path}", False, candidate_path, meta)
-
-    # 3. File not found → unresolved
+    # ── Bare specifier → external (npm package / node builtin) ──
+    top_level = module_spec.split("/")[0]
+    if top_level.startswith("@"):
+        parts = module_spec.split("/")
+        top_level = parts[0] + "/" + parts[1] if len(parts) > 1 else top_level
     meta = {
         "raw_specifier": module_spec,
-        "resolution_kind": "file_not_found",
-        "resolved": False,
-        "tried_paths": tried_paths,
+        "resolution_kind": "bare_specifier",
+        "resolved": True,
     }
-    target_id = f"unresolved:relative_file_not_found:{rel_path}:{module_spec}"
-    return (target_id, False, module_spec, meta)
+    return (f"external:{lang}:{top_level}", True, module_spec, meta)
 
 
 def _parse_js_ts_imports(import_sig: str, base_line: int = 1) -> list[dict]:
@@ -900,6 +988,11 @@ def _build_import_relations(
 
     # ── 检测文件类型 ──
     is_js_ts = _is_js_ts_file(rel_path)
+    # Phase 6.3 Step 5: 懒加载 tsconfig resolver（同一批次复用）
+    tsconfig_resolver = None
+    if is_js_ts and project_path is not None:
+        tsconfig_resolver = _get_tsconfig_resolver(project_path)
+
     if is_js_ts:
         language = "typescript" if rel_path.endswith((".ts", ".tsx")) else "javascript"
         # module 名：去掉后缀
@@ -952,7 +1045,8 @@ def _build_import_relations(
                 # Phase 6.3 Step 4.2: 归一化到 code:module:{path}
                 target_id, is_external, resolved_name, resolution_meta = \
                     _resolve_js_ts_import_target(rel_path, module,
-                                                 project_path or Path("."))
+                                                 project_path or Path("."),
+                                                 tsconfig_resolver)
                 metadata = json.dumps({
                     "import_kind": imp["import_kind"],
                     "module": module,
@@ -963,6 +1057,8 @@ def _build_import_relations(
                     "external": is_external,
                     "resolved": resolution_meta.get("resolved", True),
                     "resolution_kind": resolution_meta.get("resolution_kind", ""),
+                    "matched_alias": resolution_meta.get("matched_alias", ""),
+                    "mapped_pattern": resolution_meta.get("mapped_pattern", ""),
                     "confidence": symbol.confidence,
                     "extractor": symbol.extractor,
                 })

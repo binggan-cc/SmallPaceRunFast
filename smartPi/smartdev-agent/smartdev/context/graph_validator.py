@@ -96,6 +96,15 @@ class GraphValidationResult:
                 lines.append(f"- {issue.message}")
             lines.append("")
 
+        # Alias target not found (Phase 6.3 Step 5)
+        alias_not_found = [w for w in self.warnings if w.category == "alias_target_not_found"]
+        if alias_not_found:
+            lines.append("## Alias Targets Not Found (tsconfig paths)")
+            lines.append("")
+            for issue in alias_not_found:
+                lines.append(f"- {issue.message}")
+            lines.append("")
+
         # Hotspots
         hotspot_issues = [i for i in self.warnings if i.category == "hotspot"]
         if hotspot_issues:
@@ -165,9 +174,10 @@ def validate_graph(store: IndexStore, hotspot_threshold: int = 20) -> GraphValid
         meta_str = rel["metadata_json"]
         meta = __import__("json").loads(meta_str) if meta_str else {}
 
-        # ── 0. Unresolved relative import（Phase 6.3 Step 4.2 新增）──
-        # 内部相对 import 指向不存在的文件 → warning
-        if meta.get("resolution_kind") == "file_not_found":
+        # ── 0. Unresolved imports（Phase 6.3 Step 4.2 / Step 5）──
+        resolution_kind = meta.get("resolution_kind", "")
+        if resolution_kind == "file_not_found":
+            # 内部相对 import 指向不存在的文件 → warning
             result.warnings.append(ValidationIssue(
                 severity="warning",
                 category="unresolved_relative_import",
@@ -180,6 +190,25 @@ def validate_graph(store: IndexStore, hotspot_threshold: int = 20) -> GraphValid
                     "source_id": source_id,
                     "target_id": target_id,
                     "raw_specifier": meta.get("raw_specifier", ""),
+                    "tried_paths": meta.get("tried_paths", []),
+                },
+            ))
+        elif resolution_kind == "tsconfig_paths_file_not_found":
+            # tsconfig alias 匹配了但文件不存在 → warning
+            result.warnings.append(ValidationIssue(
+                severity="warning",
+                category="alias_target_not_found",
+                message=(
+                    f"Alias import '{meta.get('raw_specifier', target_id)}' "
+                    f"matched '{meta.get('matched_alias', '?')}' "
+                    f"but target file not found in {source_id}. "
+                    f"Tried: {meta.get('tried_paths', [])}"
+                ),
+                details={
+                    "source_id": source_id,
+                    "target_id": target_id,
+                    "raw_specifier": meta.get("raw_specifier", ""),
+                    "matched_alias": meta.get("matched_alias", ""),
                     "tried_paths": meta.get("tried_paths", []),
                 },
             ))
@@ -279,6 +308,7 @@ def validate_graph(store: IndexStore, hotspot_threshold: int = 20) -> GraphValid
     result.stats["missing_metadata"] = len([w for w in result.warnings if w.category == "missing_metadata"])
     result.stats["hotspots"] = len([w for w in result.warnings if w.category == "hotspot"])
     result.stats["unresolved_relative_imports"] = len([w for w in result.warnings if w.category == "unresolved_relative_import"])
+    result.stats["alias_target_not_found"] = len([w for w in result.warnings if w.category == "alias_target_not_found"])
     result.stats["unresolved"] = unresolved_artifacts + unresolved_count
     result.stats["external"] = external_count
 
