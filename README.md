@@ -46,28 +46,41 @@
    - 作为后续“图片逆向提示词 / 视觉提示词系统”Skill 化的素材中间层。
    - 相关来源文档已复制到 `prompts/` 目录，按来源分为 `source-tishi/`、`source-learned/`、`source-parent-prompts/` 和 `source-parent-notes/`。
 
-6. [项目进度](docs/progress.md)
+6. [Prompt Knowledge Base 历史原型分析](docs/prompt-knowledge-base-analysis.md)
+   - 分析 `docs/chat.md` 与 `prompt-knowledge-base/` 对当前视觉提示词系统的扩展价值。
+   - 将旧知识库原型定位为样本库、taxonomy、检索推荐和模板组装层。
+   - 可复用文档与数据资产已迁移到 `/Volumes/elements/repos/codex/prompt-knowledge-assets/`。
+
+7. [项目进度](docs/progress.md)
    - 记录当前文档整理、外部参考提取和 Skill 沉淀进度。
 
-7. [小步快跑 · 软件开发推进模型 Skill](skills/small-pace-run-fast-development/SKILL.md)
+8. [小步快跑 · 软件开发推进模型 Skill](skills/small-pace-run-fast-development/SKILL.md)
    - 面向 AI Agent 的可执行 Skill 版本。
    - 用于软件开发任务中的需求门禁、任务拆解、小步实现、分层验证、Bug 回流和 Git 证据链。
 
-8. [Git Clone Accelerator Skill](skills/git-clone-accelerator/SKILL.md)
+9. [Git Clone Accelerator Skill](skills/git-clone-accelerator/SKILL.md)
    - 克隆 GitHub 仓库时自动使用 `https://git.d8b.co/` 前缀进行加速。
    - 用于降低直接访问 GitHub 失败或过慢的概率。
 
-9. [Visual Prompt Architect Skill](skills/visual-prompt-architect/SKILL.md)
+10. [Visual Prompt Architect Skill](skills/visual-prompt-architect/SKILL.md)
    - 视觉提示词总入口与路由 Skill。
    - 用于图片逆向、图片生成、图生视频、视频生成、分镜和调优任务的任务分类与输出契约选择。
 
-10. [Image Prompt Architect Skill](skills/image-prompt-architect/SKILL.md)
+11. [Image Prompt Architect Skill](skills/image-prompt-architect/SKILL.md)
     - 图片生成与图片逆向 Skill。
     - 用于海报、科普图、产品图、肖像、字体、世界观、小红书图文等静态视觉 Prompt 的结构化生成和模板沉淀。
 
-11. [Video Prompt Architect Skill](skills/video-prompt-architect/SKILL.md)
+12. [Video Prompt Architect Skill](skills/video-prompt-architect/SKILL.md)
     - 视频生成与图生视频 Skill。
     - 用于短视频、I2V、分镜、动作页、VFX 和镜头节奏控制。
+
+13. [Prompt Knowledge Base Query Skill](skills/prompt-knowledge-base-query/SKILL.md)
+    - 利用 `prompt-knowledge-base/` 的样本、统计和 taxonomy 查找视觉 Prompt 参考模式。
+    - 用于镜头、角度、光照、风格、主体等维度的检索和参考块提取。
+
+14. [Visual Prompt Template Composer Skill](skills/visual-prompt-template-composer/SKILL.md)
+    - 基于 `{{variable}}` 语法将视觉 Prompt 转换为可复用模板。
+    - 用于拆分 Style Shell、Content Slots、变量银行和 Golden Template。
 
 ## 当前定位
 
@@ -79,6 +92,8 @@
 * 视觉提示词 Skill；
 * 图片生成与图片逆向 Skill；
 * 视频生成与图生视频 Skill；
+* Prompt 知识库检索 Skill；
+* 视觉 Prompt 模板组装 Skill；
 * 内容生产 Skill；
 * Agent 工作流编排规范；
 * 团队项目推进模板。

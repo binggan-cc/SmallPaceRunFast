@@ -53,6 +53,11 @@
 - [x] 提取视觉提示词总入口 Skill
 - [x] 提取图片生成与图片逆向 Skill
 - [x] 提取视频生成与图生视频 Skill
+- [x] 分析 `docs/chat.md` 与 `prompt-knowledge-base/` 的历史原型价值
+- [x] 新增 Prompt Knowledge Base 历史原型分析文档
+- [x] 提取 Prompt 知识库检索 Skill
+- [x] 提取视觉 Prompt 模板组装 Skill
+- [x] 将 `prompt-knowledge-base/` 中可复用文档与数据资产迁移到 `/Volumes/elements/repos/codex/prompt-knowledge-assets/`
 
 ---
 
@@ -77,6 +82,10 @@
 - [x] 新增 `skills/image-prompt-architect/SKILL.md`
 - [x] 新增 `skills/video-prompt-architect/SKILL.md`
 - [x] 新增 `prompts/`，保存视觉生成提示词系统引用的本地参考副本
+- [x] 新增 `docs/prompt-knowledge-base-analysis.md`
+- [x] 新增 `skills/prompt-knowledge-base-query/SKILL.md`
+- [x] 新增 `skills/visual-prompt-template-composer/SKILL.md`
+- [x] 新增父级资产库 `/Volumes/elements/repos/codex/prompt-knowledge-assets/`
 
 ---
 
@@ -87,8 +96,12 @@
 3. 根据试用结果压缩 Skill 文本，必要时拆出 `references/`。
 4. 试用 `skills/visual-prompt-architect/SKILL.md` 处理一次真实图片逆向任务。
 5. 试用 `skills/video-prompt-architect/SKILL.md` 处理一次图生视频或短视频分镜任务。
-6. 决定是否将视觉 Prompt 模板拆成图片、视频、分镜、品牌解构四份子文档。
-7. 决定是否将 `docs/software-delivery-model.md` 中的模板拆成独立模板文件。
+6. 试用 `skills/prompt-knowledge-base-query/SKILL.md` 从 `prompt-knowledge-base/` 查询一组真实参考模式。
+7. 试用 `skills/visual-prompt-template-composer/SKILL.md` 将一个 Lucky Hit Prompt 沉淀为 `{{variable}}` 模板。
+8. 决定是否将视觉 Prompt 模板拆成图片、视频、分镜、品牌解构四份子文档。
+9. 清理当前仓库中未跟踪的历史素材 `docs/chat.md` 与 `prompt-knowledge-base/`。
+10. 决定是否将父级资产库 `prompt-knowledge-assets/` 作为独立资产库提交。
+11. 决定是否将 `docs/software-delivery-model.md` 中的模板拆成独立模板文件。
 
 ---
 
@@ -99,6 +112,7 @@
 - `docs/software-delivery-model.md`：软件开发推进模型
 - `docs/visual-prompt-system.md`：视觉提示词系统
 - `docs/visual-generation-prompt-extraction.md`：图片与视频生成提示词抽取文档
+- `docs/prompt-knowledge-base-analysis.md`：Prompt Knowledge Base 历史原型分析
 - `docs/references.md`：参考资料与推导记录
 - `docs/progress.md`：项目进度
 - `prompts/`：视觉生成提示词系统引用的来源文档本地副本
@@ -107,3 +121,5 @@
 - `skills/visual-prompt-architect/SKILL.md`：视觉提示词总入口与任务路由 Skill
 - `skills/image-prompt-architect/SKILL.md`：图片生成与图片逆向 Skill
 - `skills/video-prompt-architect/SKILL.md`：视频生成与图生视频 Skill
+- `skills/prompt-knowledge-base-query/SKILL.md`：Prompt 知识库检索与参考模式提取 Skill
+- `skills/visual-prompt-template-composer/SKILL.md`：视觉 Prompt 模板组装 Skill

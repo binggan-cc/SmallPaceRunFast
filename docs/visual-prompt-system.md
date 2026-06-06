@@ -854,11 +854,64 @@ Problem → Cause → Adjustment → Expected Effect
 
 ### 16.7 Skill 拆分
 
-v1.0 建议沉淀为三类可执行 Skill：
+v1.0 建议沉淀为五类可执行 Skill：
 
 1. `visual-prompt-architect`：总入口与路由，负责判断任务类型、选择输出契约、管理小步快跑调优。
 2. `image-prompt-architect`：图片生成、图片逆向、视觉模板化与风格复用。
 3. `video-prompt-architect`：视频生成、图生视频、分镜、动作页与镜头节奏控制。
+4. `prompt-knowledge-base-query`：从 `prompt-knowledge-base/` 的样本、统计和 taxonomy 中提取参考模式。
+5. `visual-prompt-template-composer`：使用 `{{variable}}` 语法把 Prompt 沉淀为可复用 Golden Template。
+
+---
+
+### 16.8 知识库层与模板组装层
+
+历史原型 `docs/chat.md` 与 `prompt-knowledge-base/` 提供了当前系统缺少的数据工程层：
+
+```text
+大量 Prompt 样本
+→ 14 维解析
+→ taxonomy
+→ 统计规律
+→ 检索推荐
+→ 模板组装
+```
+
+这部分可作为视觉提示词系统的“知识库层”，但不替代 IPA 工作流。它的作用是为 Style DNA、Prompt Pack 和 Golden Template 提供参考证据与变量候选。
+
+建议统一使用以下 14 维 Visual Prompt Schema：
+
+| 维度 | 用途 |
+| --- | --- |
+| Subject | 主体、人物、产品、场景 |
+| Action & Pose | 动作、姿态、表情、视线 |
+| Shot Type | 景别与主体范围 |
+| Camera Angle | 平视、仰拍、俯拍、鸟瞰、斜角等 |
+| Lens | 焦距、微距、鱼眼、移轴 |
+| Composition | 构图秩序与画面组织 |
+| Lighting | 光源类型、方向、质量、色温 |
+| Mood | 情绪与氛围 |
+| Era & Style | 年代、艺术风格、具体流派 |
+| Color & Tone | 主色、饱和度、对比度 |
+| Background | 背景类型、细节密度、空间深度 |
+| Technical | 画幅、分辨率、景深、质量标签 |
+| Material | 材质与表面特征 |
+| Additional | 道具、特效、文字、水印等 |
+
+模板组装层统一采用 `{{variable}}` 槽位语法：
+
+```text
+{{subject}}, {{shot_type}}, {{camera_angle}}, {{lens}},
+{{lighting}}, {{style_shell}}, {{background}},
+{{quality_tags}}, {{negative_constraints}}
+```
+
+其中：
+
+* `Style Shell` 中的变量默认锁定；
+* `Content Slots` 中的变量默认可替换；
+* 同名变量在模板中必须保持一致；
+* 变量银行应保留英文生成词与中文解释。
 
 未来如果素材继续增长，可继续拆出：
 
