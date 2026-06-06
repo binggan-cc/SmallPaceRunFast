@@ -51,7 +51,7 @@ JS/TS 高置信度解析      = 有 Node → Babel/TS Compiler API
 
 - 不是"用户必须手动安装"的插件 — 检测到 Node 就自动用
 - 不是"替换 Python core"的架构变更 — 只是替换同语言的 Provider
-- `register_provider()` 机制已支持：Node bridge 注册后自动覆盖 `javascript`/`typescript`/`vue`/`svelte`
+- `register_provider()` 机制已支持：Node bridge 注册后自动覆盖 `javascript`/`typescript`
 
 **Provider 注册优先级（从高到低）：**
 1. `NodeBridgeExtractor` (Babel, confidence=0.95) — 有 Node 时
@@ -234,7 +234,7 @@ class NodeBridgeProcess:
 **推荐：Babel Parser for Phase 6.3A**
 
 理由：
-1. 一套代码覆盖 JS/JSX/TS/TSX/Vue/Svelte（通过插件切换）
+1. 一套代码覆盖 JS/JSX/TS/TSX（通过插件切换）
 2. 体积小，安装快
 3. 只做结构提取，不需要类型检查 — Babel 的 AST 足够
 4. TypeScript Compiler API 在 Phase 6.3B 作为可选增强（需要 tsconfig 感知时）
@@ -244,9 +244,11 @@ class NodeBridgeProcess:
 const plugins = {
   javascript: ["flow", "jsx"],
   typescript: ["typescript", "jsx"],
-  vue: ["typescript", "jsx"],       // Vue SFC 的 script 部分
-  svelte: ["typescript"],           // Svelte 的 script 部分
 };
+```
+
+**⚠️ 重要：Babel Parser 不能天然覆盖 Vue / Svelte。**
+Vue SFC（`.vue`）和 Svelte（`.svelte`）需要先抽取 `<script>` / `<script setup>` 块，再交给 Babel 解析。这个能力不在 Phase 6.3A/6.3B 范围内，标记为 Phase 6.3C：SFC Script Block Extraction。
 ```
 
 ### 3.4 JS/TS Import Relation 构建
@@ -375,7 +377,7 @@ class NodeBridgeExtractor(StructureExtractorProvider):
 
     @property
     def supported_languages(self) -> list[str]:
-        return ["javascript", "typescript", "vue", "svelte"]
+        return ["javascript", "typescript"]
 
     @property
     def confidence(self) -> float:

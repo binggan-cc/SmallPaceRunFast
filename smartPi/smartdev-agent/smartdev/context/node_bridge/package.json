@@ -1,0 +1,17 @@
+{
+  "name": "smartdev-node-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SmartDev Agent — Node bridge for JS/TS structure extraction via @babel/parser",
+  "main": "extract_structure.js",
+  "scripts": {
+    "test": "node test_extract_structure.js",
+    "start": "node extract_structure.js --batch"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.26.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
