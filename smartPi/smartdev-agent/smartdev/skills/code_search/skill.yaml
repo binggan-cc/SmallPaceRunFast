@@ -1,0 +1,12 @@
+name: code.search
+description: 按名称、路径、类型搜索文件和工件
+risk_level: R0
+task_type: analyze
+inputs:
+  - query: str
+  - kind_filter: Optional[str]
+  - limit: int = 20
+outputs:
+  - results: List[SearchResult]
+  - total_files: int
+  - total_artifacts: int

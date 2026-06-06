@@ -1,0 +1,12 @@
+name: code.impact
+description: 分析某个文件、工件或模型变更的影响范围
+risk_level: R0
+task_type: analyze
+inputs:
+  - target: str
+  - max_depth: int = 3
+outputs:
+  - direct_references: List[str]
+  - indirect_impacts: List[str]
+  - risk_level: str
+  - verification_items: List[str]
