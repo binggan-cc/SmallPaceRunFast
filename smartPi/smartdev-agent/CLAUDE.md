@@ -180,10 +180,14 @@ smartdev-agent/
 
 ## 当前阶段
 
-Phase 6.2 — Code Intelligence v1（已完成）
+Phase 6.2 — Code Intelligence v1（已完成，已冻结）
+
+SmartDev 已具备基于 Python AST 的轻量代码结构提取、模块级 import 关系图谱、反向依赖影响分析、项目地图导出和图谱健康校验能力。
+这个阶段的目标是让 SmartDev 能从"搜索相关文件"升级为"基于项目语义关系判断影响范围"。
+当前能力边界为 **module-level impact analysis**，不承诺完整符号级引用分析、函数调用图或多语言精确解析。
 
 已完成：
-- ✅ Phase 1-5：8 Skill + Workflow + Adapter
+- ✅ Phase 1-5：10 Skill + Workflow + Adapter
 - ✅ Phase 6-MVP：SQLite 索引 + artifact 提取 + search + impact
 - ✅ Phase 6.2 Step 1：多语言结构提取（Provider 机制）
 - ✅ Phase 6.2 Step 2A：Python import relations
@@ -192,7 +196,16 @@ Phase 6.2 — Code Intelligence v1（已完成）
 - ✅ Phase 6.2 Step 4：project.map 导出（JSON + Markdown）
 - ✅ Phase 6.2 Step 5：graph.validate v0
 
-下一步：Phase 6.3 — JS/TS Parser Provider
+下一步：
+
+### Phase 6.3 — JS/TS Parser Provider
+- 评估 Babel Parser vs TypeScript Compiler API
+- Node Parser Bridge 设计
+- 不继续强化 regex fallback（保留为 fallback，不作为能力主线）
+
+### Phase 7 — Tree-sitter Multi-language Graph
+- Tree-sitter 多语言统一精确解析
+- 该阶段待 Phase 6.3 完成后再启动
 
 ---
 

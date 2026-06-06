@@ -49,6 +49,17 @@
 
 - 310 个测试全部通过（165 原有 + 145 新增）
 
+### 能力边界
+
+Phase 6.2 的目标是让 SmartDev 能从"搜索相关文件"升级为"基于项目语义关系判断影响范围"。
+当前能力边界为 **module-level impact analysis**，不承诺：
+
+- ❌ 完整符号级引用分析（需 Tree-sitter）
+- ❌ 函数调用图（需完整 call graph）
+- ❌ JS/TS 高置信度解析（当前为 regex fallback，confidence=0.55）
+
+该阶段已冻结，不再继续加功能。下一步：Phase 6.3 — JS/TS Parser Provider。
+
 ---
 
 ## [0.1.0] - 2026-06-03

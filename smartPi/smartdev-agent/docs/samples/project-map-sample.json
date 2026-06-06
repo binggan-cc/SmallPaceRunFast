@@ -1,0 +1,1335 @@
+{
+  "project": {
+    "name": "SmartDev Agent",
+    "generated_at": "2026-06-06T13:20:23Z",
+    "summary": {
+      "files": 85,
+      "artifacts": 1150,
+      "relations": 259,
+      "languages": [
+        "python",
+        "yaml",
+        "markdown",
+        "json",
+        "toml",
+        "unknown"
+      ],
+      "modules": 66,
+      "hotspots": 14,
+      "external_deps": 16,
+      "unresolved": 0
+    }
+  },
+  "modules": [
+    {
+      "id": "code:module:smartdev/__init__.py",
+      "file_path": "smartdev/__init__.py",
+      "name": "smartdev.__init__",
+      "imports": [],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/__main__.py",
+      "file_path": "smartdev/__main__.py",
+      "name": "smartdev.__main__",
+      "imports": [
+        "smartdev.cli"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/cli.py",
+      "file_path": "smartdev/cli.py",
+      "name": "smartdev.cli",
+      "imports": [
+        "__future__",
+        "argparse",
+        "sys",
+        "pathlib",
+        "smartdev",
+        "smartdev.core.reporter",
+        "smartdev.core.risk",
+        "smartdev.models"
+      ],
+      "imported_by": [
+        "smartdev/__main__.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/context/__init__.py",
+      "file_path": "smartdev/context/__init__.py",
+      "name": "smartdev.context.__init__",
+      "imports": [
+        "smartdev.context.index_store",
+        "smartdev.context.project_index"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/context/artifact_extractor.py",
+      "file_path": "smartdev/context/artifact_extractor.py",
+      "name": "smartdev.context.artifact_extractor",
+      "imports": [
+        "__future__",
+        "json",
+        "re",
+        "dataclasses",
+        "pathlib",
+        "smartdev.context.index_store",
+        "smartdev.context.structure_extractor"
+      ],
+      "imported_by": [
+        "tests/test_artifact_extractor.py",
+        "tests/test_impact_import_relations.py",
+        "tests/test_import_relations.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/context/context_builder.py",
+      "file_path": "smartdev/context/context_builder.py",
+      "name": "smartdev.context.context_builder",
+      "imports": [
+        "__future__",
+        "pathlib",
+        "smartdev.context.index_store"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/context/graph_validator.py",
+      "file_path": "smartdev/context/graph_validator.py",
+      "name": "smartdev.context.graph_validator",
+      "imports": [
+        "__future__",
+        "dataclasses",
+        "smartdev.context.index_store"
+      ],
+      "imported_by": [
+        "tests/test_graph_validator.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/context/impact_analyzer.py",
+      "file_path": "smartdev/context/impact_analyzer.py",
+      "name": "smartdev.context.impact_analyzer",
+      "imports": [
+        "__future__",
+        "json",
+        "dataclasses",
+        "pathlib",
+        "smartdev.context.index_store"
+      ],
+      "imported_by": [
+        "smartdev/skills/code_impact/skill.py",
+        "tests/test_impact_import_relations.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/context/index_store.py",
+      "file_path": "smartdev/context/index_store.py",
+      "name": "smartdev.context.index_store",
+      "imports": [
+        "__future__",
+        "hashlib",
+        "json",
+        "sqlite3",
+        "time",
+        "dataclasses",
+        "pathlib"
+      ],
+      "imported_by": [
+        "smartdev/context/__init__.py",
+        "smartdev/context/artifact_extractor.py",
+        "smartdev/context/context_builder.py",
+        "smartdev/context/graph_validator.py",
+        "smartdev/context/impact_analyzer.py",
+        "smartdev/context/project_index.py",
+        "smartdev/context/project_map.py",
+        "tests/test_graph_validator.py",
+        "tests/test_index_store.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/context/project_index.py",
+      "file_path": "smartdev/context/project_index.py",
+      "name": "smartdev.context.project_index",
+      "imports": [
+        "__future__",
+        "json",
+        "subprocess",
+        "time",
+        "pathlib",
+        "smartdev.context.index_store"
+      ],
+      "imported_by": [
+        "smartdev/context/__init__.py",
+        "smartdev/skills/code_impact/skill.py",
+        "smartdev/skills/code_search/skill.py",
+        "tests/test_code_impact.py",
+        "tests/test_code_search.py",
+        "tests/test_graph_validator.py",
+        "tests/test_impact_import_relations.py",
+        "tests/test_import_relations.py",
+        "tests/test_project_index.py",
+        "tests/test_project_map.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/context/project_map.py",
+      "file_path": "smartdev/context/project_map.py",
+      "name": "smartdev.context.project_map",
+      "imports": [
+        "__future__",
+        "json",
+        "dataclasses",
+        "datetime",
+        "pathlib",
+        "smartdev.context.index_store"
+      ],
+      "imported_by": [
+        "tests/test_project_map.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/context/structure_extractor.py",
+      "file_path": "smartdev/context/structure_extractor.py",
+      "name": "smartdev.context.structure_extractor",
+      "imports": [
+        "__future__",
+        "ast",
+        "re",
+        "abc",
+        "dataclasses",
+        "pathlib"
+      ],
+      "imported_by": [
+        "smartdev/context/artifact_extractor.py",
+        "tests/test_structure_extractor.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/core/__init__.py",
+      "file_path": "smartdev/core/__init__.py",
+      "name": "smartdev.core.__init__",
+      "imports": [],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/core/adapter.py",
+      "file_path": "smartdev/core/adapter.py",
+      "name": "smartdev.core.adapter",
+      "imports": [
+        "__future__",
+        "json",
+        "dataclasses",
+        "pathlib"
+      ],
+      "imported_by": [
+        "tests/test_adapter.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/core/patch.py",
+      "file_path": "smartdev/core/patch.py",
+      "name": "smartdev.core.patch",
+      "imports": [
+        "__future__",
+        "dataclasses",
+        "enum"
+      ],
+      "imported_by": [
+        "smartdev/skills/code_patch/skill.py",
+        "tests/test_patch.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/core/reporter.py",
+      "file_path": "smartdev/core/reporter.py",
+      "name": "smartdev.core.reporter",
+      "imports": [
+        "__future__",
+        "dataclasses",
+        "datetime",
+        "smartdev.models"
+      ],
+      "imported_by": [
+        "smartdev/cli.py",
+        "smartdev/core/workflow.py",
+        "tests/test_reporter.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/core/risk.py",
+      "file_path": "smartdev/core/risk.py",
+      "name": "smartdev.core.risk",
+      "imports": [
+        "__future__",
+        "enum",
+        "smartdev.models"
+      ],
+      "imported_by": [
+        "smartdev/cli.py",
+        "smartdev/core/workflow.py",
+        "tests/test_risk_controller.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/core/workflow.py",
+      "file_path": "smartdev/core/workflow.py",
+      "name": "smartdev.core.workflow",
+      "imports": [
+        "__future__",
+        "dataclasses",
+        "pathlib",
+        "smartdev.core.reporter",
+        "smartdev.core.risk",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [
+        "tests/test_workflow.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/detectors/__init__.py",
+      "file_path": "smartdev/detectors/__init__.py",
+      "name": "smartdev.detectors.__init__",
+      "imports": [
+        "smartdev.detectors.tech_stack",
+        "smartdev.detectors.docs_status",
+        "smartdev.detectors.entrypoints"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/detectors/design_tokens.py",
+      "file_path": "smartdev/detectors/design_tokens.py",
+      "name": "smartdev.detectors.design_tokens",
+      "imports": [
+        "__future__",
+        "re",
+        "dataclasses",
+        "pathlib"
+      ],
+      "imported_by": [
+        "smartdev/skills/token_audit/skill.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/detectors/docs_status.py",
+      "file_path": "smartdev/detectors/docs_status.py",
+      "name": "smartdev.detectors.docs_status",
+      "imports": [
+        "__future__",
+        "dataclasses",
+        "pathlib"
+      ],
+      "imported_by": [
+        "smartdev/detectors/__init__.py",
+        "smartdev/skills/doc_generate/skill.py",
+        "smartdev/skills/repo_scan/skill.py",
+        "tests/test_detectors.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/detectors/entrypoints.py",
+      "file_path": "smartdev/detectors/entrypoints.py",
+      "name": "smartdev.detectors.entrypoints",
+      "imports": [
+        "__future__",
+        "dataclasses",
+        "pathlib"
+      ],
+      "imported_by": [
+        "smartdev/detectors/__init__.py",
+        "smartdev/skills/repo_scan/skill.py",
+        "tests/test_detectors.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/detectors/modules.py",
+      "file_path": "smartdev/detectors/modules.py",
+      "name": "smartdev.detectors.modules",
+      "imports": [
+        "__future__",
+        "ast",
+        "dataclasses",
+        "pathlib"
+      ],
+      "imported_by": [
+        "smartdev/skills/architecture_map/skill.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/detectors/tech_stack.py",
+      "file_path": "smartdev/detectors/tech_stack.py",
+      "name": "smartdev.detectors.tech_stack",
+      "imports": [
+        "__future__",
+        "dataclasses",
+        "pathlib"
+      ],
+      "imported_by": [
+        "smartdev/detectors/__init__.py",
+        "smartdev/skills/doc_generate/skill.py",
+        "smartdev/skills/repo_scan/skill.py",
+        "tests/test_detectors.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/models.py",
+      "file_path": "smartdev/models.py",
+      "name": "smartdev.models",
+      "imports": [
+        "__future__",
+        "dataclasses",
+        "enum",
+        "pathlib"
+      ],
+      "imported_by": [
+        "smartdev/cli.py",
+        "smartdev/core/reporter.py",
+        "smartdev/core/risk.py",
+        "smartdev/core/workflow.py",
+        "smartdev/skills/architecture_map/skill.py",
+        "smartdev/skills/base.py",
+        "smartdev/skills/code_impact/skill.py",
+        "smartdev/skills/code_patch/skill.py",
+        "smartdev/skills/code_search/skill.py",
+        "smartdev/skills/doc_generate/skill.py",
+        "smartdev/skills/qa_checklist/skill.py",
+        "smartdev/skills/repo_scan/skill.py",
+        "smartdev/skills/risk_check/skill.py",
+        "smartdev/skills/task_plan/skill.py",
+        "smartdev/skills/token_audit/skill.py",
+        "tests/test_architecture_map.py",
+        "tests/test_code_impact.py",
+        "tests/test_code_patch.py",
+        "tests/test_code_search.py",
+        "tests/test_doc_generate.py",
+        "tests/test_qa_checklist.py",
+        "tests/test_repo_scan.py",
+        "tests/test_reporter.py",
+        "tests/test_risk_check.py",
+        "tests/test_risk_controller.py",
+        "tests/test_skill_base.py",
+        "tests/test_task_plan.py",
+        "tests/test_token_audit.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/__init__.py",
+      "file_path": "smartdev/skills/__init__.py",
+      "name": "smartdev.skills.__init__",
+      "imports": [
+        "smartdev.skills.base",
+        "smartdev.skills.repo_scan",
+        "smartdev.skills.task_plan",
+        "smartdev.skills.architecture_map",
+        "smartdev.skills.token_audit",
+        "smartdev.skills.risk_check",
+        "smartdev.skills.qa_checklist",
+        "smartdev.skills.doc_generate",
+        "smartdev.skills.code_patch",
+        "smartdev.skills.code_search",
+        "smartdev.skills.code_impact"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/architecture_map/skill.py",
+      "file_path": "smartdev/skills/architecture_map/skill.py",
+      "name": "smartdev.skills.architecture_map.skill",
+      "imports": [
+        "__future__",
+        "pathlib",
+        "smartdev.detectors.modules",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/base.py",
+      "file_path": "smartdev/skills/base.py",
+      "name": "smartdev.skills.base",
+      "imports": [
+        "__future__",
+        "abc",
+        "typing",
+        "smartdev.models"
+      ],
+      "imported_by": [
+        "smartdev/core/workflow.py",
+        "smartdev/skills/__init__.py",
+        "smartdev/skills/architecture_map/skill.py",
+        "smartdev/skills/code_impact/skill.py",
+        "smartdev/skills/code_patch/skill.py",
+        "smartdev/skills/code_search/skill.py",
+        "smartdev/skills/doc_generate/skill.py",
+        "smartdev/skills/qa_checklist/skill.py",
+        "smartdev/skills/repo_scan/skill.py",
+        "smartdev/skills/risk_check/skill.py",
+        "smartdev/skills/task_plan/skill.py",
+        "smartdev/skills/token_audit/skill.py",
+        "tests/test_architecture_map.py",
+        "tests/test_code_impact.py",
+        "tests/test_code_patch.py",
+        "tests/test_code_search.py",
+        "tests/test_doc_generate.py",
+        "tests/test_qa_checklist.py",
+        "tests/test_repo_scan.py",
+        "tests/test_risk_check.py",
+        "tests/test_skill_base.py",
+        "tests/test_task_plan.py",
+        "tests/test_token_audit.py",
+        "tests/test_workflow.py"
+      ],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/code_impact/__init__.py",
+      "file_path": "smartdev/skills/code_impact/__init__.py",
+      "name": "smartdev.skills.code_impact.__init__",
+      "imports": [],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/code_impact/skill.py",
+      "file_path": "smartdev/skills/code_impact/skill.py",
+      "name": "smartdev.skills.code_impact.skill",
+      "imports": [
+        "__future__",
+        "pathlib",
+        "smartdev.context.impact_analyzer",
+        "smartdev.context.project_index",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/code_patch/skill.py",
+      "file_path": "smartdev/skills/code_patch/skill.py",
+      "name": "smartdev.skills.code_patch.skill",
+      "imports": [
+        "__future__",
+        "pathlib",
+        "smartdev.core.patch",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/code_search/__init__.py",
+      "file_path": "smartdev/skills/code_search/__init__.py",
+      "name": "smartdev.skills.code_search.__init__",
+      "imports": [],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/code_search/skill.py",
+      "file_path": "smartdev/skills/code_search/skill.py",
+      "name": "smartdev.skills.code_search.skill",
+      "imports": [
+        "__future__",
+        "pathlib",
+        "smartdev.context.project_index",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/doc_generate/skill.py",
+      "file_path": "smartdev/skills/doc_generate/skill.py",
+      "name": "smartdev.skills.doc_generate.skill",
+      "imports": [
+        "__future__",
+        "pathlib",
+        "smartdev.detectors.docs_status",
+        "smartdev.detectors.tech_stack",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/qa_checklist/skill.py",
+      "file_path": "smartdev/skills/qa_checklist/skill.py",
+      "name": "smartdev.skills.qa_checklist.skill",
+      "imports": [
+        "__future__",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/repo_scan/skill.py",
+      "file_path": "smartdev/skills/repo_scan/skill.py",
+      "name": "smartdev.skills.repo_scan.skill",
+      "imports": [
+        "__future__",
+        "pathlib",
+        "smartdev.detectors.docs_status",
+        "smartdev.detectors.entrypoints",
+        "smartdev.detectors.tech_stack",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/risk_check/skill.py",
+      "file_path": "smartdev/skills/risk_check/skill.py",
+      "name": "smartdev.skills.risk_check.skill",
+      "imports": [
+        "__future__",
+        "re",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/task_plan/skill.py",
+      "file_path": "smartdev/skills/task_plan/skill.py",
+      "name": "smartdev.skills.task_plan.skill",
+      "imports": [
+        "__future__",
+        "dataclasses",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:smartdev/skills/token_audit/skill.py",
+      "file_path": "smartdev/skills/token_audit/skill.py",
+      "name": "smartdev.skills.token_audit.skill",
+      "imports": [
+        "__future__",
+        "smartdev.detectors.design_tokens",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/__init__.py",
+      "file_path": "tests/__init__.py",
+      "name": "tests.__init__",
+      "imports": [],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_adapter.py",
+      "file_path": "tests/test_adapter.py",
+      "name": "tests.test_adapter",
+      "imports": [
+        "json",
+        "pathlib",
+        "smartdev.core.adapter"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_architecture_map.py",
+      "file_path": "tests/test_architecture_map.py",
+      "name": "tests.test_architecture_map",
+      "imports": [
+        "pathlib",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_artifact_extractor.py",
+      "file_path": "tests/test_artifact_extractor.py",
+      "name": "tests.test_artifact_extractor",
+      "imports": [
+        "pathlib",
+        "pytest",
+        "smartdev.context.artifact_extractor"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_cli.py",
+      "file_path": "tests/test_cli.py",
+      "name": "tests.test_cli",
+      "imports": [
+        "subprocess",
+        "sys",
+        "pathlib",
+        "pytest"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_code_impact.py",
+      "file_path": "tests/test_code_impact.py",
+      "name": "tests.test_code_impact",
+      "imports": [
+        "pathlib",
+        "pytest",
+        "smartdev.context.project_index",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_code_patch.py",
+      "file_path": "tests/test_code_patch.py",
+      "name": "tests.test_code_patch",
+      "imports": [
+        "pathlib",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_code_search.py",
+      "file_path": "tests/test_code_search.py",
+      "name": "tests.test_code_search",
+      "imports": [
+        "pathlib",
+        "pytest",
+        "smartdev.context.project_index",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_detectors.py",
+      "file_path": "tests/test_detectors.py",
+      "name": "tests.test_detectors",
+      "imports": [
+        "pathlib",
+        "pytest",
+        "smartdev.detectors.tech_stack",
+        "smartdev.detectors.docs_status",
+        "smartdev.detectors.entrypoints"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_doc_generate.py",
+      "file_path": "tests/test_doc_generate.py",
+      "name": "tests.test_doc_generate",
+      "imports": [
+        "pathlib",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_graph_validator.py",
+      "file_path": "tests/test_graph_validator.py",
+      "name": "tests.test_graph_validator",
+      "imports": [
+        "json",
+        "pathlib",
+        "pytest",
+        "smartdev.context.graph_validator",
+        "smartdev.context.index_store",
+        "smartdev.context.project_index"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_impact_import_relations.py",
+      "file_path": "tests/test_impact_import_relations.py",
+      "name": "tests.test_impact_import_relations",
+      "imports": [
+        "json",
+        "pathlib",
+        "pytest",
+        "smartdev.context.artifact_extractor",
+        "smartdev.context.impact_analyzer",
+        "smartdev.context.project_index"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_import_relations.py",
+      "file_path": "tests/test_import_relations.py",
+      "name": "tests.test_import_relations",
+      "imports": [
+        "json",
+        "pathlib",
+        "pytest",
+        "smartdev.context.artifact_extractor",
+        "smartdev.context.project_index"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_index_store.py",
+      "file_path": "tests/test_index_store.py",
+      "name": "tests.test_index_store",
+      "imports": [
+        "json",
+        "time",
+        "pathlib",
+        "pytest",
+        "smartdev.context.index_store"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_patch.py",
+      "file_path": "tests/test_patch.py",
+      "name": "tests.test_patch",
+      "imports": [
+        "smartdev.core.patch"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_project_index.py",
+      "file_path": "tests/test_project_index.py",
+      "name": "tests.test_project_index",
+      "imports": [
+        "pathlib",
+        "pytest",
+        "smartdev.context.project_index"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_project_map.py",
+      "file_path": "tests/test_project_map.py",
+      "name": "tests.test_project_map",
+      "imports": [
+        "json",
+        "pathlib",
+        "pytest",
+        "smartdev.context.project_index",
+        "smartdev.context.project_map"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_qa_checklist.py",
+      "file_path": "tests/test_qa_checklist.py",
+      "name": "tests.test_qa_checklist",
+      "imports": [
+        "pathlib",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_repo_scan.py",
+      "file_path": "tests/test_repo_scan.py",
+      "name": "tests.test_repo_scan",
+      "imports": [
+        "pathlib",
+        "pytest",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_reporter.py",
+      "file_path": "tests/test_reporter.py",
+      "name": "tests.test_reporter",
+      "imports": [
+        "smartdev.core.reporter",
+        "smartdev.models"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_risk_check.py",
+      "file_path": "tests/test_risk_check.py",
+      "name": "tests.test_risk_check",
+      "imports": [
+        "pathlib",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_risk_controller.py",
+      "file_path": "tests/test_risk_controller.py",
+      "name": "tests.test_risk_controller",
+      "imports": [
+        "pytest",
+        "smartdev.core.risk",
+        "smartdev.models"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_skill_base.py",
+      "file_path": "tests/test_skill_base.py",
+      "name": "tests.test_skill_base",
+      "imports": [
+        "pathlib",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_structure_extractor.py",
+      "file_path": "tests/test_structure_extractor.py",
+      "name": "tests.test_structure_extractor",
+      "imports": [
+        "pathlib",
+        "pytest",
+        "smartdev.context.structure_extractor"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_task_plan.py",
+      "file_path": "tests/test_task_plan.py",
+      "name": "tests.test_task_plan",
+      "imports": [
+        "pathlib",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_token_audit.py",
+      "file_path": "tests/test_token_audit.py",
+      "name": "tests.test_token_audit",
+      "imports": [
+        "pathlib",
+        "smartdev.models",
+        "smartdev.skills.base"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    },
+    {
+      "id": "code:module:tests/test_workflow.py",
+      "file_path": "tests/test_workflow.py",
+      "name": "tests.test_workflow",
+      "imports": [
+        "pathlib",
+        "smartdev.core.workflow",
+        "smartdev.skills.base",
+        "smartdev.skills"
+      ],
+      "imported_by": [],
+      "artifact_count": 0
+    }
+  ],
+  "hotspots": [
+    {
+      "target": "smartdev.models",
+      "dependent_count": 28,
+      "risk": "R2",
+      "importers": [
+        "smartdev/cli.py",
+        "smartdev/core/reporter.py",
+        "smartdev/core/risk.py",
+        "smartdev/core/workflow.py",
+        "smartdev/skills/architecture_map/skill.py",
+        "smartdev/skills/base.py",
+        "smartdev/skills/code_impact/skill.py",
+        "smartdev/skills/code_patch/skill.py",
+        "smartdev/skills/code_search/skill.py",
+        "smartdev/skills/doc_generate/skill.py"
+      ]
+    },
+    {
+      "target": "smartdev.skills.base",
+      "dependent_count": 24,
+      "risk": "R2",
+      "importers": [
+        "smartdev/core/workflow.py",
+        "smartdev/skills/__init__.py",
+        "smartdev/skills/architecture_map/skill.py",
+        "smartdev/skills/code_impact/skill.py",
+        "smartdev/skills/code_patch/skill.py",
+        "smartdev/skills/code_search/skill.py",
+        "smartdev/skills/doc_generate/skill.py",
+        "smartdev/skills/qa_checklist/skill.py",
+        "smartdev/skills/repo_scan/skill.py",
+        "smartdev/skills/risk_check/skill.py"
+      ]
+    },
+    {
+      "target": "pytest",
+      "dependent_count": 14,
+      "risk": "R2",
+      "importers": [
+        "tests/test_artifact_extractor.py",
+        "tests/test_cli.py",
+        "tests/test_code_impact.py",
+        "tests/test_code_search.py",
+        "tests/test_detectors.py",
+        "tests/test_graph_validator.py",
+        "tests/test_impact_import_relations.py",
+        "tests/test_import_relations.py",
+        "tests/test_index_store.py",
+        "tests/test_project_index.py"
+      ]
+    },
+    {
+      "target": "smartdev.context.project_index",
+      "dependent_count": 10,
+      "risk": "R2",
+      "importers": [
+        "smartdev/context/__init__.py",
+        "smartdev/skills/code_impact/skill.py",
+        "smartdev/skills/code_search/skill.py",
+        "tests/test_code_impact.py",
+        "tests/test_code_search.py",
+        "tests/test_graph_validator.py",
+        "tests/test_impact_import_relations.py",
+        "tests/test_import_relations.py",
+        "tests/test_project_index.py",
+        "tests/test_project_map.py"
+      ]
+    },
+    {
+      "target": "smartdev.context.index_store",
+      "dependent_count": 9,
+      "risk": "R2",
+      "importers": [
+        "smartdev/context/__init__.py",
+        "smartdev/context/artifact_extractor.py",
+        "smartdev/context/context_builder.py",
+        "smartdev/context/graph_validator.py",
+        "smartdev/context/impact_analyzer.py",
+        "smartdev/context/project_index.py",
+        "smartdev/context/project_map.py",
+        "tests/test_graph_validator.py",
+        "tests/test_index_store.py"
+      ]
+    },
+    {
+      "target": "smartdev.detectors.tech_stack",
+      "dependent_count": 4,
+      "risk": "R1",
+      "importers": [
+        "smartdev/detectors/__init__.py",
+        "smartdev/skills/doc_generate/skill.py",
+        "smartdev/skills/repo_scan/skill.py",
+        "tests/test_detectors.py"
+      ]
+    },
+    {
+      "target": "smartdev.detectors.docs_status",
+      "dependent_count": 4,
+      "risk": "R1",
+      "importers": [
+        "smartdev/detectors/__init__.py",
+        "smartdev/skills/doc_generate/skill.py",
+        "smartdev/skills/repo_scan/skill.py",
+        "tests/test_detectors.py"
+      ]
+    },
+    {
+      "target": "smartdev.core.reporter",
+      "dependent_count": 3,
+      "risk": "R1",
+      "importers": [
+        "smartdev/cli.py",
+        "smartdev/core/workflow.py",
+        "tests/test_reporter.py"
+      ]
+    },
+    {
+      "target": "smartdev.core.risk",
+      "dependent_count": 3,
+      "risk": "R1",
+      "importers": [
+        "smartdev/cli.py",
+        "smartdev/core/workflow.py",
+        "tests/test_risk_controller.py"
+      ]
+    },
+    {
+      "target": "smartdev.detectors.entrypoints",
+      "dependent_count": 3,
+      "risk": "R1",
+      "importers": [
+        "smartdev/detectors/__init__.py",
+        "smartdev/skills/repo_scan/skill.py",
+        "tests/test_detectors.py"
+      ]
+    },
+    {
+      "target": "smartdev.context.artifact_extractor",
+      "dependent_count": 3,
+      "risk": "R1",
+      "importers": [
+        "tests/test_artifact_extractor.py",
+        "tests/test_impact_import_relations.py",
+        "tests/test_import_relations.py"
+      ]
+    },
+    {
+      "target": "smartdev.context.structure_extractor",
+      "dependent_count": 2,
+      "risk": "R1",
+      "importers": [
+        "smartdev/context/artifact_extractor.py",
+        "tests/test_structure_extractor.py"
+      ]
+    },
+    {
+      "target": "smartdev.context.impact_analyzer",
+      "dependent_count": 2,
+      "risk": "R1",
+      "importers": [
+        "smartdev/skills/code_impact/skill.py",
+        "tests/test_impact_import_relations.py"
+      ]
+    },
+    {
+      "target": "smartdev.core.patch",
+      "dependent_count": 2,
+      "risk": "R1",
+      "importers": [
+        "smartdev/skills/code_patch/skill.py",
+        "tests/test_patch.py"
+      ]
+    }
+  ],
+  "external_dependencies": [
+    {
+      "name": "pathlib",
+      "dependent_count": 45,
+      "importers": [
+        "smartdev/cli.py",
+        "smartdev/context/artifact_extractor.py",
+        "smartdev/context/context_builder.py",
+        "smartdev/context/impact_analyzer.py",
+        "smartdev/context/index_store.py",
+        "smartdev/context/project_index.py",
+        "smartdev/context/project_map.py",
+        "smartdev/context/structure_extractor.py",
+        "smartdev/core/adapter.py",
+        "smartdev/core/workflow.py"
+      ]
+    },
+    {
+      "name": "__future__",
+      "dependent_count": 31,
+      "importers": [
+        "smartdev/cli.py",
+        "smartdev/context/artifact_extractor.py",
+        "smartdev/context/context_builder.py",
+        "smartdev/context/graph_validator.py",
+        "smartdev/context/impact_analyzer.py",
+        "smartdev/context/index_store.py",
+        "smartdev/context/project_index.py",
+        "smartdev/context/project_map.py",
+        "smartdev/context/structure_extractor.py",
+        "smartdev/core/adapter.py"
+      ]
+    },
+    {
+      "name": "dataclasses",
+      "dependent_count": 17,
+      "importers": [
+        "smartdev/context/artifact_extractor.py",
+        "smartdev/context/graph_validator.py",
+        "smartdev/context/impact_analyzer.py",
+        "smartdev/context/index_store.py",
+        "smartdev/context/project_map.py",
+        "smartdev/context/structure_extractor.py",
+        "smartdev/core/adapter.py",
+        "smartdev/core/patch.py",
+        "smartdev/core/reporter.py",
+        "smartdev/core/workflow.py"
+      ]
+    },
+    {
+      "name": "json",
+      "dependent_count": 12,
+      "importers": [
+        "smartdev/context/artifact_extractor.py",
+        "smartdev/context/impact_analyzer.py",
+        "smartdev/context/index_store.py",
+        "smartdev/context/project_index.py",
+        "smartdev/context/project_map.py",
+        "smartdev/core/adapter.py",
+        "tests/test_adapter.py",
+        "tests/test_graph_validator.py",
+        "tests/test_impact_import_relations.py",
+        "tests/test_import_relations.py"
+      ]
+    },
+    {
+      "name": "re",
+      "dependent_count": 4,
+      "importers": [
+        "smartdev/context/artifact_extractor.py",
+        "smartdev/context/structure_extractor.py",
+        "smartdev/detectors/design_tokens.py",
+        "smartdev/skills/risk_check/skill.py"
+      ]
+    },
+    {
+      "name": "time",
+      "dependent_count": 3,
+      "importers": [
+        "smartdev/context/index_store.py",
+        "smartdev/context/project_index.py",
+        "tests/test_index_store.py"
+      ]
+    },
+    {
+      "name": "enum",
+      "dependent_count": 3,
+      "importers": [
+        "smartdev/core/patch.py",
+        "smartdev/core/risk.py",
+        "smartdev/models.py"
+      ]
+    },
+    {
+      "name": "sys",
+      "dependent_count": 2,
+      "importers": [
+        "smartdev/cli.py",
+        "tests/test_cli.py"
+      ]
+    },
+    {
+      "name": "subprocess",
+      "dependent_count": 2,
+      "importers": [
+        "smartdev/context/project_index.py",
+        "tests/test_cli.py"
+      ]
+    },
+    {
+      "name": "datetime",
+      "dependent_count": 2,
+      "importers": [
+        "smartdev/context/project_map.py",
+        "smartdev/core/reporter.py"
+      ]
+    },
+    {
+      "name": "ast",
+      "dependent_count": 2,
+      "importers": [
+        "smartdev/context/structure_extractor.py",
+        "smartdev/detectors/modules.py"
+      ]
+    },
+    {
+      "name": "abc",
+      "dependent_count": 2,
+      "importers": [
+        "smartdev/context/structure_extractor.py",
+        "smartdev/skills/base.py"
+      ]
+    },
+    {
+      "name": "argparse",
+      "dependent_count": 1,
+      "importers": [
+        "smartdev/cli.py"
+      ]
+    },
+    {
+      "name": "hashlib",
+      "dependent_count": 1,
+      "importers": [
+        "smartdev/context/index_store.py"
+      ]
+    },
+    {
+      "name": "sqlite3",
+      "dependent_count": 1,
+      "importers": [
+        "smartdev/context/index_store.py"
+      ]
+    },
+    {
+      "name": "typing",
+      "dependent_count": 1,
+      "importers": [
+        "smartdev/skills/base.py"
+      ]
+    }
+  ],
+  "unresolved_imports": []
+}

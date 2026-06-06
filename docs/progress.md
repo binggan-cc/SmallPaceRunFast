@@ -2,11 +2,17 @@
 
 ## 当前状态
 
-**阶段：** 方法论文档整理、软件开发推进模型细化与视觉提示词系统 Skill 化
+**阶段：** 方法论文档整理、软件开发推进模型细化、视觉提示词系统 Skill 化 + SmartDev Agent Phase 6.2 完成
 
-**最近更新时间：** 2026-05-12
+**最近更新时间：** 2026-06-06
 
-当前项目已经从原始讨论资料整理为一个以“小步快跑 Small Pace, Run Fast”为核心的方法论文档库，并开始将软件开发场景和视觉提示词场景沉淀为可执行模型和 Skill。
+当前项目已经从原始讨论资料整理为一个以”小步快跑 Small Pace, Run Fast”为核心的方法论文档库，并开始将软件开发场景和视觉提示词场景沉淀为可执行模型和 Skill。
+
+### SmartDev Agent — Code Intelligence v1（2026-06-06 完成）
+
+SmartDev Agent（`smartPi/smartdev-agent/`）已完成 Phase 6.2，具备基于 Python AST 的轻量代码结构提取、模块级 import 关系图谱、反向依赖影响分析、项目地图导出和图谱健康校验能力。310 tests passed。
+
+该阶段已冻结，能力边界为 module-level impact analysis。下一步：Phase 6.3 — JS/TS Parser Provider。
 
 ---
 
@@ -39,6 +45,13 @@
 - [x] 将外部仓库放入 `external/github/`
 - [x] 将 `external/` 加入 `.gitignore`，避免第三方源码进入当前仓库提交
 - [x] 将 GitHub 克隆加速规则沉淀为通用 Skill
+
+### SmartDev Agent
+
+- [x] Phase 1-5：10 Skill + Workflow + Adapter（8 类 Skill，完整迭代闭环）
+- [x] Phase 6-MVP：SQLite 索引 + artifact 提取 + code.search + code.impact
+- [x] Phase 6.2：结构提取 + import relations + ImpactAnalyzer 升级 + project.map + graph.validate
+- [x] 310 tests passed，Phase 6.2 已冻结
 
 ### 视觉提示词系统
 
@@ -115,6 +128,12 @@
 - `docs/prompt-knowledge-base-analysis.md`：Prompt Knowledge Base 历史原型分析
 - `docs/references.md`：参考资料与推导记录
 - `docs/progress.md`：项目进度
+- `smartPi/README.md`：SmartDev Agent 入口与架构概览
+- `smartPi/smartdev-agent/`：SmartDev Agent Python CLI 实现（310 tests）
+- `smartPi/smartdev-agent/CHANGELOG.md`：SmartDev Agent 变更记录
+- `smartPi/smartdev-agent/CLAUDE.md`：SmartDev Agent 项目行为规则
+- `smartPi/smartdev-agent/docs/development-progress.md`：SmartDev Agent 开发进度
+- `smartPi/smartdev-agent/docs/samples/`：project.map + graph.validate 示例输出
 - `prompts/`：视觉生成提示词系统引用的来源文档本地副本
 - `skills/small-pace-run-fast-development/SKILL.md`：软件开发推进模型 Skill
 - `skills/git-clone-accelerator/SKILL.md`：GitHub 克隆加速 Skill
