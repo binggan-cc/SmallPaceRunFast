@@ -1,0 +1,42 @@
+# SmartDev Skill: code.patch
+# 代码补丁 — 生成代码修改补丁
+
+id: code.patch
+name: 代码补丁
+capability: code_execution
+risk: R1
+mode: generate_patch
+
+description: >
+  根据任务描述和项目上下文，生成代码修改补丁。
+  输出为补丁内容（unified diff），不直接应用。
+  用户确认后才应用补丁。
+
+inputs:
+  required:
+    - project_path
+    - task_description
+  optional:
+    - target_files
+    - scan_result
+
+outputs:
+  - patch           # Patch 数据结构
+  - diff            # unified diff 文本
+  - summary         # 变更摘要
+
+preconditions:
+  - project_path_exists
+  - task_description_not_empty
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
+
+validation:
+  - 输出补丁内容
+  - 补丁包含变更理由
+  - 补丁可转换为 unified diff
+  - 不直接修改文件

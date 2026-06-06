@@ -20,5 +20,6 @@ from smartdev.skills.token_audit import skill as _token_audit_skill  # noqa: F40
 from smartdev.skills.risk_check import skill as _risk_check_skill  # noqa: F401
 from smartdev.skills.qa_checklist import skill as _qa_checklist_skill  # noqa: F401
 from smartdev.skills.doc_generate import skill as _doc_generate_skill  # noqa: F401
+from smartdev.skills.code_patch import skill as _code_patch_skill  # noqa: F401
 
 __all__ = ["Skill"]
