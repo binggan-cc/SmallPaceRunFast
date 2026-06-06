@@ -225,6 +225,21 @@ def _cmd_diagnose(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_run(args: argparse.Namespace) -> int:
+    """执行完整工作流"""
+    from smartdev.core.workflow import WorkflowEngine
+
+    project_path = Path(args.project).resolve()
+    task = args.task
+
+    engine = WorkflowEngine()
+    result = engine.run(project_path, task=task)
+
+    print(result.to_markdown())
+
+    return 0 if result.success else 1
+
+
 def main() -> None:
     """CLI 主入口"""
     parser = argparse.ArgumentParser(
@@ -256,6 +271,14 @@ def main() -> None:
     diagnose_parser = subparsers.add_parser("diagnose", help="诊断项目：加载适配器 + 扫描项目")
     diagnose_parser.add_argument("--project", "-p", required=True, help="项目根目录路径")
     diagnose_parser.set_defaults(func=_cmd_diagnose)
+
+    # run 命令
+    run_parser = subparsers.add_parser("run", help="执行完整工作流（扫描→分析→规划→清单）")
+    run_parser.add_argument("--project", "-p", required=True, help="项目根目录路径")
+    run_parser.add_argument("--task", "-t", default="", help="任务描述（可选）")
+    run_parser.set_defaults(func=_cmd_run)
+
+    args = parser.parse_args()
 
     args = parser.parse_args()
 
