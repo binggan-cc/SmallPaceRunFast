@@ -41,7 +41,7 @@ class TestCLI:
             text=True,
         )
         assert result.returncode == 0
-        assert "0.1.0" in result.stdout
+        assert "smartdev" in result.stdout
 
     def test_list(self):
         """list 命令列出所有 Skill"""

@@ -240,6 +240,117 @@ def _cmd_run(args: argparse.Namespace) -> int:
     return 0 if result.success else 1
 
 
+def _cmd_index(args: argparse.Namespace) -> int:
+    """建立项目索引"""
+    from smartdev.context.project_index import ProjectIndex
+
+    project_path = Path(args.project).resolve()
+
+    if not project_path.exists() or not project_path.is_dir():
+        print(f"错误: 项目路径不存在或不是目录: {project_path}", file=sys.stderr)
+        return 1
+
+    print(f"正在建立索引: {project_path}")
+    print()
+
+    index = ProjectIndex(project_path)
+
+    # 一步完成：scan + extract + write
+    result = index.index(force=args.force)
+    print(f"文件扫描完成：{result['files']} 个文件")
+    print(f"  更新: {result['files_updated']}, 跳过: {result['files_skipped']}")
+    print(f"Artifact 提取完成：{result['artifacts']} 个")
+    print(f"Import 关系：{result['relations']} 个")
+    if result["errors"]:
+        print(f"  错误: {result['errors']} 个")
+    print()
+
+    # 统计
+    stats = index.stats()
+    print("索引统计：")
+    print(f"  文件: {stats['files']}")
+    print(f"  工件: {stats['artifacts']}")
+    print(f"  关系: {stats['relations']}")
+    if stats["languages"]:
+        langs = ", ".join(f"{l['language']}({l['count']})" for l in stats["languages"])
+        print(f"  语言: {langs}")
+    if stats["artifact_types"]:
+        types = ", ".join(f"{t['type']}({t['count']})" for t in stats["artifact_types"])
+        print(f"  工件类型: {types}")
+    print()
+    print(f"索引文件: {index.db_path}")
+
+    index.close()
+    return 0
+
+
+def _cmd_search(args: argparse.Namespace) -> int:
+    """搜索文件和工件"""
+    from smartdev.context.project_index import ProjectIndex
+
+    project_path = Path(args.project).resolve()
+
+    if not project_path.exists() or not project_path.is_dir():
+        print(f"错误: 项目路径不存在或不是目录: {project_path}", file=sys.stderr)
+        return 1
+
+    db_path = project_path / ".smartdev" / "index.sqlite"
+    if not db_path.exists():
+        print("错误: 索引不存在，请先运行 smartdev index", file=sys.stderr)
+        return 1
+
+    index = ProjectIndex(project_path)
+    results = index.search(args.query, limit=args.limit)
+    index.close()
+
+    # 输出结果
+    print(f"搜索: '{args.query}'")
+    print()
+
+    if results["files"]:
+        print(f"匹配文件 ({results['total_files']}):")
+        for f in results["files"]:
+            print(f"  {f['path']}  [{f['language']}, {f['kind']}]")
+        print()
+
+    if results["artifacts"]:
+        print(f"匹配工件 ({results['total_artifacts']}):")
+        for a in results["artifacts"]:
+            print(f"  [{a['type']}] {a['name']}  → {a['file_path']}")
+        print()
+
+    if not results["files"] and not results["artifacts"]:
+        print("未找到匹配结果")
+
+    return 0
+
+
+def _cmd_impact(args: argparse.Namespace) -> int:
+    """分析变更影响"""
+    from smartdev.context.impact_analyzer import ImpactAnalyzer
+    from smartdev.context.project_index import ProjectIndex
+
+    project_path = Path(args.project).resolve()
+
+    if not project_path.exists() or not project_path.is_dir():
+        print(f"错误: 项目路径不存在或不是目录: {project_path}", file=sys.stderr)
+        return 1
+
+    db_path = project_path / ".smartdev" / "index.sqlite"
+    if not db_path.exists():
+        print("错误: 索引不存在，请先运行 smartdev index", file=sys.stderr)
+        return 1
+
+    index = ProjectIndex(project_path)
+    analyzer = ImpactAnalyzer(index.store)
+    result = analyzer.analyze(args.target, max_depth=args.depth)
+    index.close()
+
+    print(result.summary)
+
+    return 0
+
+
 def main() -> None:
     """CLI 主入口"""
     parser = argparse.ArgumentParser(
@@ -278,7 +389,25 @@ def main() -> None:
     run_parser.add_argument("--task", "-t", default="", help="任务描述（可选）")
     run_parser.set_defaults(func=_cmd_run)
 
-    args = parser.parse_args()
+    # index 命令（Phase 6-MVP 新增）
+    index_parser = subparsers.add_parser("index", help="建立项目代码索引（文件 + 工件）")
+    index_parser.add_argument("--project", "-p", required=True, help="项目根目录路径")
+    index_parser.add_argument("--force", "-f", action="store_true", help="强制重新索引所有文件")
+    index_parser.set_defaults(func=_cmd_index)
+
+    # search 命令（Phase 6-MVP 新增）
+    search_parser = subparsers.add_parser("search", help="搜索文件和工件")
+    search_parser.add_argument("--project", "-p", required=True, help="项目根目录路径")
+    search_parser.add_argument("query", help="搜索词")
+    search_parser.add_argument("--limit", "-l", type=int, default=20, help="最大返回数（默认 20）")
+    search_parser.set_defaults(func=_cmd_search)
+
+    # impact 命令（Phase 6-MVP 新增）
+    impact_parser = subparsers.add_parser("impact", help="分析变更影响范围")
+    impact_parser.add_argument("--project", "-p", required=True, help="项目根目录路径")
+    impact_parser.add_argument("target", help="分析目标（文件路径或工件名称）")
+    impact_parser.add_argument("--depth", "-d", type=int, default=3, help="最大分析深度（默认 3）")
+    impact_parser.set_defaults(func=_cmd_impact)
 
     args = parser.parse_args()
 
