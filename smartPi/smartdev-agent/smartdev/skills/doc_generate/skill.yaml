@@ -1,0 +1,39 @@
+# SmartDev Skill: doc.generate
+# 文档生成 — 根据项目状态生成文档草案
+
+id: doc.generate
+name: 文档生成
+capability: document_knowledge
+risk: R1
+mode: generate_draft
+
+description: >
+  根据项目扫描结果和适配器信息，生成 README、CONTRIBUTING 等文档草案。
+  输出为草案内容，不直接写入文件。用户确认后才写入。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - doc_type
+    - scan_result
+    - adapter_info
+
+outputs:
+  - doc_type       # 文档类型
+  - content        # 文档内容（Markdown）
+  - save_path      # 建议保存路径
+
+preconditions:
+  - project_path_exists
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
+
+validation:
+  - 输出文档草案内容
+  - 内容基于项目实际情况（非泛型模板）
+  - 包含建议保存路径
