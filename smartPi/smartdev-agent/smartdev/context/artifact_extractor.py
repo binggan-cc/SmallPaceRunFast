@@ -1105,6 +1105,13 @@ class ArtifactExtractor:
 
             # ── 结构提取（Phase 6.2 新增）──
             # 对代码文件提取函数、类、方法等结构化符号
+
+            # 跳过 .d.ts 类型声明文件（外部平台类型，非项目代码）
+            # 如 wrangler types 生成的 Cloudflare Workers 声明，
+            # 这些文件包含数百个外部接口/类型，会严重膨胀索引
+            if rel_path.endswith(".d.ts"):
+                continue
+
             language = _EXT_LANG.get(abs_path.suffix.lower())
             if language:
                 try:
