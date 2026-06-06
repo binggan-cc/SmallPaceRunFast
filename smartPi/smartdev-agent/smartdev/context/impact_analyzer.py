@@ -41,6 +41,35 @@ class ImpactResult:
     summary: str = ""
 
 
+@dataclass
+class ImportDependent:
+    """Import 依赖方"""
+    source_id: str       # 发起 import 的 module artifact id
+    source_file: str     # 发起 import 的文件路径
+    target_id: str       # 被 import 的 module artifact id
+    import_kind: str     # "from_import" / "import"
+    module: str          # 被 import 的模块名
+    names: list[str] = field(default_factory=list)  # import 的具体符号
+    aliases: dict = field(default_factory=dict)
+    line: int = 0
+    confidence: float = 1.0
+    external: bool = False
+
+
+@dataclass
+class ImportImpactResult:
+    """Import 影响分析结果"""
+    query: str
+    resolved_target: str = ""      # 解析后的 target artifact id
+    relation_scope: str = "module" # 关系粒度（当前只有 module）
+    direct_dependents: list[ImportDependent] = field(default_factory=list)
+    affected_files: list[str] = field(default_factory=list)
+    risk_level: str = "R1"
+    validation_suggestions: list[str] = field(default_factory=list)
+    limitations: list[str] = field(default_factory=list)
+    summary: str = ""
+
+
 # ── 风险等级计算 ──────────────────────────────────────────
 
 def _compute_risk_level(
@@ -195,6 +224,255 @@ class ImpactAnalyzer:
             verification_items=verification_items,
             summary=summary,
         )
+
+    # ── Import 关系分析（Phase 6.2 Step 3）─────────────────
+
+    def analyze_import_impact(self, query: str) -> ImportImpactResult:
+        """基于 imports relation 分析影响范围
+
+        通过 relations 表做 reverse lookup，找到所有 import 了目标模块的文件。
+
+        参数：
+            query: 用户输入（模块名、文件路径、符号名、external placeholder）
+
+        返回：
+            ImportImpactResult
+
+        target resolve 策略：
+            1. 直接匹配 module:xxx 或 code:module:xxx artifact
+            2. 文件路径 → code:module:{path} artifact
+            3. 符号名 → 查找 code:class/function artifact → 获取所在 module → 再查
+            4. external:python:xxx → 直接匹配
+        """
+        limitations = [
+            "relation_scope = module（模块级关系，非符号级精确引用）",
+        ]
+
+        # 1. 解析 target
+        resolved_targets = self._resolve_target(query)
+
+        if not resolved_targets:
+            return ImportImpactResult(
+                query=query,
+                limitations=limitations,
+                summary=f"未找到目标：'{query}'\n\n建议：先运行 smartdev index 建立索引，或尝试搜索 smartdev search {query}",
+            )
+
+        # 2. 查询 incoming imports
+        direct_dependents: list[ImportDependent] = []
+        affected_files: set[str] = set()
+
+        for target_id in resolved_targets:
+            incoming = self.store.get_relations(target_id, direction="incoming")
+            for rel in incoming:
+                if rel["type"] != "imports":
+                    continue
+
+                meta = json.loads(rel["metadata_json"]) if rel["metadata_json"] else {}
+                dep = ImportDependent(
+                    source_id=rel["source_id"],
+                    source_file=self._artifact_file_path(rel["source_id"]),
+                    target_id=target_id,
+                    import_kind=meta.get("import_kind", ""),
+                    module=meta.get("module", ""),
+                    names=meta.get("names", []),
+                    aliases=meta.get("aliases", {}),
+                    line=meta.get("line", 0),
+                    confidence=meta.get("confidence", 1.0),
+                    external=meta.get("external", False),
+                )
+                direct_dependents.append(dep)
+                if dep.source_file:
+                    affected_files.add(dep.source_file)
+
+        # 3. 计算风险等级
+        risk_level = _compute_risk_level(
+            len(direct_dependents), 0,
+            has_api=False, has_model=False, has_config=False,
+        )
+
+        # 4. 生成验证建议
+        validation = self._generate_validation_suggestions(
+            direct_dependents, list(affected_files),
+        )
+
+        # 5. 生成摘要
+        summary = self._build_import_impact_summary(
+            query, resolved_targets, direct_dependents,
+            list(affected_files), risk_level, validation, limitations,
+        )
+
+        return ImportImpactResult(
+            query=query,
+            resolved_target=resolved_targets[0] if resolved_targets else "",
+            direct_dependents=direct_dependents,
+            affected_files=sorted(affected_files),
+            risk_level=risk_level,
+            validation_suggestions=validation,
+            limitations=limitations,
+            summary=summary,
+        )
+
+    def _resolve_target(self, query: str) -> list[str]:
+        """解析用户输入为 target artifact ID 列表"""
+        targets: list[str] = []
+
+        # 1. 直接匹配 external placeholder
+        if query.startswith("external:"):
+            art = self.store.get_artifact(query)
+            if art:
+                return [query]
+
+        # 2. 直接匹配 module:xxx
+        art = self.store.get_artifact(f"module:{query}")
+        if art:
+            targets.append(art.id)
+
+        # 3. 匹配 code:module:xxx（文件路径格式）
+        if "/" in query or query.endswith(".py"):
+            module_path = query.replace("/", ".")
+            if module_path.endswith(".py"):
+                module_path = module_path[:-3]
+            art = self.store.get_artifact(f"code:module:{query}")
+            if art:
+                targets.append(art.id)
+            # 也尝试 module: 格式
+            art2 = self.store.get_artifact(f"module:{module_path}")
+            if art2 and art2.id not in targets:
+                targets.append(art2.id)
+
+        # 4. 符号名 → 查找 class/function artifact → 获取所在 module
+        if not targets:
+            symbols = self.store.search_artifacts(query, limit=5)
+            for sym in symbols:
+                if sym.type.startswith("code:class") or sym.type.startswith("code:function"):
+                    file_path = sym.file_path
+                    if file_path:
+                        # 从 file_path 推导 module 名
+                        module_name = file_path.replace("/", ".").replace("\\", ".")
+                        if module_name.endswith(".py"):
+                            module_name = module_name[:-3]
+
+                        # 两种格式都尝试（relations 表用 module:，artifact 用 code:module:）
+                        code_module_id = f"code:module:{file_path}"
+                        named_module_id = f"module:{module_name}"
+                        for mid in [code_module_id, named_module_id]:
+                            art = self.store.get_artifact(mid)
+                            if art and art.id not in targets:
+                                targets.append(art.id)
+
+                        # 如果两种 artifact 都不存在，也尝试 module: 格式
+                        # （relations 可能引用了还未索引到的 artifact）
+                        module_id = f"module:{module_name}"
+                        if module_id not in targets:
+                            # 检查 relations 表是否有引用
+                            rels = self.store.get_relations(module_id, direction="incoming")
+                            if rels:
+                                targets.append(module_id)
+
+        return targets
+
+    def _artifact_file_path(self, artifact_id: str) -> str:
+        """获取 artifact 的文件路径"""
+        art = self.store.get_artifact(artifact_id)
+        if art:
+            return art.file_path
+        # 从 code:module:xxx 格式提取路径
+        if artifact_id.startswith("code:module:"):
+            return artifact_id[len("code:module:"):]
+        return ""
+
+    def _generate_validation_suggestions(
+        self,
+        dependents: list[ImportDependent],
+        affected_files: list[str],
+    ) -> list[str]:
+        """根据依赖方生成验证建议"""
+        suggestions: list[str] = []
+
+        # 查找测试文件
+        test_files = [
+            f for f in affected_files
+            if "test" in f or f.startswith("tests/")
+        ]
+        if test_files:
+            suggestions.append(f"运行相关测试：{', '.join(test_files[:3])}")
+
+        # 通用建议
+        if len(affected_files) > 3:
+            suggestions.append("运行全量回归测试：python -m pytest tests/ -q")
+
+        # 按 import_kind 分类建议
+        from_imports = [d for d in dependents if d.import_kind == "from_import"]
+        if from_imports:
+            symbols = set()
+            for d in from_imports:
+                symbols.update(d.names)
+            if symbols:
+                suggestions.append(f"检查 import 的符号是否仍然可用：{', '.join(sorted(symbols)[:5])}")
+
+        if not suggestions:
+            suggestions.append("验证受影响文件的功能正确性")
+
+        return suggestions
+
+    def _build_import_impact_summary(
+        self,
+        query: str,
+        resolved_targets: list[str],
+        dependents: list[ImportDependent],
+        affected_files: list[str],
+        risk_level: str,
+        validation: list[str],
+        limitations: list[str],
+    ) -> str:
+        """构建 import 影响分析摘要"""
+        lines = [f"Import 影响分析：{query}", ""]
+
+        # resolved target
+        if resolved_targets:
+            lines.append(f"解析目标：{resolved_targets[0]}")
+        lines.append(f"关系粒度：module（模块级）")
+        lines.append("")
+
+        # direct dependents
+        if dependents:
+            lines.append(f"直接依赖方（{len(dependents)} 个文件 import 了此模块）：")
+            for dep in dependents[:15]:
+                file_info = dep.source_file or dep.source_id
+                import_detail = f"import {dep.module}"
+                if dep.names:
+                    import_detail = f"from {dep.module} import {', '.join(dep.names[:3])}"
+                lines.append(f"  - {file_info}  ({import_detail})")
+        else:
+            lines.append("直接依赖方：无")
+
+        lines.append("")
+
+        # affected files
+        if affected_files:
+            lines.append(f"受影响文件（{len(affected_files)} 个）：")
+            for f in affected_files[:10]:
+                lines.append(f"  - {f}")
+        else:
+            lines.append("受影响文件：无")
+
+        lines.append("")
+        lines.append(f"风险等级：{risk_level}")
+
+        if validation:
+            lines.append("")
+            lines.append("验证建议：")
+            for v in validation:
+                lines.append(f"  - {v}")
+
+        if limitations:
+            lines.append("")
+            lines.append("当前限制：")
+            for lim in limitations:
+                lines.append(f"  - {lim}")
+
+        return "\n".join(lines)
 
     def _find_relations(self, target: str) -> list[dict]:
         """查找与目标相关的关系"""

@@ -93,6 +93,47 @@ class CodeImpactSkill(Skill):
 
         try:
             analyzer = ImpactAnalyzer(index.store)
+
+            # 优先使用 import relation 分析（如果 relations 表有数据）
+            has_import_relations = index.store.count_relations() > 0
+
+            if has_import_relations:
+                import_result = analyzer.analyze_import_impact(target)
+
+                # 如果 import 分析有结果，使用它；否则 fallback 到 artifact 分析
+                if import_result.direct_dependents:
+                    return SkillResult(
+                        success=True,
+                        summary=import_result.summary,
+                        data={
+                            "query": import_result.query,
+                            "resolved_target": import_result.resolved_target,
+                            "relation_scope": import_result.relation_scope,
+                            "direct_dependents": [
+                                {
+                                    "source_file": d.source_file,
+                                    "target_id": d.target_id,
+                                    "import_kind": d.import_kind,
+                                    "module": d.module,
+                                    "names": d.names,
+                                    "aliases": d.aliases,
+                                    "line": d.line,
+                                    "confidence": d.confidence,
+                                }
+                                for d in import_result.direct_dependents
+                            ],
+                            "affected_files": import_result.affected_files,
+                            "risk_level": import_result.risk_level,
+                            "validation_suggestions": import_result.validation_suggestions,
+                            "limitations": import_result.limitations,
+                        },
+                        risks=[] if import_result.risk_level == "R0" else [
+                            f"变更 {target} 的风险等级为 {import_result.risk_level}",
+                            f"影响范围：{len(import_result.direct_dependents)} 个直接依赖方",
+                        ],
+                    )
+
+            # fallback: artifact 名称匹配
             result = analyzer.analyze(target, max_depth=max_depth)
         finally:
             index.close()
