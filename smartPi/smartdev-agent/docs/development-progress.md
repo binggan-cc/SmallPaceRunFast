@@ -288,7 +288,7 @@ Go 提取能力（Step 2）：
 ## 5. 测试覆盖
 
 ```
-464 passed, 1 skipped — 0 failed
+471 passed, 1 skipped — 0 failed
 ```
 
 | 测试文件 | 数量 | 覆盖模块 |
@@ -300,7 +300,7 @@ Go 提取能力（Step 2）：
 | test_reporter.py | 9 | 执行前/后模板 |
 | test_task_plan.py | 10 | task.plan Skill |
 | test_cli.py | 7 | CLI 入口 |
-| test_architecture_map.py | 11 | architecture.map Skill |
+| test_architecture_map.py | 18 | architecture.map Skill + index relations 接入（Phase 8 Step 2，11+7） |
 | test_token_audit.py | 10 | token.audit Skill |
 | test_qa_checklist.py | 11 | qa.checklist Skill |
 | test_adapter.py | 14 | 项目适配器系统 |
@@ -394,7 +394,7 @@ Go 提取能力（Step 2）：
 |------|--------|------|------|
 | Step 0 | 执行前设计 | ✅ 完成 | 设计文档 phase-8-design.md — 5 问题决策 + 优雅降级原则 |
 | Step 1 | risk.check ← code.impact | ✅ 完成 | 关键词匹配升级为影响范围判断 + 优雅降级（6 tests） |
-| Step 2 | architecture.map ← index | 🔲 待执行 | 复用索引 relations，支持多语言依赖图 |
+| Step 2 | architecture.map ← index | ✅ 完成 | 复用索引 relations，支持多语言依赖图（7 tests） |
 | Step 3 | task.plan ← impact | 🔲 待执行 | 任务项标注影响范围 |
 | Step 4 | 端到端验证 | 🔲 待执行 | workflow 消费 Context Layer + 真实项目验证 |
 
@@ -424,7 +424,7 @@ Go 提取能力（Step 2）：
 |------|------|------|
 | §3.1 先分析后修改 | ✅ | |
 | §3.2 小步快跑 | ✅ | |
-| §3.3 每步可验证 | ✅ | 464 个测试 |
+| §3.3 每步可验证 | ✅ | 471 个测试 |
 | §3.4 不扩大范围 | ✅ | |
 | §3.5 文档同步更新 | ✅ | 本文档即为证明 |
 | §3.6 每步提交 git | ✅ | 25+ commits |

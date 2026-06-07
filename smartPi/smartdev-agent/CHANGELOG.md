@@ -4,6 +4,18 @@
 
 ## [0.4.0] - 2026-06-07
 
+### Added — Phase 8 Step 2: architecture.map 接入 index relations
+
+- **`_analyze_from_index()`**：从索引构建多语言依赖图
+  - `code:module` artifacts → 模块节点（文件路径作节点标识，跨语言统一）
+  - `imports` relations → 依赖边（internal `code:module:` / Python `module:{dotted}` 别名映射 / external）
+  - 复用 `detectors.modules` 的 `ModuleInfo` + `_detect_circular_deps`，循环依赖算法与 AST 路径一致
+- **数据源切换 + fallback**：有索引 → index（多语言）；无索引或无 module artifact → Python AST
+- **can_run 放宽**：有索引时即使无 .py 也可分析（支持 Go/JS-TS 项目）
+- **输出新增 `source` 字段**："index"（多语言）/ "ast"（Python）
+- **`_safe_line_count()`**：语言无关的非空行计数（替代 Python 专属注释规则）
+- **`test_architecture_map.py` 扩展**：+7 tests（fallback / index 源 / 依赖图 / 核心模块 / Go 多语言 / 循环依赖 / can_run）
+
 ### Added — Phase 8 Step 1: risk.check 接入 code.impact
 
 - **`skills/_context_helper.py`**（新建）：Skill ↔ Context Layer 接入辅助
@@ -24,7 +36,7 @@
 
 ### Test
 
-- **464 passed, 1 skipped** — 测试基线（458 → 464，+6）
+- **471 passed, 1 skipped** — 测试基线（458 → 471，+13：Step 1 +6, Step 2 +7）
 
 ---
 
