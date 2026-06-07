@@ -15,11 +15,10 @@ Provider 层级（按精度递增）：
                               只提取常见结构，标注 limitations
 3. NullStructureExtractor   — 不支持的语言，返回空结果
 
-后续 Phase 6.3 可替换为：
-- NodeBabelExtractor        — Node 子进程 + Babel Parser
-- TypeScriptCompilerExtractor — TypeScript Compiler API
-Phase 7 可替换为：
-- TreeSitterExtractor       — 多语言统一解析
+Phase 6.3 已实现：
+- NodeBridgeExtractor       — Node 子进程 + Babel Parser（confidence=0.95）
+Phase 7 进行中：
+- TreeSitterProvider        — 多语言统一解析（confidence=0.98，optional）
 
 为什么需要 Provider 机制？
 ─────────────────────────
@@ -473,6 +472,29 @@ def _try_create_node_extractor() -> StructureExtractorProvider | None:
         return None
 
 
+# ── Tree-sitter 自动检测（Phase 7）─────────────────────────
+
+def _tree_sitter_available() -> bool:
+    """检测 tree-sitter Python binding 是否可用"""
+    try:
+        import tree_sitter  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _try_create_tree_sitter_provider() -> StructureExtractorProvider | None:
+    """尝试创建 TreeSitterProvider
+
+    失败时静默返回 None（不抛异常，不中断索引流程）。
+    """
+    try:
+        from smartdev.context.tree_sitter_provider import TreeSitterProvider
+        return TreeSitterProvider()
+    except Exception:
+        return None
+
+
 class StructureExtractor:
     """结构提取器（Provider 管理）
 
@@ -485,16 +507,18 @@ class StructureExtractor:
     注册新 Provider：
         extractor.register_provider(TypeScriptCompilerExtractor())
 
-    Phase 6.3 自动检测：
-        初始化时自动检测 Node.js 运行时。
-        如果可用 → 注册 NodeBridgeExtractor (confidence=0.95)
-        如果不可用 → 保持 JsTsRegexFallbackExtractor (confidence=0.55)
+    自动检测（Phase 6.3 + Phase 7）：
+        初始化时自动检测 Node.js 运行时和 tree-sitter binding。
+        - 有 Node → 注册 NodeBridgeExtractor (confidence=0.95)
+        - 有 tree-sitter → 注册 TreeSitterProvider (confidence=0.98)
+        - 不可用 → 保持现有 fallback，不报错
     """
 
     def __init__(
         self,
         providers: list[StructureExtractorProvider] | None = None,
         auto_detect_node: bool = True,
+        auto_detect_treesitter: bool = True,
     ) -> None:
         self._providers = list(providers or _DEFAULT_PROVIDERS)
         self._map: dict[str, StructureExtractorProvider] = {}
@@ -502,6 +526,8 @@ class StructureExtractor:
 
         if auto_detect_node:
             self._try_register_node_bridge()
+        if auto_detect_treesitter:
+            self._try_register_tree_sitter()
 
     def _try_register_node_bridge(self) -> None:
         """检测并注册 Node bridge（如果可用）
@@ -517,6 +543,22 @@ class StructureExtractor:
         if not _node_bridge_available():
             return
         provider = _try_create_node_extractor()
+        if provider is not None:
+            self.register_provider(provider)
+
+    def _try_register_tree_sitter(self) -> None:
+        """检测并注册 Tree-sitter provider（如果可用）
+
+        检测顺序：
+        1. tree-sitter Python binding 可导入
+        2. TreeSitterProvider 可实例化
+
+        任何一步失败 → 静默跳过。
+        Tree-sitter 是 optional dependency，不影响现有 Provider。
+        """
+        if not _tree_sitter_available():
+            return
+        provider = _try_create_tree_sitter_provider()
         if provider is not None:
             self.register_provider(provider)
 
