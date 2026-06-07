@@ -54,6 +54,17 @@
   - `TestGoFixtureProjectMap`（4）：map 生成 + language 统计 + modules + JSON 导出
   - `TestGoFixtureGraphValidation`（3）：validate 运行 + 无 error + stats 填充
 
+### Added — Phase 7 Step 4: 真实 Go 项目验证（只读）
+
+- **gnet-examples**（11 Go 文件）：13 function / 28 method / 12 class / 23 external dep，graph.validate 0 error 0 warning
+- **feishu-cli**（1228 Go 文件）：8677 function / 928 method / 777 class / 40 interface，21 秒完成索引，0 error / 43 hotspot warning
+- 验证 `smartdev index / search / impact` + project.map / graph.validate 对真实 Go 项目的端到端表现
+- method receiver type 正确提取为 parent；stdlib + 第三方包归类为 `external:go:{module}`
+- 验证产生的 `.smartdev/` 已清理，不污染外部项目
+- 无代码变更（纯只读验证）
+
+**Phase 7（Tree-sitter Go Provider）完成。**
+
 ### Changed
 
 - `tree-sitter` + `tree-sitter-go` 已安装（optional dependency）

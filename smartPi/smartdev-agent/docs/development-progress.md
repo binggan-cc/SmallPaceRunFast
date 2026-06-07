@@ -173,7 +173,7 @@ NullStructureExtractor      → 不支持的语言
 | Step 1 | TreeSitterProvider 骨架 | ✅ 完成 | Provider 注册 + 依赖检测 + auto_detect + 接口合规测试 |
 | Step 2 | Go grammar 试点 | ✅ 完成 | Go AST 映射 + import relations + test_go_extraction.py（27 tests） |
 | Step 3 | Go fixture 全链路验证 | ✅ 完成 | tests/fixtures/go_project/ + 全链路 index→search→map→validate（26 tests） |
-| Step 4 | 真实 Go 项目验证 | 🔲 待执行 | 只读验证，不改代码 |
+| Step 4 | 真实 Go 项目验证 | ✅ 完成 | gnet-examples（11 go 文件，0 error/warning）+ feishu-cli（1228 go 文件，0 error）只读验证 |
 
 Provider 链（Phase 7 Step 2 状态）：
 ```
@@ -360,17 +360,30 @@ Go 提取能力（Step 2）：
 - [x] `tree_sitter_provider.py` 全面升级（_load_language("go") + Go AST 映射）
 - [x] `artifact_extractor.py` Go import relation 分支
 - [x] `test_go_extraction.py` — 27 tests（结构提取/import relations/全链路）
+- 测试基线：432 passed, 1 skipped
+
+### Phase 7 Step 3：Go fixture 全链路验证（✅ 完成）
+
+- [x] `tests/fixtures/go_project/` 磁盘 fixture（4 个 Go 文件）
+- [x] `test_go_full_pipeline.py` — 26 tests，全链路 index → search → project.map → graph.validate
 - 测试基线：**458 passed, 1 skipped**
 
-### Phase 7 Step 3：Go fixture 全链路验证（🔲 待执行）
+### Phase 7 Step 4：真实 Go 项目验证（✅ 完成）
 
-- [ ] `tests/fixtures/go_project/` 磁盘 fixture
-- [ ] 全链路验证：index → search → project.map → graph.validate
-- 预计：~458 tests
+只读验证，不改代码。验证 `smartdev index / search / impact` + project.map / graph.validate 对真实 Go 项目的表现。
 
-### Phase 7 Step 4：真实 Go 项目验证（🔲 待执行）
+| 项目 | Go 文件 | 提取结果 | graph.validate |
+|------|--------|---------|----------------|
+| gnet-examples | 11 | 13 function / 28 method / 12 class / 23 external dep | 0 error, 0 warning |
+| feishu-cli | 1228 | 8677 function / 928 method / 777 class / 40 interface | 0 error, 43 hotspot warning |
 
-- [ ] 拿一个小型 Go 项目跑完整诊断，只读验证
+- ✅ Go 结构提取（function/method/struct/interface）在真实项目准确
+- ✅ method receiver type 正确提取为 parent
+- ✅ stdlib + 第三方包归类为 external:go:{module}
+- ✅ 大型项目（1228 文件）21 秒完成索引，无 error
+- ✅ 验证产生的 `.smartdev/` 已清理，不污染外部项目
+
+**Phase 7（Tree-sitter Go Provider）完成。**
 
 ### Phase 6.3B/C（后续可选）
 

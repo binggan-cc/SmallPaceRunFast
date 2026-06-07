@@ -202,13 +202,13 @@ tree-sitter / tree-sitter-go 已安装（optional dependency）。
 - ✅ Phase 7 Step 1：TreeSitterProvider 骨架 + auto_detect（20 tests）
 - ✅ Phase 7 Step 2：Go grammar 试点（Go AST 映射 + import relations，27 tests）
 - ✅ Phase 7 Step 3：Go fixture 全链路验证（index→search→map→validate，26 tests）
+- ✅ Phase 7 Step 4：真实 Go 项目验证（gnet-examples + feishu-cli 1228 go 文件，0 error）
 
 **测试基线：458 passed, 1 skipped**
 
-正在进行：
+**Phase 7（Tree-sitter Go Provider）已完成。**
 
-### Phase 7 Step 4 — 真实 Go 项目验证（待执行）
-- 拿一个小型 Go 项目跑完整诊断，只读验证
+正在进行：
 
 ### Phase 6.3B/C（后续可选）
 - TypeScript Compiler API 增强（tsconfig 感知类型级别解析）
