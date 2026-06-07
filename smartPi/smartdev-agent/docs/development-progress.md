@@ -172,7 +172,7 @@ NullStructureExtractor      → 不支持的语言
 | Step 0 | 执行前设计 | ✅ 完成 | 设计文档 phase-7-design.md — 6 问题决策 + 实施路线 |
 | Step 1 | TreeSitterProvider 骨架 | ✅ 完成 | Provider 注册 + 依赖检测 + auto_detect + 接口合规测试 |
 | Step 2 | Go grammar 试点 | ✅ 完成 | Go AST 映射 + import relations + test_go_extraction.py（27 tests） |
-| Step 3 | Go fixture 全链路验证 | 🔲 待执行 | tests/fixtures/go_project/ + 全链路 index→search→map→validate |
+| Step 3 | Go fixture 全链路验证 | ✅ 完成 | tests/fixtures/go_project/ + 全链路 index→search→map→validate（26 tests） |
 | Step 4 | 真实 Go 项目验证 | 🔲 待执行 | 只读验证，不改代码 |
 
 Provider 链（Phase 7 Step 2 状态）：
@@ -324,6 +324,7 @@ Go 提取能力（Step 2）：
 | test_js_ts_path_alias.py | 15 | tsconfig paths alias（Phase 6.3） |
 | test_tree_sitter_provider.py | 20 | TreeSitterProvider 骨架 + 接口（Phase 7 Step 1） |
 | test_go_extraction.py | 27 | Go 结构提取 + import relations + 全链路（Phase 7 Step 2） |
+| test_go_full_pipeline.py | 26 | Go fixture 磁盘项目全链路验证（Phase 7 Step 3） |
 
 ---
 
@@ -359,13 +360,13 @@ Go 提取能力（Step 2）：
 - [x] `tree_sitter_provider.py` 全面升级（_load_language("go") + Go AST 映射）
 - [x] `artifact_extractor.py` Go import relation 分支
 - [x] `test_go_extraction.py` — 27 tests（结构提取/import relations/全链路）
-- 测试基线：**432 passed, 1 skipped**
+- 测试基线：**458 passed, 1 skipped**
 
 ### Phase 7 Step 3：Go fixture 全链路验证（🔲 待执行）
 
 - [ ] `tests/fixtures/go_project/` 磁盘 fixture
 - [ ] 全链路验证：index → search → project.map → graph.validate
-- 预计：~442 tests
+- 预计：~458 tests
 
 ### Phase 7 Step 4：真实 Go 项目验证（🔲 待执行）
 
@@ -390,7 +391,7 @@ Go 提取能力（Step 2）：
 |------|------|------|
 | §3.1 先分析后修改 | ✅ | |
 | §3.2 小步快跑 | ✅ | |
-| §3.3 每步可验证 | ✅ | 432 个测试 |
+| §3.3 每步可验证 | ✅ | 458 个测试 |
 | §3.4 不扩大范围 | ✅ | |
 | §3.5 文档同步更新 | ✅ | 本文档即为证明 |
 | §3.6 每步提交 git | ✅ | 25+ commits |

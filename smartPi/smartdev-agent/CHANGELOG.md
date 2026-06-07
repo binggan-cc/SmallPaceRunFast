@@ -37,6 +37,23 @@
   - 2 Provider 隔离测试（Python/TS 不受影响）
   - grammar 相关测试用 `skipif(_go_grammar_available)` 保护
 
+### Added — Phase 7 Step 3: Go fixture 全链路验证
+
+- **`tests/fixtures/go_project/`**：4 个 Go 源文件的磁盘 fixture 项目
+  - `go.mod` — 模块声明（`github.com/example/goproject`）
+  - `main.go` — 入口，import stdlib + 内部包
+  - `pkg/models/user.go` — struct + methods
+  - `pkg/models/types.go` — interfaces（Stringer / Validator）
+  - `internal/service/user_service.go` — struct + methods + import models
+- **`test_go_full_pipeline.py`**：26 tests（6 个 TestClass）
+  - `TestGoFixtureExists`（4）：fixture 文件存在 + 源码不可变性检查
+  - `TestGoFixtureIndexing`（4）：索引完整性 + language=go + 无源文件修改
+  - `TestGoFixtureArtifacts`（4）：function / struct(class) / interface / module language
+  - `TestGoFixtureImportRelations`（3）：relations 创建 + stdlib external + 内部包 external
+  - `TestGoFixtureSearch`（4）：函数/结构体/接口/文件路径搜索
+  - `TestGoFixtureProjectMap`（4）：map 生成 + language 统计 + modules + JSON 导出
+  - `TestGoFixtureGraphValidation`（3）：validate 运行 + 无 error + stats 填充
+
 ### Changed
 
 - `tree-sitter` + `tree-sitter-go` 已安装（optional dependency）
@@ -44,7 +61,7 @@
 
 ### Test
 
-- **432 passed, 1 skipped** — 测试基线（405 → 432，+27）
+- **458 passed, 1 skipped** — 测试基线（432 → 458，+26）
 
 ---
 
