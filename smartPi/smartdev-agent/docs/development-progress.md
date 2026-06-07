@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-07
-> 当前阶段：Phase 10 Step 3 完成 — Skill 工具接入（repo_scan/risk_check/arch/plan/qa，596 tests）
+> 当前阶段：Phase 10 Step 4 完成 — Patch Propose 工具（code_index/patch_propose，618 tests）
 
 ---
 
@@ -493,7 +493,7 @@ Go 提取能力（Step 2）：
 | Step 1 | MCP Server 骨架 | ✅ 完成 | smartdev/mcp/ + ping/version/list_tools + 17 tests（557 总计） |
 | Step 2 | 只读 Context 工具 | ✅ 完成 | search / impact / project_map / graph_validate + 19 tests（576 总计） |
 | Step 3 | Skill 工具接入 | ✅ 完成 | repo_scan / risk_check / architecture_map / task_plan / qa_checklist + 20 tests（596 总计） |
-| Step 4 | Patch Propose 工具 | 待做 | code_index（CACHE_WRITE）+ patch_propose（PATCH_PROPOSE，不落盘） |
+| Step 4 | Patch Propose 工具 | ✅ 完成 | code_index（CACHE_WRITE）+ patch_propose（PATCH_PROPOSE）+ change.budget + diff_explain + 22 tests（618 总计） |
 | Step 5 | 真实 Agent 验证 | 待做 | Kiro / Claude Desktop 只读验证 |
 
 核心设计原则：
