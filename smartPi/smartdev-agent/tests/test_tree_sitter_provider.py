@@ -170,16 +170,20 @@ class TestTreeSitterExtractStep1:
         assert result.symbols == []
         assert result.imports == []
 
-    def test_extract_without_grammar_has_error_message(self, monkeypatch):
-        """Step 1: extract() 返回说明性 error（非致命错误）"""
+    def test_extract_valid_go_succeeds_when_grammar_loaded(self, monkeypatch):
+        """Step 2: grammar 加载后，extract() 对有效 Go 代码返回成功（零 errors）"""
         _mock_tree_sitter_available(monkeypatch)
 
         provider = TreeSitterProvider()
+        if not provider.language_loaded("go"):
+            pytest.skip("tree-sitter-go grammar not installed")
         result = provider.extract("main.go", "package main\n")
 
-        assert len(result.errors) >= 1
-        error_text = " ".join(result.errors).lower()
-        assert "grammar" in error_text or "step 2" in error_text
+        # 只有 package 声明（无 P0 结构）→ 0 symbols, 0 errors
+        assert result.symbols == []
+        assert result.imports == []
+        # 有效语法不应该有 parse errors
+        assert len(result.errors) == 0
 
     def test_extract_when_package_not_installed(self, monkeypatch):
         """tree-sitter 包未安装 → extract() 返回安装提示 error"""
@@ -245,13 +249,16 @@ class TestExistingProvidersUnaffected:
 class TestLoadLanguageAdapter:
     """_load_language() 适配层"""
 
-    def test_load_language_returns_none_in_step1(self):
-        """Step 1: _load_language() 返回 None（grammar 尚未接入）"""
+    def test_load_language_go_returns_language_object(self):
+        """Step 2: tree-sitter-go 已安装 → _load_language('go') 返回 Language 对象"""
         result = _load_language("go")
-        assert result is None
+        if result is None:
+            pytest.skip("tree-sitter-go grammar not installed")
+        # 返回 tree_sitter.Language 对象
+        assert result is not None
+        assert hasattr(result, "name")
 
-    def test_load_language_accepts_language_parameter(self):
-        """_load_language() 接受 language 参数"""
-        # Step 1: 任何语言都返回 None
-        for lang in ("go", "php", "rust", "java"):
+    def test_load_language_unsupported_returns_none(self):
+        """不支持的语言或无 grammar → _load_language() 返回 None"""
+        for lang in ("php", "rust", "java"):
             assert _load_language(lang) is None

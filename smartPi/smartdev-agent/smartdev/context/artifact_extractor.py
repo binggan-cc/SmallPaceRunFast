@@ -466,6 +466,7 @@ _EXT_LANG = {
     ".js": "javascript", ".jsx": "javascript",
     ".ts": "typescript", ".tsx": "typescript",
     ".vue": "vue", ".svelte": "svelte",
+    ".go": "go",
 }
 
 
@@ -558,6 +559,83 @@ _JS_TS_EXTENSIONS = {".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".vue", ".sve
 def _is_js_ts_file(file_path: str) -> bool:
     """判断文件是否为 JS/TS 家族"""
     return Path(file_path).suffix.lower() in _JS_TS_EXTENSIONS
+
+
+def _is_go_file(file_path: str) -> bool:
+    """判断文件是否为 Go"""
+    return Path(file_path).suffix.lower() == ".go"
+
+
+def _parse_go_imports(symbol: CodeSymbol) -> list[dict]:
+    """解析 Go import symbol 为结构化 import 信息
+
+    Go import symbol 的 name 字段存储了 import path。
+    从 signature 提取 alias / blank / dot import 标记。
+
+    返回与 _parse_imports / _parse_js_ts_imports 兼容的格式：
+    [{
+        "module": "fmt",
+        "names": [],
+        "aliases": {},
+        "import_kind": "go_import",
+        "line": 3,
+        "raw": "import \"fmt\"",
+    }]
+    """
+    sig = symbol.signature
+    path = symbol.name
+
+    import_kind = "go_import"
+    aliases = {}
+
+    # 检测 alias import: alias "path"
+    if '"' in sig:
+        parts = sig.split('"')
+        if len(parts) >= 2:
+            before_path = sig.split('"')[0].strip()
+            # Remove "import" keyword
+            before_path = before_path.replace("import", "").strip()
+            if before_path and before_path not in ("_", "."):
+                import_kind = "go_import_alias"
+                aliases = {before_path: path}
+
+    # 检测 blank import: _ "path"
+    if sig.strip().startswith('_ "') or '_ "' in sig:
+        import_kind = "go_import_blank"
+
+    # 检测 dot import: . "path"
+    if sig.strip().startswith('. "') or '. "' in sig:
+        import_kind = "go_import_dot"
+
+    return [{
+        "module": path,
+        "names": [],
+        "aliases": aliases,
+        "import_kind": import_kind,
+        "line": symbol.start_line,
+        "raw": sig,
+    }]
+
+
+def _resolve_go_import_target(
+    module: str,
+    rel_path: str,
+) -> tuple[str, bool, str, dict]:
+    """解析 Go import target
+
+    Step 2: 不做 go.mod module path resolution。
+    所有 Go import 归类为 external:go:{module}。
+
+    返回：
+        (target_id, is_external, resolved_name, resolution_meta)
+    """
+    meta = {
+        "raw_specifier": module,
+        "resolution_kind": "go_external",
+        "resolved": True,
+    }
+    target_id = f"external:go:{module}"
+    return (target_id, True, module, meta)
 
 
 # ── JS/TS import 文件扩展名候选（按优先级）──
@@ -988,12 +1066,16 @@ def _build_import_relations(
 
     # ── 检测文件类型 ──
     is_js_ts = _is_js_ts_file(rel_path)
+    is_go = _is_go_file(rel_path)
     # Phase 6.3 Step 5: 懒加载 tsconfig resolver（同一批次复用）
     tsconfig_resolver = None
     if is_js_ts and project_path is not None:
         tsconfig_resolver = _get_tsconfig_resolver(project_path)
 
-    if is_js_ts:
+    if is_go:
+        language = "go"
+        module_name = str(Path(rel_path).with_suffix("")).replace("\\", "/")
+    elif is_js_ts:
         language = "typescript" if rel_path.endswith((".ts", ".tsx")) else "javascript"
         # module 名：去掉后缀
         module_name = str(Path(rel_path).with_suffix("")).replace("\\", "/")
@@ -1028,7 +1110,9 @@ def _build_import_relations(
         sig = symbol.signature
 
         # ── 解析 import 语句（根据文件类型 dispatch）──
-        if is_js_ts:
+        if is_go:
+            parsed = _parse_go_imports(symbol)
+        elif is_js_ts:
             parsed = _parse_js_ts_imports(sig, base_line=symbol.start_line)
         else:
             parsed = _parse_imports(sig, base_line=symbol.start_line)
@@ -1040,8 +1124,38 @@ def _build_import_relations(
             names = imp["names"]
             aliases = imp["aliases"]
 
-            # ── 构建 target_id（JS/TS 与 Python 分支）──
-            if is_js_ts:
+            # ── 构建 target_id（Go / JS/TS / Python 分支）──
+            if is_go:
+                target_id, is_external, resolved_name, resolution_meta = \
+                    _resolve_go_import_target(module, rel_path)
+                metadata = json.dumps({
+                    "import_kind": imp["import_kind"],
+                    "module": module,
+                    "raw_specifier": resolution_meta.get("raw_specifier", module),
+                    "names": names,
+                    "aliases": aliases,
+                    "line": imp["line"],
+                    "external": is_external,
+                    "resolved": resolution_meta.get("resolved", True),
+                    "resolution_kind": resolution_meta.get("resolution_kind", ""),
+                    "confidence": symbol.confidence,
+                    "extractor": symbol.extractor,
+                })
+                # All Go imports are external for Step 2
+                if target_id not in artifact_index:
+                    placeholders.append(ArtifactRecord(
+                        id=target_id,
+                        type="external_module",
+                        name=module,
+                        file_path="",
+                        metadata_json=json.dumps({
+                            "external": True,
+                            "resolved": True,
+                            "module": module,
+                            "language": "go",
+                        }),
+                    ))
+            elif is_js_ts:
                 # Phase 6.3 Step 4.2: 归一化到 code:module:{path}
                 target_id, is_external, resolved_name, resolution_meta = \
                     _resolve_js_ts_import_target(rel_path, module,

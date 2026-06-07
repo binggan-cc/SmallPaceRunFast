@@ -48,9 +48,10 @@ class TestProviderMechanism:
 
     def test_unsupported_returns_null(self):
         """不支持的语言返回 NullStructureExtractor"""
-        extractor = StructureExtractor()
-        go_provider = extractor.get_provider("go")
-        assert isinstance(go_provider, NullStructureExtractor)
+        extractor = StructureExtractor(auto_detect_node=False,
+                                       auto_detect_treesitter=False)
+        provider = extractor.get_provider("rust")
+        assert isinstance(provider, NullStructureExtractor)
 
     def test_register_provider(self):
         """注册新 Provider 会覆盖同语言的旧 Provider"""
