@@ -1,7 +1,8 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-07
-> 当前阶段：Phase 6.3 — JS/TS Parser Provider v1（已完成）
+> 最后更新：2026-06-07
+> 当前阶段：Phase 7 Step 0 — Tree-sitter Multi-language Graph 设计确认
 
 ---
 
@@ -303,15 +304,17 @@ NullStructureExtractor      → 不支持的语言
 
 ---
 
-## 7. 下一步
+### Phase 7 Step 0：Tree-sitter 设计确认（进行中）
 
-Phase 6.3 功能链路完整，全量 386 tests 清洁基线，正式冻结。
+- [x] 设计文档：[phase-7-design.md](phase-7-design.md) — 6 问题决策 + 实施路线
+- 核心决策：
+  - Tree-sitter 为 optional dependency（与 Node bridge 同级别）
+  - Python tree-sitter binding 接入（非 Node/WASM）
+  - 首批试点：Go（单语言）
+  - 复用现有 Provider 接口 + CodeSymbol / ImportRecord
+  - 不替换 Python AST / NodeBridge
 
-### Phase 7：Tree-sitter Multi-language Graph
-
-- [ ] Tree-sitter 多语言统一精确解析
-- [ ] 完整调用图 / 引用解析（call graph）
-- [ ] code.patch 真实实现（替换占位符）
+### Phase 7 Step 1-4（待设计确认后执行）
 
 ### Phase 6.3B/C（后续可选）
 

@@ -199,14 +199,15 @@ Node bridge 为 optional dependency — 有 Node 时自动启用（confidence=0.
 - ✅ Phase 6.3 Step 5：tsconfig paths alias 解析（@/foo → src/foo）
 - ✅ Phase 6.3 Step 3 补充：磁盘 fixture 全链路验证（tests/fixtures/js_ts_project/）
 
-下一步：
+正在进行：
 
-### Phase 7 — Tree-sitter Multi-language Graph
-- Tree-sitter 多语言统一精确解析
-- 完整调用图 / 引用解析
-- code.patch 真实实现（替换占位符）
+### Phase 7 Step 0 — Tree-sitter Multi-language Graph 设计确认
+- 设计文档：[phase-7-design.md](docs/phase-7-design.md)
+- Tree-sitter 作为 **optional multi-language Provider**，不替换 Python AST / NodeBridge
+- 首批试点：Go（单语言），Python tree-sitter binding
+- 复用现有 Provider 接口 + CodeSymbol / ImportRecord
 
-### Phase 6.3B（后续可选）
+### Phase 6.3B/C（后续可选）
 - TypeScript Compiler API 增强（tsconfig 感知类型级别解析）
 - Vue SFC / Svelte script 块抽取（Phase 6.3C）
 
