@@ -204,7 +204,7 @@ tree-sitter / tree-sitter-go 已安装（optional dependency）。
 - ✅ Phase 7 Step 3：Go fixture 全链路验证（index→search→map→validate，26 tests）
 - ✅ Phase 7 Step 4：真实 Go 项目验证（gnet-examples + feishu-cli 1228 go 文件，0 error）
 
-**测试基线：512 passed, 1 skipped**
+**测试基线：521 passed, 1 skipped**
 
 **Phase 7（Tree-sitter Go Provider）已完成。**
 **Phase 8（Context Layer ↔ Skill 接入打通）已完成。**
@@ -226,7 +226,7 @@ tree-sitter / tree-sitter-go 已安装（optional dependency）。
 - 拆分：code.patch(propose, R1) / code.apply(R2/R3 确认) / code.rollback(R1)
 - ✅ Step 1A: core/patch.py 可审查草案（find_replace_patch + 序列化 + hash 元数据 + 路径安全 + get_index schema 加固，501 tests）
 - ✅ Step 1B: apply/rollback + 备份 + apply 前 hash 校验（原子性保护，512 tests）
-- 🔲 Step 2: code.patch propose 真实化 + impact 接入
+- ✅ Step 2: code.patch propose 真实化 + impact 接入（find-replace 真实 diff + patch_id，521 tests）
 - 🔲 Step 3: code.apply Skill + 权限门 + R3 强确认
 - 🔲 Step 4: code.rollback + 端到端验证
 - 默认安全：不加 --apply 绝不碰磁盘

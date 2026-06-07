@@ -4,6 +4,17 @@
 
 ## [0.5.0] - 2026-06-07
 
+### Added — Phase 9 Step 2: code.patch propose 真实化
+
+- **`code.patch` find-replace 真实模式**：inputs 提供 `find`+`replace` 时调用 `build_find_replace_patch()`（确定性，无 LLM）
+  - 支持 `glob`（文件范围）、`regex`（正则模式）可选参数
+  - 持久化 patch_id 到 `.smartdev/patches/{id}.json`（P0-1 防 TOCTOU）
+  - `mode` 字段区分 `find_replace` / `legacy`
+- **可选 impact 增强**：有索引时 `_try_impact_for_patch()` 分析受影响文件 + 风险（复用 Phase 8 的 ImpactAnalyzer）；无索引退回 patch.risk_level（零回归）
+- **零回归 legacy 路径**：无 find/replace inputs → 退回说明性占位符，data["mode"]="legacy"
+- **输出新增字段**：`mode` / `patch_id` / `affected_files`（有 impact 时）
+- **`test_code_patch.py` 扩展**：+9 tests（真实 diff / 无命中 / 不落地 / patch_id / legacy fallback / regex / 无索引 / 有索引 impact）
+
 ### Added — Phase 9 Step 1B: apply / rollback（写盘能力）
 
 - **`apply_patch()`**：补丁应用到磁盘，三重保护：
