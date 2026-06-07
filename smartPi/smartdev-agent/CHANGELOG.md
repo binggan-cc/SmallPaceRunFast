@@ -4,6 +4,24 @@
 
 ## [0.5.0] - 2026-06-07
 
+### Added — Phase 9 Step 3+4: code.apply / code.rollback Skill + 端到端验证
+
+- **`code.apply` Skill**（首个写盘 Skill，R2/R3）：
+  - 加载已持久化 patch_id（P0-1，不重新扫描）
+  - protected_paths 校验 → 命中拒绝
+  - R3 强确认门（P0-4）：`confirm_risk_r3="APPLY R3"` 才放行
+  - 调用 `apply_patch()`（hash 校验 P0-2 + 路径安全 P0-3 + 备份 + 原子性）
+  - 写盘后审计到 runs 表
+  - `changed_files` 包含所有已应用文件
+- **`code.rollback` Skill**（R1）：加载 backup_path → `rollback_patch()`，支持相对/绝对路径
+- **skills `__init__.py`**：注册 code.apply + code.rollback
+- **`test_code_apply.py`**：14 tests（元数据/missing_patch_id/patch_not_found/正常apply/备份/changed_files/审计/hash不一致/protected/R3无确认/R3有确认）
+- **`test_code_rollback.py`**：5 tests（元数据/missing/nonexistent/端到端apply→rollback/相对路径）
+
+**端到端闭环（propose→apply→rollback）通过：** Step 4 无需单独实现，已由 Step 3 测试完整覆盖。
+
+**Phase 9（Safe Patch Agent）完成。** `code.patch` 从占位符升级为可控的安全执行能力（L3→L4 跳跃）。
+
 ### Added — Phase 9 Step 2: code.patch propose 真实化
 
 - **`code.patch` find-replace 真实模式**：inputs 提供 `find`+`replace` 时调用 `build_find_replace_patch()`（确定性，无 LLM）

@@ -23,5 +23,7 @@ from smartdev.skills.doc_generate import skill as _doc_generate_skill  # noqa: F
 from smartdev.skills.code_patch import skill as _code_patch_skill  # noqa: F401
 from smartdev.skills.code_search import skill as _code_search_skill  # noqa: F401
 from smartdev.skills.code_impact import skill as _code_impact_skill  # noqa: F401
+from smartdev.skills.code_apply import skill as _code_apply_skill  # noqa: F401
+from smartdev.skills.code_rollback import skill as _code_rollback_skill  # noqa: F401
 
 __all__ = ["Skill"]

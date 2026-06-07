@@ -288,7 +288,7 @@ Go 提取能力（Step 2）：
 ## 5. 测试覆盖
 
 ```
-521 passed, 1 skipped — 0 failed
+540 passed, 1 skipped — 0 failed
 ```
 
 | 测试文件 | 数量 | 覆盖模块 |
@@ -308,6 +308,8 @@ Go 提取能力（Step 2）：
 | test_doc_generate.py | 11 | doc.generate Skill |
 | test_patch.py | 39 | Patch 数据模型 + find-replace/序列化/路径安全/apply/rollback（Phase 9 Step 1A+1B，11+28） |
 | test_code_patch.py | 18 | code.patch Skill + find-replace/impact 真实化（Phase 9 Step 2，9+9） |
+| test_code_apply.py | 14 | code.apply Skill（写盘/权限门/R3确认/审计，Phase 9 Step 3） |
+| test_code_rollback.py | 5 | code.rollback Skill（Phase 9 Step 3） |
 | test_workflow.py | 6 | Workflow Engine |
 | test_index_store.py | 26 | SQLite 存储层（Phase 6-MVP） |
 | test_project_index.py | 7 | 项目索引门面类（Phase 6-MVP） |
@@ -422,8 +424,8 @@ Go 提取能力（Step 2）：
 | Step 1A | core/patch.py 可审查草案 | ✅ 完成 | find_replace_patch + 序列化(save/load) + hash 元数据 + 路径安全 + get_index schema 加固（17 tests） |
 | Step 1B | core/patch.py apply/rollback | ✅ 完成 | apply_patch（hash 校验 + 路径安全 + 备份 + 原子性）+ rollback_patch（11 tests） |
 | Step 2 | code.patch propose 真实化 | ✅ 完成 | find-replace 真实 diff + patch_id + impact 可选增强（9 tests） |
-| Step 3 | code.apply Skill + 权限门 | 🔲 待执行 | 写盘 + protected_path 拒绝 + R3 强确认 |
-| Step 4 | code.rollback + 端到端验证 | 🔲 待执行 | 备份恢复 + propose→apply→rollback 闭环 |
+| Step 3 | code.apply Skill + 权限门 | ✅ 完成 | 写盘 + protected_path + R3 强确认 + 审计；code.rollback Skill（19 tests） |
+| Step 4 | code.rollback + 端到端验证 | ✅ 完成 | propose→apply→rollback 闭环（含 Step 3 测试覆盖，540 tests） |
 
 核心约束（诚实面对零 LLM）：
 - 不做智能代码生成（破坏零依赖 + 确定性）
@@ -448,7 +450,7 @@ Go 提取能力（Step 2）：
 |------|------|------|
 | §3.1 先分析后修改 | ✅ | |
 | §3.2 小步快跑 | ✅ | |
-| §3.3 每步可验证 | ✅ | 521 个测试 |
+| §3.3 每步可验证 | ✅ | 540 个测试 |
 | §3.4 不扩大范围 | ✅ | |
 | §3.5 文档同步更新 | ✅ | 本文档即为证明 |
 | §3.6 每步提交 git | ✅ | 25+ commits |
