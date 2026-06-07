@@ -170,7 +170,7 @@ smartdev-agent/
 │   ├── adapters/      # 项目适配器（JSON）
 │   ├── models.py      # 核心数据模型
 │   └── cli.py         # CLI 入口
-├── tests/             # 测试（395 tests）
+├── tests/             # 测试（386 tests）
 ├── docs/              # 开发进度、Phase 6 技术文档
 ├── pyproject.toml     # 项目配置
 └── CHANGELOG.md       # 变更记录

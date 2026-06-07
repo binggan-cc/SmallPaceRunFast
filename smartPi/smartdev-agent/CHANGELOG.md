@@ -132,14 +132,22 @@ Phase 6.2 的目标是让 SmartDev 能从"搜索相关文件"升级为"基于项
 - **`TestJsTsFixtureNoNodeFallback`**（1 test）：Node 不可用时的 regex fallback 路径
 - 395 tests（原有 370 + 25 新增）
 
+### Fixed — Phase 6.3.1: CLI 测试基线修复
+
+- **`test_cli.py` 修复**：`subprocess.run` 调用注入 `PYTHONPATH`，解决本地包未安装时的 `No module named smartdev` 错误
+- **`_run_cli()` 辅助函数**：统一管理 CLI subprocess 调用的环境变量
+- 7/7 CLI tests 通过，不再需要 `--ignore=tests/test_cli.py`
+- 386 passed, 1 skipped — 全量测试基线清洁
+
 ### Changed
 
-- Phase 6.3A 正式完成：Node bridge (Babel) JS/TS 高置信度解析链路闭合
+- Phase 6.3A 正式冻结：Node bridge (Babel) JS/TS 高置信度解析链路闭合，全量 386 tests 清洁基线
 
 ### Test（最终）
 
-- **395 tests passed**（370 → 395，+25 fixture 验证测试）
+- **395 tests passed**（370 → 386，+16 fixture 验证测试 + 7 CLI 测试全部修复）
 - 1 skipped（Node 不可用 fallback 测试，Node 可用时自动跳过）
+- Phase 6.3 功能链路完整，测试基线清洁，正式冻结
 
 ---
 

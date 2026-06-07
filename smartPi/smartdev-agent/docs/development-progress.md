@@ -256,7 +256,7 @@ NullStructureExtractor      → 不支持的语言
 ## 5. 测试覆盖
 
 ```
-395 passed — 0 failed
+386 passed — 0 failed, 1 skipped
 ```
 
 | 测试文件 | 数量 | 覆盖模块 |
@@ -305,6 +305,8 @@ NullStructureExtractor      → 不支持的语言
 
 ## 7. 下一步
 
+Phase 6.3 功能链路完整，全量 386 tests 清洁基线，正式冻结。
+
 ### Phase 7：Tree-sitter Multi-language Graph
 
 - [ ] Tree-sitter 多语言统一精确解析
@@ -330,7 +332,7 @@ NullStructureExtractor      → 不支持的语言
 |------|------|------|
 | §3.1 先分析后修改 | ✅ | |
 | §3.2 小步快跑 | ✅ | |
-| §3.3 每步可验证 | ✅ | 395 个测试 |
+| §3.3 每步可验证 | ✅ | 386 个测试 |
 | §3.4 不扩大范围 | ✅ | |
 | §3.5 文档同步更新 | ✅ | 本文档即为证明 |
 | §3.6 每步提交 git | ✅ | 25+ commits |

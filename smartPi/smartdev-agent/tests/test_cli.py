@@ -8,13 +8,41 @@ CLI 测试
 4. scan 命令在有效项目上运行
 5. plan 命令在有效项目上运行
 6. 无效路径返回错误码
+
+注意：所有 subprocess 调用必须通过 _run_cli() 确保 PYTHONPATH 正确，
+      因为 smartdev 是本地包，未通过 pip install 安装。
 """
 
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+
+# smartPi/smartdev-agent/（包含 smartdev/ 包的目录）
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _cli_env() -> dict:
+    """构建包含正确 PYTHONPATH 的环境变量"""
+    env = os.environ.copy()
+    existing = env.get("PYTHONPATH", "")
+    project_root = str(_PROJECT_ROOT)
+    if existing:
+        env["PYTHONPATH"] = project_root + os.pathsep + existing
+    else:
+        env["PYTHONPATH"] = project_root
+    return env
+
+
+def _run_cli(*args: str, **kwargs) -> subprocess.CompletedProcess:
+    """运行 smartdev CLI 命令，自动设置 PYTHONPATH"""
+    cmd = [sys.executable, "-m", "smartdev"] + list(args)
+    kwargs.setdefault("capture_output", True)
+    kwargs.setdefault("text", True)
+    kwargs.setdefault("env", _cli_env())
+    return subprocess.run(cmd, **kwargs)
 
 
 class TestCLI:
@@ -22,11 +50,7 @@ class TestCLI:
 
     def test_help(self):
         """--help 输出包含用法说明"""
-        result = subprocess.run(
-            [sys.executable, "-m", "smartdev", "--help"],
-            capture_output=True,
-            text=True,
-        )
+        result = _run_cli("--help")
         assert result.returncode == 0
         assert "SmartDev Agent" in result.stdout
         assert "scan" in result.stdout
@@ -35,21 +59,13 @@ class TestCLI:
 
     def test_version(self):
         """--version 输出版本号"""
-        result = subprocess.run(
-            [sys.executable, "-m", "smartdev", "--version"],
-            capture_output=True,
-            text=True,
-        )
+        result = _run_cli("--version")
         assert result.returncode == 0
         assert "smartdev" in result.stdout
 
     def test_list(self):
         """list 命令列出所有 Skill"""
-        result = subprocess.run(
-            [sys.executable, "-m", "smartdev", "list"],
-            capture_output=True,
-            text=True,
-        )
+        result = _run_cli("list")
         assert result.returncode == 0
         assert "repo.scan" in result.stdout
         assert "task.plan" in result.stdout
@@ -61,11 +77,7 @@ class TestCLI:
         (tmp_path / "main.py").write_text("print('hello')\n")
         (tmp_path / "README.md").write_text("# Test\n")
 
-        result = subprocess.run(
-            [sys.executable, "-m", "smartdev", "scan", "--project", str(tmp_path)],
-            capture_output=True,
-            text=True,
-        )
+        result = _run_cli("scan", "--project", str(tmp_path))
         assert result.returncode == 0
         assert "扫描完成" in result.stdout
         assert "Python" in result.stdout
@@ -74,12 +86,7 @@ class TestCLI:
         """plan 命令在有效项目上运行"""
         (tmp_path / "main.py").write_text("pass\n")
 
-        result = subprocess.run(
-            [sys.executable, "-m", "smartdev", "plan",
-             "--project", str(tmp_path), "--task", "测试任务"],
-            capture_output=True,
-            text=True,
-        )
+        result = _run_cli("plan", "--project", str(tmp_path), "--task", "测试任务")
         assert result.returncode == 0
         assert "保守方案" in result.stdout
         assert "推荐方案" in result.stdout
@@ -87,19 +94,11 @@ class TestCLI:
 
     def test_scan_invalid_path(self):
         """scan 命令对无效路径返回错误"""
-        result = subprocess.run(
-            [sys.executable, "-m", "smartdev", "scan", "--project", "/nonexistent/path"],
-            capture_output=True,
-            text=True,
-        )
+        result = _run_cli("scan", "--project", "/nonexistent/path")
         assert result.returncode == 1
 
     def test_no_command(self):
         """无命令时显示帮助"""
-        result = subprocess.run(
-            [sys.executable, "-m", "smartdev"],
-            capture_output=True,
-            text=True,
-        )
+        result = _run_cli()
         assert result.returncode == 1
         assert "usage:" in result.stdout.lower() or "usage:" in result.stderr.lower()
