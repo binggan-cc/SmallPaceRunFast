@@ -262,8 +262,8 @@ class TestStep3ToolsRegistration:
         from smartdev.mcp.tools import handle_list_tools
         result = await handle_list_tools({}, tmp_path)
         data = json.loads(result[0].text)
-        # Step 3 后：3 基础 + 4 Context + 5 Skill = 12
-        assert data["data"]["total"] == 12
+        # Step 4 後有 14 個工具
+        assert data["data"]["total"] == 14
 
     @pytest.mark.asyncio
     async def test_version_marks_step3_as_available(self, tmp_path):

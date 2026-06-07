@@ -81,9 +81,9 @@ async def handle_version(arguments: dict, project_path: Path) -> list[TextConten
         {"name": "smartdev_architecture_map", "permission": "READ",          "status": "available"},
         {"name": "smartdev_task_plan",        "permission": "READ",          "status": "available"},
         {"name": "smartdev_qa_checklist",     "permission": "READ",          "status": "available"},
-        # Step 4（待实现）
-        {"name": "smartdev_code_index",       "permission": "CACHE_WRITE",   "status": "coming_soon"},
-        {"name": "smartdev_patch_propose",    "permission": "PATCH_PROPOSE", "status": "coming_soon"},
+        # Step 4（已实现）
+        {"name": "smartdev_code_index",       "permission": "CACHE_WRITE",   "status": "available"},
+        {"name": "smartdev_patch_propose",    "permission": "PATCH_PROPOSE", "status": "available"},
     ]
     return [TextContent(
         type="text",
@@ -158,6 +158,16 @@ async def handle_list_tools(arguments: dict, project_path: Path) -> list[TextCon
             "name": "smartdev_qa_checklist",
             "permission": "READ",
             "description": "Generate structured acceptance checklist for a task.",
+        },
+        {
+            "name": "smartdev_code_index",
+            "permission": "CACHE_WRITE",
+            "description": "Build project semantic index. Writes only to .smartdev/, never modifies source files.",
+        },
+        {
+            "name": "smartdev_patch_propose",
+            "permission": "PATCH_PROPOSE",
+            "description": "Generate find-replace patch proposal (diff + patch_id). Does NOT modify source files.",
         },
     ]
     return [TextContent(
@@ -619,3 +629,215 @@ async def handle_qa_checklist(arguments: dict, project_path: Path) -> list[TextC
             type="text",
             text=formatter.error("smartdev_qa_checklist", "INTERNAL_ERROR", f"qa.checklist failed: {e}"),
         )]
+
+
+# ── Step 4 工具：CACHE_WRITE + PATCH_PROPOSE ─────────────────────
+
+
+async def handle_code_index(arguments: dict, project_path: Path) -> list[TextContent]:
+    """建立项目语义索引（只写 .smartdev/，不改源码）
+
+    权限：CACHE_WRITE
+    说明：运行后其他 Context 工具（code_search / code_impact 等）才可用。
+    """
+    try:
+        from smartdev.context.project_index import ProjectIndex
+
+        force = bool(arguments.get("force", False))
+        index = ProjectIndex(project_path)
+        result = index.index(force=force)
+        stats = index.stats()
+        index.close()
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_code_index",
+                {
+                    "index_result": result,
+                    "stats": stats,
+                    "index_path": str(project_path / ".smartdev" / "index.sqlite"),
+                    "note": "Writes only to .smartdev/ cache. Source files are never modified.",
+                },
+                warnings=(
+                    [f"{result['errors']} file(s) had extraction errors."]
+                    if result.get("errors")
+                    else []
+                ),
+                next_steps=[
+                    "Run smartdev_code_search to search the indexed project.",
+                    "Run smartdev_code_impact to analyze change impact.",
+                    "Run smartdev_project_map to export the project structure map.",
+                ],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_code_index",
+                "INTERNAL_ERROR",
+                f"Indexing failed: {e}",
+            ),
+        )]
+
+
+async def handle_patch_propose(arguments: dict, project_path: Path) -> list[TextContent]:
+    """生成 find-replace patch 草案（不落盘，不修改任何源码）
+
+    权限：PATCH_PROPOSE
+    说明：
+    - 只生成 diff + patch_id，不写源码
+    - patch_id 持久化到 .smartdev/patches/（CACHE_WRITE，不是源码）
+    - 若要应用补丁，通过 CLI `smartdev apply --patch-id <id>` 显式执行
+    - MCP v0 不暴露 apply，写盘确认机制待 Phase 11 重新设计
+    """
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    find = arguments.get("find", "").strip()
+    replace = arguments.get("replace", "")
+    task_description = arguments.get("task_description", "").strip()
+
+    # find 和 task_description 都是必填
+    if not find:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_patch_propose",
+                "INVALID_ARGUMENT",
+                "Parameter 'find' is required and must not be empty.",
+            ),
+        )]
+    if not task_description:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_patch_propose",
+                "INVALID_ARGUMENT",
+                "Parameter 'task_description' is required. Describe why this change is needed.",
+            ),
+        )]
+
+    try:
+        skill = Skill.create("code.patch")
+        context = _make_context(project_path, task_description)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_patch_propose",
+                    "SKILL_CANNOT_RUN",
+                    f"code.patch cannot run: project path does not exist: {project_path}",
+                ),
+            )]
+
+        inputs: dict = {
+            "find": find,
+            "replace": replace,
+            "save": True,  # 持久化 patch_id 到 .smartdev/patches/
+        }
+        if "glob" in arguments:
+            inputs["glob"] = arguments["glob"]
+        if "regex" in arguments:
+            inputs["regex"] = bool(arguments["regex"])
+        # change.budget：限制一次改动文件数（MCP 额外约束）
+        max_files = int(arguments.get("max_files", 10))
+
+        result = skill.run(context, inputs)
+
+        data = result.data.copy()
+        risk_level = data.get("risk_level", "R1")
+
+        # change.budget 检查：超出时降级为警告，不拒绝（patch_id 已生成）
+        warnings = []
+        file_count = data.get("file_count", 0)
+        if file_count > max_files:
+            warnings.append(
+                f"Patch affects {file_count} files, exceeding max_files={max_files}. "
+                "Review carefully before applying."
+            )
+
+        # diff_explain：为每个受影响文件生成简洁说明（确定性摘要）
+        patch_id = data.get("patch_id", "")
+        diff_explain = _build_diff_explain(data)
+        if diff_explain:
+            data["diff_explain"] = diff_explain
+
+        # 安全提示：明确告知不落盘
+        data["safety_note"] = (
+            "This proposal does NOT modify any source files. "
+            "To apply, use CLI: smartdev apply --patch-id " + (patch_id or "<id>")
+        )
+
+        next_steps = [
+            f"Review the diff carefully before applying.",
+        ]
+        if patch_id:
+            next_steps.append(f"Apply via CLI: smartdev apply -p {project_path} --patch-id {patch_id}")
+        next_steps.append("Run tests after applying to verify correctness.")
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_patch_propose",
+                data,
+                warnings=warnings,
+                risk_level=risk_level,
+                next_steps=next_steps,
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_patch_propose",
+                "INTERNAL_ERROR",
+                f"Patch proposal failed: {e}",
+            ),
+        )]
+
+
+def _build_diff_explain(data: dict) -> list[dict]:
+    """从 patch 数据构建每个文件的变更说明（确定性摘要，非 LLM）
+
+    格式：[{"file": "src/x.ts", "lines_added": 2, "lines_removed": 2, "note": "find-replace"}]
+    """
+    diff: str = data.get("diff", "")
+    if not diff:
+        return []
+
+    explains = []
+    current_file = None
+    added = removed = 0
+
+    for line in diff.splitlines():
+        if line.startswith("--- ") or line.startswith("+++ "):
+            if line.startswith("+++ ") and not line.startswith("+++ /dev/null"):
+                # 保存上一个文件
+                if current_file and (added or removed):
+                    explains.append({
+                        "file": current_file,
+                        "lines_added": added,
+                        "lines_removed": removed,
+                        "note": "find-replace",
+                    })
+                # 新文件（去掉 +++ b/ 前缀）
+                raw = line[4:]
+                current_file = raw[2:] if raw.startswith("b/") else raw
+                added = removed = 0
+        elif line.startswith("+") and not line.startswith("+++"):
+            added += 1
+        elif line.startswith("-") and not line.startswith("---"):
+            removed += 1
+
+    if current_file and (added or removed):
+        explains.append({
+            "file": current_file,
+            "lines_added": added,
+            "lines_removed": removed,
+            "note": "find-replace",
+        })
+
+    return explains

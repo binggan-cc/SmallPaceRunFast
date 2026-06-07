@@ -230,6 +230,68 @@ def create_server(project_path: Path):
                 "required": ["task_description"],
             },
         ),
+        # ── Step 4: CACHE_WRITE + PATCH_PROPOSE ──────────────────
+        Tool(
+            name="smartdev_code_index",
+            description=(
+                "Build the project semantic index (.smartdev/index.sqlite). "
+                "WRITES ONLY to .smartdev/ cache — never modifies source files. "
+                "Required before using code_search, code_impact, project_map, or graph_validate."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "force": {
+                        "type": "boolean",
+                        "description": "Force reindex all files, ignoring hash cache (default: false)",
+                        "default": False,
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="smartdev_patch_propose",
+            description=(
+                "Generate a find-replace patch proposal. "
+                "Returns unified diff, affected files, risk level, diff_explain, and patch_id. "
+                "DOES NOT modify any source files. "
+                "To apply: use CLI `smartdev apply --patch-id <id>`."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "find": {
+                        "type": "string",
+                        "description": "Text or pattern to find across project files",
+                    },
+                    "replace": {
+                        "type": "string",
+                        "description": "Replacement text (can be empty string to delete matches)",
+                    },
+                    "task_description": {
+                        "type": "string",
+                        "description": "Why this change is needed (required for audit trail)",
+                    },
+                    "glob": {
+                        "type": "string",
+                        "description": "File glob pattern to scope the search (default: **/*)",
+                        "default": "**/*",
+                    },
+                    "regex": {
+                        "type": "boolean",
+                        "description": "Treat find as a regex pattern (default: false)",
+                        "default": False,
+                    },
+                    "max_files": {
+                        "type": "integer",
+                        "description": "Max files to patch in one proposal (change.budget, default: 10)",
+                        "default": 10,
+                    },
+                },
+                "required": ["find", "replace", "task_description"],
+            },
+        ),
     ]
 
     # ── 工具路由表 ────────────────────────────────────────────────
@@ -247,6 +309,8 @@ def create_server(project_path: Path):
         "smartdev_architecture_map": t.handle_architecture_map,
         "smartdev_task_plan":        t.handle_task_plan,
         "smartdev_qa_checklist":     t.handle_qa_checklist,
+        "smartdev_code_index":       t.handle_code_index,
+        "smartdev_patch_propose":    t.handle_patch_propose,
     }
 
     # ── 注册 list_tools handler ────────────────────────────────────
