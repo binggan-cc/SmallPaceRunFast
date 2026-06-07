@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-07
-> 当前阶段：Phase 10 Step 1 完成 — MCP Server 骨架（ping/version/list_tools，557 tests）
+> 当前阶段：Phase 10 Step 2 完成 — 只读 Context 工具（search/impact/map/validate，576 tests）
 
 ---
 
@@ -491,7 +491,7 @@ Go 提取能力（Step 2）：
 |------|--------|------|------|
 | Step 0 | 执行前设计 | ✅ 完成 | 设计文档 phase-10-design.md — 7 问题决策 + 工具分级 + 实施路线 |
 | Step 1 | MCP Server 骨架 | ✅ 完成 | smartdev/mcp/ + ping/version/list_tools + 17 tests（557 总计） |
-| Step 2 | 只读 Context 工具 | 待做 | search / impact / project_map / graph_validate |
+| Step 2 | 只读 Context 工具 | ✅ 完成 | search / impact / project_map / graph_validate + 19 tests（576 总计） |
 | Step 3 | Skill 工具接入 | 待做 | repo_scan / risk_check / architecture_map / task_plan / qa_checklist |
 | Step 4 | Patch Propose 工具 | 待做 | code_index（CACHE_WRITE）+ patch_propose（PATCH_PROPOSE，不落盘） |
 | Step 5 | 真实 Agent 验证 | 待做 | Kiro / Claude Desktop 只读验证 |
