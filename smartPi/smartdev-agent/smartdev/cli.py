@@ -233,7 +233,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     task = args.task
 
     engine = WorkflowEngine()
-    result = engine.run(project_path, task=task)
+    result = engine.run(project_path, task=task, target=getattr(args, "target", "") or "")
 
     print(result.to_markdown())
 
@@ -387,6 +387,7 @@ def main() -> None:
     run_parser = subparsers.add_parser("run", help="执行完整工作流（扫描→分析→规划→清单）")
     run_parser.add_argument("--project", "-p", required=True, help="项目根目录路径")
     run_parser.add_argument("--task", "-t", default="", help="任务描述（可选）")
+    run_parser.add_argument("--target", default="", help="变更目标（文件/模块/符号），驱动影响分析（需先建索引）")
     run_parser.set_defaults(func=_cmd_run)
 
     # index 命令（Phase 6-MVP 新增）

@@ -4,6 +4,18 @@
 
 ## [0.4.0] - 2026-06-07
 
+### Added — Phase 8 Step 4: Context Layer ↔ Skill 端到端验证
+
+- **`WorkflowEngine.run()` 新增 `target` 参数**：注入各步骤 inputs，驱动 risk.check / task.plan 的 code.impact 影响分析（不使用 target 的 Skill 忽略此键）
+- **CLI `run` 新增 `--target`**：变更目标，驱动影响分析（需先建索引）
+- **`test_skill_context_integration.py`**（新建，7 tests）：
+  - workflow 中 architecture.map 自动用索引（source=index）
+  - 传 target → risk.check 用 impact 增强 / task.plan 标注受影响文件
+  - 无索引项目 workflow 正常运行（architecture.map 退回 AST，risk.check 退回关键词）
+- **真实项目验证（只读）**：gnet-examples（11 Go 模块）workflow 6/6 成功，architecture.map source=index，risk.check risk_source=impact，验证后清理 .smartdev
+
+**Phase 8（Context Layer ↔ Skill 接入打通）完成。** 三个核心 Skill 现在都消费 Context Layer。
+
 ### Added — Phase 8 Step 3: task.plan 接入 code.impact
 
 - **`_extract_target()`**：确定 impact 目标——优先 inputs["target"]，否则从任务描述提取文件 token（.py/.js/.ts/.go/.css/.json/.md）
@@ -47,7 +59,7 @@
 
 ### Test
 
-- **477 passed, 1 skipped** — 测试基线（458 → 477，+19：Step 1 +6, Step 2 +7, Step 3 +6）
+- **484 passed, 1 skipped** — 测试基线（458 → 484，+26：Step 1 +6, Step 2 +7, Step 3 +6, Step 4 +7）
 
 ---
 

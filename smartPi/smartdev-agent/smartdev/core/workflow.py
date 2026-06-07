@@ -147,12 +147,16 @@ class WorkflowEngine:
         self,
         project_path: Path,
         task: str = "",
+        target: str = "",
     ) -> WorkflowResult:
         """执行完整工作流
 
         参数：
             project_path: 项目根目录
             task: 任务描述（可选）
+            target: 变更目标（文件/模块/符号，可选）
+                    提供时注入各步骤 inputs，驱动 risk.check / task.plan 的
+                    code.impact 影响分析（需项目已建索引）
 
         返回：
             WorkflowResult
@@ -171,7 +175,7 @@ class WorkflowEngine:
         accumulated_data = {}
 
         for step in self.steps:
-            step_result = self._run_step(step, context, accumulated_data)
+            step_result = self._run_step(step, context, accumulated_data, target)
 
             result.steps.append(step_result)
 
@@ -196,6 +200,7 @@ class WorkflowEngine:
         step: WorkflowStep,
         context: ProjectContext,
         accumulated_data: dict,
+        target: str = "",
     ) -> dict:
         """执行单个步骤"""
         try:
@@ -237,6 +242,10 @@ class WorkflowEngine:
                 inputs[key] = context.task_description
             else:
                 inputs[key] = value
+
+        # 注入 target（驱动 code.impact；不使用 target 的 Skill 会忽略此键）
+        if target:
+            inputs.setdefault("target", target)
 
         # 执行
         skill_result = skill.run(context, inputs or None)
