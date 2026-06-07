@@ -224,6 +224,9 @@ tree-sitter / tree-sitter-go 已安装（optional dependency）。
 - code.patch 真实补丁生成（影响分析驱动）
 - patch 默认只生成不应用，R2/R3 必须确认
 - 自动验证（接入项目 test 命令）+ 变更摘要 + 回滚方案
+- 设计文档：[phase-9-design.md](docs/phase-9-design.md)（Step 0 已确认）
+- 核心约束：零 LLM → 不做智能代码生成，聚焦"安全执行机制 + 确定性补丁生成器（find-replace/token 替换）"
+- 拆分：code.patch(propose, R1) / code.apply(R2/R3 确认) / code.rollback(R1)
 
 ### Phase 6.3B/C（后续可选）
 - TypeScript Compiler API 增强（tsconfig 感知类型级别解析）

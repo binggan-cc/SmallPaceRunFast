@@ -334,7 +334,7 @@ Go 提取能力（Step 2）：
 | # | 问题 | 严重度 | 状态 |
 |---|------|--------|------|
 | 1 | risk.check 关键词匹配是短语匹配，中文语序灵活导致漏匹配（如"重构目录"≠"目录重构"） | 中 | 已缓解（Phase 8 Step 1：有索引+target 时改用 impact 分析判定风险，关键词仅作 fallback） |
-| 2 | code.patch 生成的是占位符补丁，非真实代码变更 | 低 | 待 LLM 增强 |
+| 2 | code.patch 生成的是占位符补丁，非真实代码变更 | 低 | Phase 9 规划中（零 LLM → 确定性 find-replace 补丁 + 安全应用机制，设计见 phase-9-design.md） |
 | 3 | 适配器用 JSON 格式，agent.md 设计的是 YAML | 低 | 可迁移 |
 
 ---
@@ -412,10 +412,26 @@ Go 提取能力（Step 2）：
 
 不在本阶段：code.patch 真实化（→ Phase 9 Safe Patch Agent）、token.audit 接入、新增语言
 
-### Phase 6.3B/C（后续可选）
+### Phase 9：Safe Patch Agent（设计确认）
 
-- [ ] TypeScript Compiler API 增强（类型级别解析）
-- [ ] Vue SFC / Svelte script block 抽取
+目标：把 code.patch 从占位符升级为"安全可控的代码执行能力"，完成 L3 诊断型 → L4 执行型跳跃。
+
+| Step | 交付物 | 状态 | 说明 |
+|------|--------|------|------|
+| Step 0 | 执行前设计 | ✅ 完成 | 设计文档 phase-9-design.md — 5 问题决策 + 零 LLM 约束下的范围界定 |
+| Step 1 | core/patch.py 基础设施 | 🔲 待执行 | apply / rollback / find-replace 生成器（纯文件操作） |
+| Step 2 | code.patch propose 真实化 | 🔲 待执行 | find-replace 真实 diff + impact 接入 |
+| Step 3 | code.apply Skill + 权限门 | 🔲 待执行 | 写盘 + 备份 + protected_path 拒绝 + R2/R3 确认 |
+| Step 4 | code.rollback + 端到端验证 | 🔲 待执行 | 备份恢复 + propose→apply→rollback 闭环 |
+
+核心约束（诚实面对零 LLM）：
+- 不做智能代码生成（破坏零依赖 + 确定性）
+- 聚焦"安全执行机制"（生成/应用分离、impact 驱动、备份回滚、权限门）
+- 旗舰场景：确定性 find-replace / token 替换（对应 SmartFav 硬编码颜色替换）
+- 生成与应用分离：code.patch(propose, R1) / code.apply(R2/R3 确认) / code.rollback(R1)
+- 默认安全：不加 --apply 绝不碰磁盘
+
+### Phase 6.3B/C（后续可选）
 
 ### 优化项
 
