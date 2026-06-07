@@ -29,10 +29,66 @@ data 字段结构：
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from smartdev.models import RiskLevel, SkillResult, TaskType
 from smartdev.skills.base import Skill
+from smartdev.skills._context_helper import get_index_if_available
+
+
+# 文件路径形态的 target（用于从任务描述中轻量提取）
+_FILE_TOKEN_RE = re.compile(r"[\w./\\-]+\.(?:py|js|ts|tsx|jsx|go|css|json|md)\b")
+
+
+def _extract_target(task_description: str, inputs: dict | None) -> str | None:
+    """确定 impact 分析的 target。
+
+    优先级：
+    1. inputs["target"]（显式指定）
+    2. 任务描述中形似文件路径的 token（如 models.py / src/api.ts）
+
+    返回 None 表示无法确定 target，调用方跳过 impact 增强。
+    """
+    inputs = inputs or {}
+    if inputs.get("target"):
+        return inputs["target"]
+    match = _FILE_TOKEN_RE.search(task_description)
+    if match:
+        return match.group(0)
+    return None
+
+
+def _try_impact(context, inputs: dict | None) -> dict | None:
+    """尝试用 code.impact 分析受影响范围。
+
+    返回 None 表示无法增强（无 target / 无索引 / 未解析），
+    调用方退回纯模板方案（零回归）。只读，保持 R0 语义。
+    """
+    target = _extract_target(context.task_description, inputs)
+    if not target:
+        return None
+
+    index = get_index_if_available(context.project_path)
+    if index is None:
+        return None
+
+    try:
+        from smartdev.context.impact_analyzer import ImpactAnalyzer
+
+        result = ImpactAnalyzer(index.store).analyze_import_impact(target)
+        if not result.resolved_target and not result.direct_dependents:
+            return None
+        return {
+            "target": target,
+            "affected_files": result.affected_files,
+            "risk_level": result.risk_level,
+            "validation": result.validation_suggestions,
+        }
+    except Exception:
+        return None
+    finally:
+        index.close()
 
 
 @dataclass
@@ -213,6 +269,19 @@ class TaskPlanSkill(Skill):
             constraints=constraints,
         )
 
+        # Phase 8 Step 3：可选 impact 增强
+        # 有 target + 索引时，把受影响文件填入推荐方案，并用 impact 校准风险
+        impact = _try_impact(context, inputs)
+        if impact and impact["affected_files"]:
+            affected = impact["affected_files"]
+            for task in recommended.tasks:
+                # 把占位符 "（待分析）" 替换为真实受影响文件
+                if task.get("files") == ["（待分析）"]:
+                    task["files"] = affected[:10]
+            recommended.scope = [
+                f"影响 {len(affected)} 个文件（来自索引分析）",
+            ] + recommended.scope
+
         # 组装摘要
         summary_parts = [
             f"任务规划完成：{task_description}",
@@ -221,26 +290,47 @@ class TaskPlanSkill(Skill):
             f"推荐方案：{len(recommended.tasks)} 个任务",
             f"深度方案：{len(deep.tasks)} 个任务",
         ]
+        if impact and impact["affected_files"]:
+            summary_parts.append(
+                f"影响分析：目标 '{impact['target']}' 影响 "
+                f"{len(impact['affected_files'])} 个文件（风险 {impact['risk_level']}）"
+            )
+
+        data = {
+            "task_description": task_description,
+            "conservative": conservative.to_dict(),
+            "recommended": recommended.to_dict(),
+            "deep": deep.to_dict(),
+            "recommended_task_breakdown": [
+                {
+                    "step": i + 1,
+                    "name": t["name"],
+                    "risk": t["risk"],
+                }
+                for i, t in enumerate(recommended.tasks)
+            ],
+        }
+        if impact and impact["affected_files"]:
+            data["impact"] = {
+                "target": impact["target"],
+                "affected_files": impact["affected_files"],
+                "risk_level": impact["risk_level"],
+                "validation": impact["validation"],
+            }
+
+        next_steps = [
+            "选择方案后，可运行 risk.check 评估风险",
+            "确认方案后，可进入执行阶段",
+        ]
+        if impact and impact["affected_files"]:
+            next_steps.insert(
+                0,
+                f"推荐方案已标注 {len(impact['affected_files'])} 个受影响文件，可据此细化任务",
+            )
 
         return SkillResult(
             success=True,
             summary="\n".join(summary_parts),
-            data={
-                "task_description": task_description,
-                "conservative": conservative.to_dict(),
-                "recommended": recommended.to_dict(),
-                "deep": deep.to_dict(),
-                "recommended_task_breakdown": [
-                    {
-                        "step": i + 1,
-                        "name": t["name"],
-                        "risk": t["risk"],
-                    }
-                    for i, t in enumerate(recommended.tasks)
-                ],
-            },
-            next_steps=[
-                "选择方案后，可运行 risk.check 评估风险",
-                "确认方案后，可进入执行阶段",
-            ],
+            data=data,
+            next_steps=next_steps,
         )

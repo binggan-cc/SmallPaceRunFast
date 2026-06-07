@@ -133,3 +133,118 @@ class TestTaskPlanSkill:
         result = skill.run(context)
 
         assert len(result.next_steps) >= 1
+
+
+# ── Phase 8 Step 3: code.impact 接入测试 ──────────────────────
+
+
+class TestTaskPlanImpactIntegration:
+    """task.plan 接入 code.impact 的优雅降级测试
+
+    核心验证：
+    - 无 target / 无索引 → 纯三档模板（零回归，无 impact 字段）
+    - 有 target + 索引 → 推荐方案标注受影响文件
+    - target 可从 inputs 或任务描述中的文件 token 提取
+    """
+
+    def _build_indexed_project(self, tmp_path: Path) -> Path:
+        project = tmp_path / "pyproj"
+        project.mkdir()
+        (project / "models.py").write_text("class User:\n    pass\n")
+        (project / "service.py").write_text(
+            "from models import User\n\ndef f():\n    return User()\n"
+        )
+        (project / "api.py").write_text(
+            "from models import User\n\ndef g():\n    return User()\n"
+        )
+        from smartdev.context.project_index import ProjectIndex
+
+        index = ProjectIndex(project)
+        index.index()
+        index.close()
+        return project
+
+    def test_no_index_no_impact_field(self, tmp_path: Path):
+        """无索引 → 纯模板，无 impact 字段（零回归）"""
+        skill = Skill.create("task.plan")
+        context = ProjectContext(
+            project_path=tmp_path,
+            task_description="统一 design tokens",
+        )
+        result = skill.run(context)
+        assert result.success
+        assert "impact" not in result.data
+        # 推荐方案占位符保持原样
+        rec = result.data["recommended"]
+        assert any("（待分析）" in t.get("files", []) for t in rec["tasks"])
+
+    def test_target_in_inputs_triggers_impact(self, tmp_path: Path):
+        """inputs 提供 target + 索引 → 推荐方案标注受影响文件"""
+        project = self._build_indexed_project(tmp_path)
+        skill = Skill.create("task.plan")
+        context = ProjectContext(
+            project_path=project,
+            task_description="修改用户模型",
+        )
+        result = skill.run(context, {"target": "models.py"})
+        assert result.success
+        assert "impact" in result.data
+        affected = result.data["impact"]["affected_files"]
+        assert any("service.py" in f for f in affected)
+        assert any("api.py" in f for f in affected)
+
+    def test_target_extracted_from_description(self, tmp_path: Path):
+        """任务描述含文件 token → 自动提取为 target"""
+        project = self._build_indexed_project(tmp_path)
+        skill = Skill.create("task.plan")
+        context = ProjectContext(
+            project_path=project,
+            task_description="重构 models.py 的 User 类",
+        )
+        result = skill.run(context)
+        assert result.success
+        assert "impact" in result.data
+        assert result.data["impact"]["target"] == "models.py"
+
+    def test_recommended_tasks_get_affected_files(self, tmp_path: Path):
+        """推荐方案的占位符任务被替换为真实受影响文件"""
+        project = self._build_indexed_project(tmp_path)
+        skill = Skill.create("task.plan")
+        context = ProjectContext(
+            project_path=project,
+            task_description="修改 models.py",
+        )
+        result = skill.run(context)
+        rec = result.data["recommended"]
+        # 不应再有 "（待分析）" 占位符
+        all_files = [f for t in rec["tasks"] for f in t.get("files", [])]
+        assert "（待分析）" not in all_files
+        # 应包含真实文件
+        assert any("service.py" in f or "api.py" in f for f in all_files)
+
+    def test_three_tiers_preserved_with_impact(self, tmp_path: Path):
+        """接入 impact 后三档结构不变"""
+        project = self._build_indexed_project(tmp_path)
+        skill = Skill.create("task.plan")
+        context = ProjectContext(
+            project_path=project,
+            task_description="修改 models.py",
+        )
+        result = skill.run(context)
+        for tier in ["conservative", "recommended", "deep"]:
+            proposal = result.data[tier]
+            assert "name" in proposal
+            assert "tasks" in proposal
+            assert len(proposal["tasks"]) >= 1
+
+    def test_unresolved_target_no_impact(self, tmp_path: Path):
+        """target 在索引中找不到 → 无 impact 字段，退回模板"""
+        project = self._build_indexed_project(tmp_path)
+        skill = Skill.create("task.plan")
+        context = ProjectContext(
+            project_path=project,
+            task_description="统一配色方案",
+        )
+        result = skill.run(context, {"target": "nonexistent_xyz"})
+        assert result.success
+        assert "impact" not in result.data

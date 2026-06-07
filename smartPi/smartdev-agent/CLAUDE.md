@@ -204,7 +204,7 @@ tree-sitter / tree-sitter-go 已安装（optional dependency）。
 - ✅ Phase 7 Step 3：Go fixture 全链路验证（index→search→map→validate，26 tests）
 - ✅ Phase 7 Step 4：真实 Go 项目验证（gnet-examples + feishu-cli 1228 go 文件，0 error）
 
-**测试基线：471 passed, 1 skipped**
+**测试基线：477 passed, 1 skipped**
 
 **Phase 7（Tree-sitter Go Provider）已完成。**
 
@@ -216,7 +216,7 @@ tree-sitter / tree-sitter-go 已安装（optional dependency）。
 - 核心原则：优雅降级（有索引增强、无索引退回原逻辑，零回归）
 - ✅ Step 1: risk.check ← code.impact（可选 target 接入，final_risk = max(keyword, impact)，464 tests）
 - ✅ Step 2: architecture.map ← index（多语言依赖图 + 循环依赖检测，471 tests）
-- 🔲 Step 3: task.plan ← impact（精准拆解）
+- ✅ Step 3: task.plan ← impact（推荐方案标注受影响文件，477 tests）
 - 🔲 Step 4: 端到端验证
 - 不在本阶段：code.patch 真实化（→ Phase 9）、token.audit 接入、新增语言
 

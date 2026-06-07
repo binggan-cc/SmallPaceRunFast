@@ -4,6 +4,17 @@
 
 ## [0.4.0] - 2026-06-07
 
+### Added — Phase 8 Step 3: task.plan 接入 code.impact
+
+- **`_extract_target()`**：确定 impact 目标——优先 inputs["target"]，否则从任务描述提取文件 token（.py/.js/.ts/.go/.css/.json/.md）
+- **`_try_impact()`**：有 target + 索引时运行 `ImpactAnalyzer.analyze_import_impact()`，只读，R0 语义
+- **推荐方案标注受影响文件**：把任务项的 `"（待分析）"` 占位符替换为真实受影响文件（前 10 个）
+- **输出新增 `data["impact"]`**（仅当解析到影响）：target / affected_files / risk_level / validation
+- **scope 标注 + next_steps 提示**受影响文件数
+- **优雅降级**：无 target / 无索引 / 未解析 → 纯三档模板（零回归，无 impact 字段）
+- **三档结构不变**：保守/推荐/深度结构和现有测试完全兼容
+- **`test_task_plan.py` 扩展**：+6 tests（无索引 / inputs target / 描述提取 / 占位符替换 / 三档保留 / 未解析）
+
 ### Added — Phase 8 Step 2: architecture.map 接入 index relations
 
 - **`_analyze_from_index()`**：从索引构建多语言依赖图
@@ -36,7 +47,7 @@
 
 ### Test
 
-- **471 passed, 1 skipped** — 测试基线（458 → 471，+13：Step 1 +6, Step 2 +7）
+- **477 passed, 1 skipped** — 测试基线（458 → 477，+19：Step 1 +6, Step 2 +7, Step 3 +6）
 
 ---
 
