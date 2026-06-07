@@ -142,18 +142,111 @@ def create_server(project_path: Path):
             ),
             inputSchema={"type": "object", "properties": {}, "required": []},
         ),
+        # ── Step 3: Skill 工具 ────────────────────────────────────
+        Tool(
+            name="smartdev_repo_scan",
+            description=(
+                "Scan the project: detect tech stack, entry points, documentation status, "
+                "and directory structure."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "max_depth": {
+                        "type": "integer",
+                        "description": "Maximum directory tree depth (default: 2)",
+                        "default": 2,
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="smartdev_risk_check",
+            description=(
+                "Check the risk level of a task. "
+                "With an index, uses import-based impact analysis for more accurate results. "
+                "Without an index, falls back to keyword matching."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_description": {
+                        "type": "string",
+                        "description": "Description of the task or change to evaluate",
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "(Optional) File path or module name to enhance impact analysis",
+                    },
+                },
+                "required": ["task_description"],
+            },
+        ),
+        Tool(
+            name="smartdev_architecture_map",
+            description=(
+                "Analyze project architecture: dependency graph, circular dependencies, core modules. "
+                "With an index, supports multi-language analysis (Python/JS/TS/Go). "
+                "Without an index, falls back to Python AST only."
+            ),
+            inputSchema={"type": "object", "properties": {}, "required": []},
+        ),
+        Tool(
+            name="smartdev_task_plan",
+            description=(
+                "Generate a three-tier task plan (conservative / recommended / deep) for a task. "
+                "With an index, annotates the recommended plan with affected files."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_description": {
+                        "type": "string",
+                        "description": "Description of the development task",
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "(Optional) File path or module to scope impact analysis",
+                    },
+                },
+                "required": ["task_description"],
+            },
+        ),
+        Tool(
+            name="smartdev_qa_checklist",
+            description=(
+                "Generate a structured acceptance checklist for a task, "
+                "covering functionality, UI, API, performance, and security."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_description": {
+                        "type": "string",
+                        "description": "Description of the task to generate a checklist for",
+                    },
+                },
+                "required": ["task_description"],
+            },
+        ),
     ]
 
     # ── 工具路由表 ────────────────────────────────────────────────
 
     _HANDLERS = {
-        "smartdev_ping":          t.handle_ping,
-        "smartdev_version":       t.handle_version,
-        "smartdev_list_tools":    t.handle_list_tools,
-        "smartdev_code_search":   t.handle_code_search,
-        "smartdev_code_impact":   t.handle_code_impact,
-        "smartdev_project_map":   t.handle_project_map,
-        "smartdev_graph_validate":t.handle_graph_validate,
+        "smartdev_ping":             t.handle_ping,
+        "smartdev_version":          t.handle_version,
+        "smartdev_list_tools":       t.handle_list_tools,
+        "smartdev_code_search":      t.handle_code_search,
+        "smartdev_code_impact":      t.handle_code_impact,
+        "smartdev_project_map":      t.handle_project_map,
+        "smartdev_graph_validate":   t.handle_graph_validate,
+        "smartdev_repo_scan":        t.handle_repo_scan,
+        "smartdev_risk_check":       t.handle_risk_check,
+        "smartdev_architecture_map": t.handle_architecture_map,
+        "smartdev_task_plan":        t.handle_task_plan,
+        "smartdev_qa_checklist":     t.handle_qa_checklist,
     }
 
     # ── 注册 list_tools handler ────────────────────────────────────

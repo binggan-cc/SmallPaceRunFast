@@ -221,9 +221,8 @@ class TestListToolsUpdated:
         from smartdev.mcp.tools import handle_list_tools
         result = await handle_list_tools({}, tmp_path)
         data = json.loads(result[0].text)
-        # Step 2 后应有 7 个工具（3 基础 + 4 Context）
-        assert data["data"]["total"] == 7
-
+        # Step 3 后有 12 个工具（3 基础 + 4 Context + 5 Skill）
+        assert data["data"]["total"] == 12
     @pytest.mark.asyncio
     async def test_version_marks_step2_as_available(self, tmp_path):
         from smartdev.mcp.tools import handle_version

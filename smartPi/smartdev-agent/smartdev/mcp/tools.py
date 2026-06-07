@@ -76,12 +76,11 @@ async def handle_version(arguments: dict, project_path: Path) -> list[TextConten
         {"name": "smartdev_code_impact",      "permission": "READ",          "status": "available"},
         {"name": "smartdev_project_map",      "permission": "READ",          "status": "available"},
         {"name": "smartdev_graph_validate",   "permission": "READ",          "status": "available"},
-        # Step 3（待实现）
-        {"name": "smartdev_repo_scan",        "permission": "READ",          "status": "coming_soon"},
-        {"name": "smartdev_risk_check",       "permission": "READ",          "status": "coming_soon"},
-        {"name": "smartdev_architecture_map", "permission": "READ",          "status": "coming_soon"},
-        {"name": "smartdev_task_plan",        "permission": "READ",          "status": "coming_soon"},
-        {"name": "smartdev_qa_checklist",     "permission": "READ",          "status": "coming_soon"},
+        {"name": "smartdev_repo_scan",        "permission": "READ",          "status": "available"},
+        {"name": "smartdev_risk_check",       "permission": "READ",          "status": "available"},
+        {"name": "smartdev_architecture_map", "permission": "READ",          "status": "available"},
+        {"name": "smartdev_task_plan",        "permission": "READ",          "status": "available"},
+        {"name": "smartdev_qa_checklist",     "permission": "READ",          "status": "available"},
         # Step 4（待实现）
         {"name": "smartdev_code_index",       "permission": "CACHE_WRITE",   "status": "coming_soon"},
         {"name": "smartdev_patch_propose",    "permission": "PATCH_PROPOSE", "status": "coming_soon"},
@@ -134,6 +133,31 @@ async def handle_list_tools(arguments: dict, project_path: Path) -> list[TextCon
             "name": "smartdev_graph_validate",
             "permission": "READ",
             "description": "Validate graph health (orphans, duplicates, hotspots, unresolved). Requires index.",
+        },
+        {
+            "name": "smartdev_repo_scan",
+            "permission": "READ",
+            "description": "Scan project: tech stack, entry points, docs status, directory tree.",
+        },
+        {
+            "name": "smartdev_risk_check",
+            "permission": "READ",
+            "description": "Check task risk level. With index: impact-enhanced. Without: keyword fallback.",
+        },
+        {
+            "name": "smartdev_architecture_map",
+            "permission": "READ",
+            "description": "Architecture dependency graph. With index: multi-language. Without: Python AST.",
+        },
+        {
+            "name": "smartdev_task_plan",
+            "permission": "READ",
+            "description": "Generate three-tier task plan. With index: annotates affected files.",
+        },
+        {
+            "name": "smartdev_qa_checklist",
+            "permission": "READ",
+            "description": "Generate structured acceptance checklist for a task.",
         },
     ]
     return [TextContent(
@@ -366,3 +390,232 @@ async def handle_graph_validate(arguments: dict, project_path: Path) -> list[Tex
             ),
         )]
 
+
+
+# ── Step 3 工具：Skill 接入 ───────────────────────────────────────
+#
+# 设计原则（体现 Phase 8）：
+# - Skill 已能消费 Context Layer：有索引时自动增强，无索引时退回原逻辑
+# - MCP 层只传 project_path + inputs，不重新实现 Skill 业务逻辑
+# - task_description 从 arguments 里取，不强制必填（可降级为通用扫描）
+
+
+def _make_context(project_path: Path, task_description: str = ""):
+    """构建 ProjectContext，供 Skill 调用"""
+    from smartdev.models import ProjectContext
+    return ProjectContext(
+        project_path=project_path,
+        task_description=task_description,
+    )
+
+
+async def handle_repo_scan(arguments: dict, project_path: Path) -> list[TextContent]:
+    """扫描项目：技术栈 / 入口文件 / 文档状态 / 目录树"""
+    import smartdev.skills  # noqa: F401 — 触发所有 Skill 注册
+    from smartdev.skills.base import Skill
+
+    try:
+        skill = Skill.create("repo.scan")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_repo_scan",
+                    "SKILL_CANNOT_RUN",
+                    f"repo.scan cannot run: project path does not exist or is not a directory: {project_path}",
+                ),
+            )]
+
+        inputs = {}
+        if "max_depth" in arguments:
+            inputs["max_depth"] = int(arguments["max_depth"])
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_repo_scan",
+                {
+                    "summary": result.summary,
+                    "data": result.data,
+                    "risks": result.risks,
+                },
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error("smartdev_repo_scan", "INTERNAL_ERROR", f"repo.scan failed: {e}"),
+        )]
+
+
+async def handle_risk_check(arguments: dict, project_path: Path) -> list[TextContent]:
+    """风险检查：关键词 + 可选 impact 增强（有索引时自动升级）"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    task_description = arguments.get("task_description", "").strip()
+
+    try:
+        skill = Skill.create("risk.check")
+        context = _make_context(project_path, task_description)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_risk_check",
+                    "SKILL_CANNOT_RUN",
+                    "risk.check requires a non-empty task_description.",
+                ),
+            )]
+
+        # target 可选：有索引时触发 impact 增强
+        inputs = {}
+        if "target" in arguments:
+            inputs["target"] = arguments["target"]
+
+        result = skill.run(context, inputs)
+        risk_level = result.data.get("risk_level", "R0")
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_risk_check",
+                result.data,
+                risk_level=risk_level,
+                warnings=result.risks[:3],
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error("smartdev_risk_check", "INTERNAL_ERROR", f"risk.check failed: {e}"),
+        )]
+
+
+async def handle_architecture_map(arguments: dict, project_path: Path) -> list[TextContent]:
+    """架构分析：依赖图 + 循环依赖（有索引时用多语言 index relations）"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    try:
+        skill = Skill.create("architecture.map")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_architecture_map",
+                    "SKILL_CANNOT_RUN",
+                    f"architecture.map cannot run at: {project_path}. "
+                    "Either build an index first (smartdev_code_index) or ensure the project has source files.",
+                ),
+            )]
+
+        result = skill.run(context)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_architecture_map",
+                {
+                    "summary": result.summary,
+                    "data": result.data,
+                },
+                warnings=result.risks[:3],
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error("smartdev_architecture_map", "INTERNAL_ERROR", f"architecture.map failed: {e}"),
+        )]
+
+
+async def handle_task_plan(arguments: dict, project_path: Path) -> list[TextContent]:
+    """任务规划：三档方案 + 有索引时标注受影响文件"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    task_description = arguments.get("task_description", "").strip()
+
+    try:
+        skill = Skill.create("task.plan")
+        context = _make_context(project_path, task_description)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_task_plan",
+                    "SKILL_CANNOT_RUN",
+                    "task.plan requires a non-empty task_description.",
+                ),
+            )]
+
+        # target 可选：有索引时触发 impact 标注
+        inputs = {}
+        if "target" in arguments:
+            inputs["target"] = arguments["target"]
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_task_plan",
+                result.data,
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error("smartdev_task_plan", "INTERNAL_ERROR", f"task.plan failed: {e}"),
+        )]
+
+
+async def handle_qa_checklist(arguments: dict, project_path: Path) -> list[TextContent]:
+    """验收清单：按任务类型生成结构化验收条目"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    task_description = arguments.get("task_description", "").strip()
+
+    try:
+        skill = Skill.create("qa.checklist")
+        context = _make_context(project_path, task_description)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_qa_checklist",
+                    "SKILL_CANNOT_RUN",
+                    "qa.checklist requires a non-empty task_description.",
+                ),
+            )]
+
+        result = skill.run(context)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_qa_checklist",
+                result.data,
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error("smartdev_qa_checklist", "INTERNAL_ERROR", f"qa.checklist failed: {e}"),
+        )]
