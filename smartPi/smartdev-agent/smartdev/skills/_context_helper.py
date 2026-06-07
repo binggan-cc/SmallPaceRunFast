@@ -32,16 +32,21 @@ def get_index_if_available(project_path: Path):
     关键约束：
     - 只读，不触发索引构建（不调用 .index()）
     - 任何异常都返回 None，确保 Skill 永远不会因索引问题而崩溃
+    - schema 健壮性（Phase 9 前置）：不仅检查文件存在，还校验 DB 可打开
+      且含核心表（files/artifacts/relations）。损坏 / 不兼容 / 缺表 → None。
+      理由：Phase 9 依赖 impact 判风险，旧/损坏索引会让风险判断不可靠。
     - 调用方负责 close()
 
     参数：
         project_path: 项目根目录
 
     返回：
-        ProjectIndex 实例（索引存在且可打开）或 None
+        ProjectIndex 实例（索引存在、可打开且 schema 完整）或 None
     """
     db_path = project_path / ".smartdev" / "index.sqlite"
     if not db_path.exists():
+        return None
+    if not _index_schema_ok(db_path):
         return None
     try:
         # 延迟导入，避免 skills 包加载时强依赖 context 层
@@ -51,6 +56,33 @@ def get_index_if_available(project_path: Path):
     except Exception:
         # 索引损坏 / 打开失败 → 退回原逻辑，不中断 Skill
         return None
+
+
+def _index_schema_ok(db_path: Path) -> bool:
+    """轻量校验索引 DB 的 schema 是否完整可用。
+
+    检查 DB 能打开且含 Phase 6+ 的核心表。
+    缺表 / 损坏 / 不是合法 SQLite → False（调用方 fallback）。
+
+    用只读连接，不修改 DB，异常一律视为不可用。
+    """
+    import sqlite3
+
+    _REQUIRED_TABLES = {"files", "artifacts", "relations"}
+    conn = None
+    try:
+        # 只读模式打开，避免对损坏 DB 造成写入
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        rows = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+        tables = {r[0] for r in rows}
+        return _REQUIRED_TABLES.issubset(tables)
+    except Exception:
+        return False
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def max_risk(*levels: RiskLevel) -> RiskLevel:

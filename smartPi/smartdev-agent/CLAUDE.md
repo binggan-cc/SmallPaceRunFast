@@ -204,7 +204,7 @@ tree-sitter / tree-sitter-go 已安装（optional dependency）。
 - ✅ Phase 7 Step 3：Go fixture 全链路验证（index→search→map→validate，26 tests）
 - ✅ Phase 7 Step 4：真实 Go 项目验证（gnet-examples + feishu-cli 1228 go 文件，0 error）
 
-**测试基线：484 passed, 1 skipped**
+**测试基线：501 passed, 1 skipped**
 
 **Phase 7（Tree-sitter Go Provider）已完成。**
 **Phase 8（Context Layer ↔ Skill 接入打通）已完成。**
@@ -220,13 +220,16 @@ tree-sitter / tree-sitter-go 已安装（optional dependency）。
 - ✅ Step 3: task.plan ← impact（推荐方案标注受影响文件，477 tests）
 - ✅ Step 4: 端到端验证（workflow 注入 target 驱动 impact + 真实项目验证，484 tests）
 
-### Phase 9 — Safe Patch Agent（下一步）
-- code.patch 真实补丁生成（影响分析驱动）
-- patch 默认只生成不应用，R2/R3 必须确认
-- 自动验证（接入项目 test 命令）+ 变更摘要 + 回滚方案
-- 设计文档：[phase-9-design.md](docs/phase-9-design.md)（Step 0 已确认）
+### Phase 9 — Safe Patch Agent（进行中）
+- 设计文档：[phase-9-design.md](docs/phase-9-design.md)（Step 0 已确认 + P0 安全加固）
 - 核心约束：零 LLM → 不做智能代码生成，聚焦"安全执行机制 + 确定性补丁生成器（find-replace/token 替换）"
 - 拆分：code.patch(propose, R1) / code.apply(R2/R3 确认) / code.rollback(R1)
+- ✅ Step 1A: core/patch.py 可审查草案（find_replace_patch + 序列化 + hash 元数据 + 路径安全 + get_index schema 加固，501 tests）
+- 🔲 Step 1B: apply/rollback + 备份 + apply 前 hash 校验
+- 🔲 Step 2: code.patch propose 真实化 + impact 接入
+- 🔲 Step 3: code.apply Skill + 权限门 + R3 强确认
+- 🔲 Step 4: code.rollback + 端到端验证
+- 默认安全：不加 --apply 绝不碰磁盘
 
 ### Phase 6.3B/C（后续可选）
 - TypeScript Compiler API 增强（tsconfig 感知类型级别解析）

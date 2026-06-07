@@ -2,6 +2,31 @@
 
 本文档记录 SmartDev Agent 的重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.5.0] - 2026-06-07
+
+### Added — Phase 9 Step 1A: Safe Patch 可审查草案基础设施
+
+- **`get_index_if_available()` schema 加固**（Phase 9 前置）：不仅检查 `.smartdev/index.sqlite` 存在，还用只读连接校验核心表（files/artifacts/relations）。损坏/缺表/不兼容 → fallback，不报错。理由：Phase 9 依赖 impact 判风险，旧/损坏索引会让判断不可靠。
+- **`core/patch.py` 可审查草案能力**（不写盘）：
+  - `FilePatch` 新增 `old_hash` / `old_size` / `old_mtime`（P0-2，apply 前一致性校验基础）
+  - `Patch` 新增 `patch_id` / `affected_files` / `created_at`
+  - `Patch.to_dict()` / `from_dict()`：JSON 序列化往返（行级 changes 从 old/new content 重算）
+  - `compute_content_hash()`：内容 SHA256
+  - `is_safe_target()`（P0-3）：路径安全过滤——拒绝 traversal/外部路径/二进制/symlink，跳过 .git/.smartdev/node_modules 等
+  - `build_find_replace_patch()`：确定性 find-replace 补丁生成器（无 LLM），跨文件命中、记录 hash 元数据、路径安全过滤，**不落地**
+  - `generate_patch_id()` / `save_patch()` / `load_patch()`（P0-1）：propose 持久化到 `.smartdev/patches/{patch_id}.json`，防 TOCTOU
+- **`test_patch.py` 扩展**：+17 tests（内容 hash / 路径安全 5 项 / find-replace 6 项 / 序列化往返 4 项）
+
+### Changed
+
+- 仍不写真实源码——Step 1A 只做"可审查草案"，apply/rollback 在 Step 1B
+
+### Test
+
+- **501 passed, 1 skipped** — 测试基线（484 → 501，+17）
+
+---
+
 ## [0.4.0] - 2026-06-07
 
 ### Added — Phase 8 Step 4: Context Layer ↔ Skill 端到端验证
