@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-07
-> 当前阶段：Phase 10 Step 4 完成 — Patch Propose 工具（code_index/patch_propose，618 tests）
+> 当前阶段：Phase 10 完成 — MCP Server v0（14 工具，637 tests）
 
 ---
 
@@ -494,7 +494,20 @@ Go 提取能力（Step 2）：
 | Step 2 | 只读 Context 工具 | ✅ 完成 | search / impact / project_map / graph_validate + 19 tests（576 总计） |
 | Step 3 | Skill 工具接入 | ✅ 完成 | repo_scan / risk_check / architecture_map / task_plan / qa_checklist + 20 tests（596 总计） |
 | Step 4 | Patch Propose 工具 | ✅ 完成 | code_index（CACHE_WRITE）+ patch_propose（PATCH_PROPOSE）+ change.budget + diff_explain + 22 tests（618 总计） |
-| Step 5 | 真实 Agent 验证 | 待做 | Kiro / Claude Desktop 只读验证 |
+| Step 5 | 真实 Agent 验证 | ✅ 完成 | MCP 协议集成测试（subprocess JSON-RPC）+ Kiro mcp.json 配置 + 19 tests（637 总计） |
+
+**Phase 10（MCP Server v0）完成。** 14 个工具全部实现，637 tests 通过。
+
+能力边界：
+- ✅ stdio transport，single project per server instance
+- ✅ READ（11 工具）：ping/version/list_tools/code_search/code_impact/project_map/graph_validate/repo_scan/risk_check/architecture_map/task_plan/qa_checklist
+- ✅ CACHE_WRITE（1 工具）：code_index（只写 .smartdev/，不改源码）
+- ✅ PATCH_PROPOSE（1 工具）：patch_propose（diff + patch_id + diff_explain，不落盘）
+- ✅ change.budget：max_files 参数约束
+- ✅ 优雅降级：所有 Context 工具在无索引时返回 INDEX_NOT_FOUND + suggested_tool
+- ✅ Kiro mcp.json 已配置（~/.kiro/settings/mcp.json）
+- ❌ WRITE_CODE（patch_apply）：MCP v0 不暴露，写盘确认机制待 Phase 11 重新设计
+- ❌ Git 执行工具：Phase 11 范围
 
 核心设计原则：
 - MCP Server v0 = 现有 SmartDev 能力的安全工具出口，不是新平台

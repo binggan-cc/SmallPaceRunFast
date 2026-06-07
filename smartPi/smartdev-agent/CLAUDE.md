@@ -7,9 +7,27 @@
 
 ## 项目概况
 
-SmartDev Agent 是一个项目开发与仓库改进 AI Agent。
-技术栈：Python 3.10+，零外部依赖。
-架构：四层（Core Runtime → Workflow → Skill → Project Adapter）。
+**SmartDev 是一个面向真实软件项目的本地开发智能层。**
+它通过项目语义索引、影响分析、任务规划和安全 Patch，把代码仓库从"文件集合"变成 AI Agent 可查询、可判断、可安全修改的项目系统。
+
+```
+SmartDev = 项目语义图谱 + Skill 执行层 + 风险控制 + 安全 Patch + MCP 工具出口
+```
+
+它的目标不是替代 Claude、Codex、Kiro、Cursor，而是给这些 Agent 提供一个可信的本地项目上下文和安全执行能力。
+
+分层架构：
+
+```
+L1  诊断层      repo.scan / tech_stack / docs_status / entrypoints
+L2  规划层      task.plan / architecture.map / risk.check / qa.checklist
+L3  语义层      code.index / code.search / code.impact / project.map / graph.validate
+               多语言 Provider：Python(1.0) / JS-TS(0.95) / Go(0.98)
+L3a Skill接入   risk.check ← impact / architecture.map ← index / task.plan ← impact
+L4  执行层      code.patch(propose) → code.apply → code.rollback
+```
+
+技术栈：Python 3.10+，core 零外部依赖（mcp 为 optional dependency）。
 
 ## 核心约束（必须遵守）
 
@@ -164,15 +182,19 @@ python -m pytest tests/test_xxx.py -v
 smartdev-agent/
 ├── smartdev/
 │   ├── core/          # 运行时（risk, reporter, adapter, workflow, patch）
-│   ├── context/       # 语义项目上下文（index_store, artifact_extractor, ...）
-│   ├── detectors/     # 检测器（tech_stack, docs_status, entrypoints, ...）
-│   ├── skills/        # Skill（repo.scan, code.search, code.impact, ...）
+│   ├── context/       # 语义上下文层（index_store, artifact_extractor, structure_extractor,
+│   │                  #   node_bridge, tree_sitter_provider, tsconfig_resolver,
+│   │                  #   impact_analyzer, project_map, graph_validator）
+│   ├── detectors/     # 检测器（tech_stack, docs_status, entrypoints）
+│   ├── skills/        # 12 个 Skill（repo.scan / code.search / code.impact /
+│   │                  #   code.patch / code.apply / code.rollback 等）
+│   ├── mcp/           # MCP Server（Phase 10，待实现）
 │   ├── adapters/      # 项目适配器（JSON）
 │   ├── models.py      # 核心数据模型
 │   └── cli.py         # CLI 入口
-├── tests/             # 测试（386 tests）
-├── docs/              # 开发进度、Phase 6 技术文档
-├── pyproject.toml     # 项目配置
+├── tests/             # 测试（540 passed）
+├── docs/              # 开发进度 + Phase 设计文档（phase-6.3 / 7 / 8 / 9 / 10）
+├── pyproject.toml     # 项目配置（core 零依赖，mcp optional）
 └── CHANGELOG.md       # 变更记录
 ```
 
@@ -180,62 +202,35 @@ smartdev-agent/
 
 ## 当前阶段
 
-Phase 7 Step 2 — Go grammar 试点（已完成）
+Phase 10 完成 — MCP Server v0（14 工具，637 tests）
 
-SmartDev 已具备基于 tree-sitter-go 的 Go 语言结构提取能力，作为第三层 optional Provider 接入。
-tree-sitter / tree-sitter-go 已安装（optional dependency）。
-当前能力边界为 **Go module-level impact analysis**，不承诺 go.mod 解析、struct 字段级解析或 interface 实现关系。
+SmartDev 的 MCP Server v0 已全部完成。14 个工具通过 stdio transport 暴露给外部 Agent（Claude / Kiro / Cursor）。
+Kiro mcp.json 已配置（`~/.kiro/settings/mcp.json`）。
 
-已完成：
-- ✅ Phase 1-5：10 Skill + Workflow + Adapter
-- ✅ Phase 6-MVP：SQLite 索引 + artifact 提取 + search + impact
-- ✅ Phase 6.2：Code Intelligence v1（Python AST + import relations + project.map + graph.validate）
-- ✅ Phase 6.3 Step 0：JS/TS Parser Provider 执行前设计
-- ✅ Phase 6.3 Step 1：Node bridge 骨架（@babel/parser + JSONL 协议）
-- ✅ Phase 6.3 Step 2：Python NodeBridgeExtractor 集成（子进程单例 + 三层 fallback）
-- ✅ Phase 6.3 Step 3：JS/TS import relations + 全链路集成验证（7 种 ES module 模式）
-- ✅ Phase 6.3 Step 4.1：排除 .d.ts 文件避免 artifact 膨胀
-- ✅ Phase 6.3 Step 4.2：JS/TS import target 归一化（code:module:{path}）
-- ✅ Phase 6.3 Step 5：tsconfig paths alias 解析（@/foo → src/foo）
-- ✅ Phase 6.3 Step 3 补充：磁盘 fixture 全链路验证（tests/fixtures/js_ts_project/）
-- ✅ Phase 7 Step 0：Tree-sitter 执行前设计（6 问题决策）
-- ✅ Phase 7 Step 1：TreeSitterProvider 骨架 + auto_detect（20 tests）
-- ✅ Phase 7 Step 2：Go grammar 试点（Go AST 映射 + import relations，27 tests）
-- ✅ Phase 7 Step 3：Go fixture 全链路验证（index→search→map→validate，26 tests）
-- ✅ Phase 7 Step 4：真实 Go 项目验证（gnet-examples + feishu-cli 1228 go 文件，0 error）
+已完成（Phase 1–10）：
+- ✅ Phase 1-5：12 Skill + Workflow + Adapter
+- ✅ Phase 6-MVP / 6.2 / 6.3 / 7：多语言语义索引（Python/JS-TS/Go）
+- ✅ Phase 8：Context Layer ↔ Skill 接入（risk / architecture / plan 消费图谱）
+- ✅ Phase 9：Safe Patch（propose / apply / rollback + 备份 / hash校验 / R3确认）
+- ✅ Phase 10：MCP Server v0（14 工具：READ×11 + CACHE_WRITE×1 + PATCH_PROPOSE×1）
 
-**测试基线：540 passed, 1 skipped**
+**测试基线：637 passed, 1 skipped**
 
-**Phase 7（Tree-sitter Go Provider）已完成。**
-**Phase 8（Context Layer ↔ Skill 接入打通）已完成。**
+进行中：
 
-正在进行：
+### Phase 11 — Human-Controlled AI Coding Layer（下一步）
+- 设计文档：待写（phase-11-design.md）
+- 11A: Git Governance v0（git.status / diff.explain / commit.plan / release.plan）
+- 11B: Guard Skills（change.budget / dev.guard / dependency.guard / security.review）
 
-### Phase 8 — Context Layer ↔ Skill 接入打通（已完成）
-- 设计文档：[phase-8-design.md](docs/phase-8-design.md)
-- 目标：让 risk.check / architecture.map / task.plan 真正消费 Context Layer
-- 核心原则：优雅降级（有索引增强、无索引退回原逻辑，零回归）
-- ✅ Step 1: risk.check ← code.impact（可选 target 接入，final_risk = max(keyword, impact)，464 tests）
-- ✅ Step 2: architecture.map ← index（多语言依赖图 + 循环依赖检测，471 tests）
-- ✅ Step 3: task.plan ← impact（推荐方案标注受影响文件，477 tests）
-- ✅ Step 4: 端到端验证（workflow 注入 target 驱动 impact + 真实项目验证，484 tests）
-
-### Phase 9 — Safe Patch Agent（进行中）
-- 设计文档：[phase-9-design.md](docs/phase-9-design.md)（Step 0 已确认 + P0 安全加固）
-- 核心约束：零 LLM → 不做智能代码生成，聚焦"安全执行机制 + 确定性补丁生成器（find-replace/token 替换）"
-- 拆分：code.patch(propose, R1) / code.apply(R2/R3 确认) / code.rollback(R1)
-- ✅ Step 1A: core/patch.py 可审查草案（find_replace_patch + 序列化 + hash 元数据 + 路径安全 + get_index schema 加固，501 tests）
-- ✅ Step 1B: apply/rollback + 备份 + apply 前 hash 校验（原子性保护，512 tests）
-- ✅ Step 2: code.patch propose 真实化 + impact 接入（find-replace 真实 diff + patch_id，521 tests）
-- ✅ Step 3: code.apply Skill + 权限门 + R3 强确认 + 审计；code.rollback Skill（540 tests）
-- ✅ Step 4: 端到端 propose→apply→rollback 闭环（含 Step 3 集成验证）
-
-**Phase 9（Safe Patch Agent）已完成。**
-- 默认安全：不加 --apply 绝不碰磁盘
+### 后续规划
+- Phase 12：Model Collaboration Layer（12A Policy + 12B Router）
+- Phase 13：Call Graph（函数级引用分析）
+- Phase 14：FileWatcher（增量同步）
 
 ### Phase 6.3B/C（后续可选）
-- TypeScript Compiler API 增强（tsconfig 感知类型级别解析）
-- Vue SFC / Svelte script 块抽取（Phase 6.3C）
+- TypeScript Compiler API 增强
+- Vue SFC / Svelte script 块抽取
 
 ---
 
