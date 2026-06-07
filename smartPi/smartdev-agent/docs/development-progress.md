@@ -1,16 +1,65 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-07
-> 当前阶段：Phase 7 Step 2 完成 — Go grammar 试点（TreeSitterProvider 激活）
+> 当前阶段：Phase 10 Step 1 完成 — MCP Server 骨架（ping/version/list_tools，557 tests）
 
 ---
 
-## 1. 项目概述
+## 1. 项目定位
 
-SmartDev Agent 是一个项目开发与仓库改进 AI Agent，目标是将项目从"想法多、代码散"推进到"目标清、任务可执行、可持续迭代"。
+**SmartDev 是一个面向真实软件项目的本地开发智能层。**
+它通过项目语义索引、影响分析、任务规划和安全 Patch，把代码仓库从"文件集合"变成 AI Agent 可查询、可判断、可安全修改的项目系统。
 
-**技术栈**：Python 3.10+，零外部依赖
-**架构**：四层（Core Runtime → Workflow → Skill → Project Adapter）
+```
+SmartDev = 项目语义图谱 + Skill 执行层 + 风险控制 + 安全 Patch + MCP 工具出口
+```
+
+它不是"又一个写代码 Agent"，也不是聊天机器人，而是在人和 AI 编码工具（Claude / Cursor / Kiro / Codex）之间增加一层**"项目理解 + 风险控制 + 安全执行"的本地智能层**。目标是给这些外部 Agent 提供可信的本地项目上下文，而不是替代它们。
+
+### 分层架构
+
+```
+L1  诊断层      repo.scan / tech_stack / docs_status / entrypoints
+L2  规划层      task.plan / architecture.map / risk.check / qa.checklist
+L3  语义层      code.index / code.search / code.impact / project.map / graph.validate
+               多语言 Provider：Python(1.0) / JS-TS(0.95) / Go(0.98)
+L3a Skill接入   risk.check ← impact / architecture.map ← index / task.plan ← impact
+L4  执行层      code.patch(propose) → code.apply → code.rollback
+L5  版本治理层  git.status / git.diff.explain / git.commit.plan / git.release.plan（Phase 11）
+L6  外部接入层  MCP Server → Claude / Kiro / Cursor / Codex（Phase 10）
+L7  模型协作层  model registry / task router / output contract / risk policy（Phase 12，横向）
+```
+
+L7 是横向调度层，不替代任何现有层，而是决定：这个任务用哪个模型？需要哪些 SmartDev 工具？输出必须满足什么结构？是否允许进入 patch propose？
+
+### Human-Controlled AI Coding Loop
+
+AI 编程真正的风险是人失去理解权、判断权和验收权。SmartDev 通过六个门把每一次 AI 改动约束成可解释、可评估、可回滚、可交付的工程记录：
+
+| 门 | 对应能力 |
+|----|---------|
+| 理解门 | code.index / code.search / project.map / architecture.map |
+| 影响门 | code.impact / graph.validate |
+| 风险门 | risk.check（含 impact 增强）/ RiskController |
+| 权限门 | R0–R3 等级 / protected_paths / apply 显式确认 |
+| 测试门 | qa.checklist / patch propose 输出验证清单 |
+| 回滚门 | code.rollback / .smartdev/patch_backups/ 备份 |
+
+完整 AI 编程闭环（Phase 1–9 覆盖前四步，Phase 11 补上后两步）：
+
+```
+理解项目 → 判断影响 → 安全修改 → 测试验收 → 版本提交 → 发布治理
+```
+
+### 接入方式路线图
+
+```
+现在：  CLI（开发者本地使用）
+下一步：  MCP Server（外部 AI Agent 调用）— Phase 10
+后续：   IDE / Agent Workflow 集成（作为 AI 编程工具的项目语义与安全执行后端）
+```
+
+**技术栈**：Python 3.10+，core 零外部依赖，mcp 为 optional dependency
 
 ---
 
@@ -434,7 +483,164 @@ Go 提取能力（Step 2）：
 - 生成与应用分离：code.patch(propose, R1) / code.apply(R2/R3 确认) / code.rollback(R1)
 - 默认安全：不加 --apply 绝不碰磁盘
 
+### Phase 10：MCP Server v0（设计确认）
+
+目标：把 SmartDev 已有 L1–L4 能力暴露给外部 Agent（Claude / Kiro / Cursor 等），不继续新增底层分析能力。
+
+| Step | 交付物 | 状态 | 说明 |
+|------|--------|------|------|
+| Step 0 | 执行前设计 | ✅ 完成 | 设计文档 phase-10-design.md — 7 问题决策 + 工具分级 + 实施路线 |
+| Step 1 | MCP Server 骨架 | ✅ 完成 | smartdev/mcp/ + ping/version/list_tools + 17 tests（557 总计） |
+| Step 2 | 只读 Context 工具 | 待做 | search / impact / project_map / graph_validate |
+| Step 3 | Skill 工具接入 | 待做 | repo_scan / risk_check / architecture_map / task_plan / qa_checklist |
+| Step 4 | Patch Propose 工具 | 待做 | code_index（CACHE_WRITE）+ patch_propose（PATCH_PROPOSE，不落盘） |
+| Step 5 | 真实 Agent 验证 | 待做 | Kiro / Claude Desktop 只读验证 |
+
+核心设计原则：
+- MCP Server v0 = 现有 SmartDev 能力的安全工具出口，不是新平台
+- stdio transport，single project per server instance
+- v0 开放：READ + CACHE_WRITE + PATCH_PROPOSE
+- v0 禁用：patch_apply / WRITE_CODE（写盘确认机制需重新设计）
+- CLI 与 MCP 并存，互不替代
+- 完全不修改 Context Layer / Skill / Core / Patch 实现
+
+设计文档：[phase-10-design.md](phase-10-design.md)
+
 ### Phase 6.3B/C（后续可选）
+
+### 后续规划
+
+**Phase 11：Human-Controlled AI Coding Layer**
+
+目标：把 AI 编程从"改完了"推进到"交付可审查"，覆盖完整闭环的后两步（版本提交 + 发布治理）。
+
+**Phase 11A：Git Governance v0（版本治理层）**
+
+| Skill / Command | 类型 | 说明 |
+|----------------|------|------|
+| `git.status` | R0 只读 Skill | 当前分支 / dirty files / staged files / 最近提交 |
+| `git.diff.explain` | R0 只读 Skill | 解释 diff：每个文件改了什么 / 是否有无关改动 / 是否需要拆 commit |
+| `git.commit.plan` | R0 只读 Skill | 把当前 diff 拆成建议 commit + Conventional Commit message |
+| `git.release.plan` | R0 只读 Skill | 根据 CHANGELOG / commits / version 文件判断 semver bump |
+| `git.merge.check` | R0 只读 Skill | 合并前检查：测试 / CHANGELOG / protected path / patch backup |
+| `git.commit` | R1 执行 Command | 显式 `--apply` 才写 Git 历史，不自动执行 |
+| `git.tag` | R1 执行 Command | 显式 `--apply` 才打 tag，不自动执行 |
+
+永久禁止自动执行：`git push` / `git rebase` / `git reset` / `git merge`（高风险，留给人工）
+
+Git Governance 的核心设计原则：
+- Skill 负责"判断和建议"，Command 负责"显式执行"
+- `code.apply` 和 `git commit` 必须分开，apply 不自动 commit
+- 支持 `.smartdev/git-policy.yaml` 配置保护分支 / commit 规范 / 危险操作禁止项
+
+**Phase 11B：Guard Skills（安全防护层）**
+
+| Skill | 说明 |
+|-------|------|
+| `dev.guard` | 检查本轮任务是否违反 AI 编程硬规则（大规模重构 / 越过 protected_paths / 超过 max_files） |
+| `dependency.guard` | 检测 package.json / pyproject.toml / go.mod 是否新增依赖，输出依赖审查报告 |
+| `security.review` | 对 patch 或受影响文件做安全 checklist（输入校验 / 路径穿越 / 命令执行 / 敏感数据等） |
+| `change.budget` | 作为 patch.propose / patch.apply 的参数约束（max_files / max_lines / allow_schema_change 等） |
+
+第一版不接外部静态扫描工具，只做确定性 checklist。有工具（bandit / npm audit / semgrep）时调用，无工具时输出建议命令。
+
+**Phase 11 MCP 扩展**
+
+Phase 11 完成后，MCP 可扩展增加只读 Git 工具：
+- `smartdev_git_status` / `smartdev_git_diff_explain` / `smartdev_git_commit_plan` / `smartdev_git_release_plan`
+- 不暴露：`git.commit` / `git.push` / `git.merge`（执行类操作永远不进 MCP）
+
+---
+
+**Phase 12：Model Collaboration Layer（模型协作控制层）**
+
+SmartDev 不绑定某一个模型，而是把不同模型都纳入同一套项目上下文、任务边界、风险控制和验收流程里。Phase 12 分两步实现。
+
+**Phase 12A：Model Collaboration Policy（配置层，不调用真实 API）**
+
+| 模块 | 说明 |
+|------|------|
+| Model Registry | 多模型配置（provider / role / strengths / weaknesses / max_risk） |
+| Capability Profile | 模型能力画像（适合的任务类型 / 不适合的场景） |
+| Task Router | 任务类型 → 推荐模型/模式的映射规则 |
+| Output Contract | 统一输出结构约束（understanding / scope / affected_files / risk_level / patch_plan / validation / rollback） |
+| Risk Policy | 模型可处理的最高风险等级 / 是否需要二次 review / 是否必须人确认 |
+
+核心原则：
+- 工具能确定性完成的（搜索 / 影响分析 / 路径安全），不交给模型
+- 模型只处理解释、规划、生成候选方案和 review
+- 输出不符合 Output Contract，不能进入下一阶段，不能生成 patch
+- 第一版是纯配置层，不调用真实模型 API
+
+配置示例（`.smartdev/model-policy.yaml`）：
+```yaml
+models:
+  claude-sonnet:
+    role: reasoning
+    strengths: [architecture, requirement_clarify, diff_explain, security_review]
+    max_risk: R2
+  local-small:
+    role: cheap_worker
+    strengths: [simple_patch_propose, test_stub, regex_replace]
+    max_risk: R1
+
+policy:
+  R0: { model_review_required: false, human_confirm_required: false }
+  R1: { model_review_required: false, human_confirm_required: true }
+  R2: { model_review_required: true,  human_confirm_required: true }
+  R3: { model_review_required: true,  human_confirm_required: true, apply_allowed: false }
+```
+
+**Phase 12B：Model Router（路由层，真实模型调用）**
+
+依赖 Phase 12A 的规则层 + Phase 10 MCP 跑稳后实施。
+
+| 能力 | 说明 |
+|------|------|
+| `select_model(task)` | 根据任务类型和风险选择模型 |
+| `validate_output_contract(output)` | 校验模型输出是否符合契约 |
+| `handoff_to_patch_propose()` | 契约通过后移交 SmartDev Patch Gate |
+| `request_second_review()` | R2/R3 任务请求二次模型 review |
+
+不做（Phase 12 范围内）：自动多模型辩论 / Planner-Coder-Reviewer 全自动流水线 / 模型自动 apply / 模型自动 commit / 跨模型长期记忆 / 复杂 agent swarm
+
+---
+
+**Phase 13：Call Graph（函数级引用分析）**
+
+从 module-level impact 升级到 symbol-level impact。当前 SmartDev 知道"A 文件 import 了 B 模块"，但不知道"A.foo() 调用了 B.bar()"。
+
+| Step | 任务 |
+|------|------|
+| Step 0 | 设计确认，限定首批语言和边界 |
+| Step 1 | Python call graph 试点（`ast.Call`） |
+| Step 2 | JS/TS call graph 试点（Babel `CallExpression`） |
+| Step 3 | Go call graph 试点（Tree-sitter AST） |
+| Step 4 | `relations` 表新增 `calls` 类型 |
+| Step 5 | `ImpactAnalyzer` 支持 function-level reverse lookup |
+| Step 6 | `project.map` / `graph.validate` 支持 call graph 摘要和校验 |
+| Step 7 | 真实项目验证 |
+
+不做：完整类型推断 / 跨语言调用解析 / 动态调用推断 / LSP 级重构 / 承诺 100% 精确
+
+---
+
+**Phase 14：FileWatcher / Incremental Sync（持续同步）**
+
+让 SmartDev 从"手动 `smartdev index`"升级为"文件变化 → 自动增量更新索引"。
+
+| Step | 任务 |
+|------|------|
+| Step 0 | 设计确认，决定 watchdog 还是平台原生方案，是否 optional dependency |
+| Step 1 | 增量索引 API：单文件 reindex / delete / update |
+| Step 2 | 文件变更检测（watchdog 或 FSEvents/inotify） |
+| Step 3 | debounce：避免保存一次触发多次重建 |
+| Step 4 | watcher 状态报告：last_indexed / changed_files / errors |
+| Step 5 | `graph.validate` 增量校验 |
+| Step 6 | MCP / CLI 暴露 watcher 状态 |
+| Step 7 | 真实项目长时间运行验证 |
+
+不做（Phase 13 范围内）：daemon 常驻进程 / 自动 apply / 自动修复 / 大型任务调度
 
 ### 优化项
 
