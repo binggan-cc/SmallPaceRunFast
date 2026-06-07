@@ -210,6 +210,18 @@ tree-sitter / tree-sitter-go 已安装（optional dependency）。
 
 正在进行：
 
+### Phase 8 — Context Layer ↔ Skill 接入打通（设计确认）
+- 设计文档：[phase-8-design.md](docs/phase-8-design.md)
+- 目标：让 risk.check / architecture.map / task.plan 真正消费 Context Layer
+- 核心原则：优雅降级（有索引增强、无索引退回原逻辑，零回归）
+- Step 1: risk.check ← code.impact（下一步执行）
+- 不在本阶段：code.patch 真实化（→ Phase 9）、token.audit 接入、新增语言
+
+### Phase 9 — Safe Patch Agent（后续）
+- code.patch 真实补丁生成（影响分析驱动）
+- patch 默认只生成不应用，R2/R3 必须确认
+- 自动验证（接入项目 test 命令）+ 变更摘要 + 回滚方案
+
 ### Phase 6.3B/C（后续可选）
 - TypeScript Compiler API 增强（tsconfig 感知类型级别解析）
 - Vue SFC / Svelte script 块抽取（Phase 6.3C）

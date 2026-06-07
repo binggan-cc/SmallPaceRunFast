@@ -385,6 +385,26 @@ Go 提取能力（Step 2）：
 
 **Phase 7（Tree-sitter Go Provider）完成。**
 
+### Phase 8：Context Layer ↔ Skill 接入打通（设计确认）
+
+目标：把已建好的 Context Layer（索引/impact/relations）真正喂给 Skill 层，消除"眼睛和大脑两座孤岛"。
+不新增解析能力，只做"接线"。
+
+| Step | 交付物 | 状态 | 说明 |
+|------|--------|------|------|
+| Step 0 | 执行前设计 | ✅ 完成 | 设计文档 phase-8-design.md — 5 问题决策 + 优雅降级原则 |
+| Step 1 | risk.check ← code.impact | 🔲 待执行 | 关键词匹配升级为影响范围判断（顺带修已知问题 #1） |
+| Step 2 | architecture.map ← index | 🔲 待执行 | 复用索引 relations，支持多语言依赖图 |
+| Step 3 | task.plan ← impact | 🔲 待执行 | 任务项标注影响范围 |
+| Step 4 | 端到端验证 | 🔲 待执行 | workflow 消费 Context Layer + 真实项目验证 |
+
+核心原则：
+- 优雅降级——有索引则增强，无索引退回原逻辑，零回归
+- 只改 skills/，不动 context/
+- 风险信号取最大值（keyword vs impact）
+
+不在本阶段：code.patch 真实化（→ Phase 9 Safe Patch Agent）、token.audit 接入、新增语言
+
 ### Phase 6.3B/C（后续可选）
 
 - [ ] TypeScript Compiler API 增强（类型级别解析）
