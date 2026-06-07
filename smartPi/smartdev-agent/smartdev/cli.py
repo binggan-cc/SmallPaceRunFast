@@ -351,6 +351,31 @@ def _cmd_impact(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_mcp(args: argparse.Namespace) -> int:
+    """启动 MCP Server（供外部 Agent 通过 stdio 调用）"""
+    # 先检查 mcp 包，未安装时给出提示
+    try:
+        import mcp  # noqa: F401
+    except ImportError:
+        print(
+            "错误: MCP Server 需要安装 mcp 包。\n"
+            "请运行: pip install smartdev-agent[mcp]\n"
+            "或直接: pip install mcp",
+            file=sys.stderr,
+        )
+        return 1
+
+    project_path = Path(args.project).resolve()
+
+    if not project_path.exists() or not project_path.is_dir():
+        print(f"错误: 项目路径不存在或不是目录: {project_path}", file=sys.stderr)
+        return 1
+
+    from smartdev.mcp.server import run_mcp_server
+    run_mcp_server(project_path)
+    return 0
+
+
 def main() -> None:
     """CLI 主入口"""
     parser = argparse.ArgumentParser(
@@ -409,6 +434,14 @@ def main() -> None:
     impact_parser.add_argument("target", help="分析目标（文件路径或工件名称）")
     impact_parser.add_argument("--depth", "-d", type=int, default=3, help="最大分析深度（默认 3）")
     impact_parser.set_defaults(func=_cmd_impact)
+
+    # mcp 命令（Phase 10 新增）
+    mcp_parser = subparsers.add_parser(
+        "mcp",
+        help="启动 MCP Server（供外部 Agent 通过 stdio 调用，需 pip install mcp）",
+    )
+    mcp_parser.add_argument("--project", "-p", required=True, help="项目根目录路径")
+    mcp_parser.set_defaults(func=_cmd_mcp)
 
     args = parser.parse_args()
 

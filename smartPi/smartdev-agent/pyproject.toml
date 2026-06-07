@@ -17,3 +17,6 @@ smartdev = "smartdev.cli:main"
 dev = [
     "pytest>=7.0",
 ]
+mcp = [
+    "mcp>=1.0",
+]
