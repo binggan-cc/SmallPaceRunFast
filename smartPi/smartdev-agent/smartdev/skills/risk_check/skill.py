@@ -16,6 +16,7 @@ import re
 
 from smartdev.models import RiskLevel, SkillResult, TaskType
 from smartdev.skills.base import Skill
+from smartdev.skills._context_helper import get_index_if_available, max_risk
 
 
 # ── 风险规则 ──────────────────────────────────────────────
@@ -157,43 +158,112 @@ class RiskCheckSkill(Skill):
         return bool(context.task_description.strip())
 
     def run(self, context, inputs: dict | None = None) -> SkillResult:
-        """执行风险检查"""
+        """执行风险检查
+
+        Phase 8 Step 1：可选接入 code.impact。
+        - 若 inputs 提供 target 且项目已建索引 → 用 ImpactAnalyzer 增强风险判断
+        - 否则退回纯关键词匹配（零回归）
+        """
         task_description = context.task_description
 
-        # 分析风险等级
-        risk_level, factors, reasoning = _analyze_risk_level(task_description)
+        # 1. 关键词分析（现状保留，作为基线 / fallback）
+        keyword_risk, factors, reasoning = _analyze_risk_level(task_description)
 
-        # 构建检查清单
-        pre_check_list = _build_pre_check_list(risk_level)
+        # 2. 可选：impact 增强
+        impact_data = self._try_impact_analysis(context, inputs)
 
-        # 回滚建议
-        rollback = _build_rollback_suggestion(risk_level)
+        if impact_data:
+            impact_risk = impact_data["risk_level"]
+            final_risk = max_risk(keyword_risk, impact_risk)
+            risk_source = "both" if factors else "impact"
+            # 合并 impact 的风险因素和理由
+            if impact_data["affected_files"]:
+                factors = factors + [
+                    f"变更影响 {len(impact_data['affected_files'])} 个文件（来自索引分析）"
+                ]
+                reasoning = reasoning + [
+                    f"ImpactAnalyzer 解析目标 '{impact_data['target']}'，"
+                    f"判定影响风险为 {impact_risk.value}"
+                ]
+        else:
+            final_risk = keyword_risk
+            risk_source = "keyword"
 
-        # 摘要
+        # 3. 构建检查清单 + 回滚建议（基于最终风险等级）
+        pre_check_list = _build_pre_check_list(final_risk)
+        rollback = _build_rollback_suggestion(final_risk)
+
+        # 4. 摘要
         summary_parts = [
             f"风险检查完成：{task_description}",
-            f"建议风险等级：{risk_level.value}",
+            f"建议风险等级：{final_risk.value}",
+            f"风险来源：{risk_source}",
             f"风险因素：{len(factors)} 个",
             f"前置检查项：{len(pre_check_list)} 个",
         ]
 
+        data = {
+            "task_description": task_description,
+            "risk_level": final_risk.value,
+            "risk_factors": factors,
+            "pre_check_list": pre_check_list,
+            "rollback_suggestion": rollback,
+            "reasoning": reasoning,
+            "risk_source": risk_source,
+        }
+        # 仅当有 impact 时附加影响信息
+        if impact_data:
+            data["affected_files"] = impact_data["affected_files"]
+            data["impact_summary"] = impact_data["summary"]
+            data["impact_validation"] = impact_data["validation"]
+
         return SkillResult(
             success=True,
             summary="\n".join(summary_parts),
-            data={
-                "task_description": task_description,
-                "risk_level": risk_level.value,
-                "risk_factors": factors,
-                "pre_check_list": pre_check_list,
-                "rollback_suggestion": rollback,
-                "reasoning": reasoning,
-            },
+            data=data,
             risks=factors,
             next_steps=[
-                f"风险等级为 {risk_level.value}，" + (
-                    "可直接执行。" if risk_level == RiskLevel.R0
-                    else "建议执行前完成检查清单。" if risk_level == RiskLevel.R1
+                f"风险等级为 {final_risk.value}，" + (
+                    "可直接执行。" if final_risk == RiskLevel.R0
+                    else "建议执行前完成检查清单。" if final_risk == RiskLevel.R1
                     else "需要用户确认后才能执行。"
                 ),
             ],
         )
+
+    def _try_impact_analysis(self, context, inputs: dict | None) -> dict | None:
+        """尝试用 code.impact 增强风险判断。
+
+        返回 None 表示无法增强（无 target / 无索引 / 解析失败），
+        调用方退回纯关键词匹配。
+
+        保持 R0 只读语义：只读索引，不写任何文件。
+        """
+        inputs = inputs or {}
+        target = inputs.get("target")
+        if not target:
+            return None
+
+        index = get_index_if_available(context.project_path)
+        if index is None:
+            return None
+
+        try:
+            from smartdev.context.impact_analyzer import ImpactAnalyzer
+
+            result = ImpactAnalyzer(index.store).analyze_import_impact(target)
+            # 未解析到目标 → 无增强价值
+            if not result.resolved_target and not result.direct_dependents:
+                return None
+            return {
+                "target": target,
+                "risk_level": RiskLevel(result.risk_level),
+                "affected_files": result.affected_files,
+                "validation": result.validation_suggestions,
+                "summary": result.summary,
+            }
+        except Exception:
+            # impact 分析失败 → 退回关键词，不中断 Skill
+            return None
+        finally:
+            index.close()

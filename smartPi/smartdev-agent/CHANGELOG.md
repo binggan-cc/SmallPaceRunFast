@@ -2,6 +2,32 @@
 
 本文档记录 SmartDev Agent 的重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.4.0] - 2026-06-07
+
+### Added — Phase 8 Step 1: risk.check 接入 code.impact
+
+- **`skills/_context_helper.py`**（新建）：Skill ↔ Context Layer 接入辅助
+  - `get_index_if_available()`：检测 `.smartdev/index.sqlite`，存在则返回 ProjectIndex，否则 None（只读，不触发索引构建，异常安全）
+  - `max_risk()`：多个 RiskLevel 取最高值（宁可保守，不可低估）
+- **risk.check 可选接入 code.impact**：
+  - inputs 提供 `target` 且项目已建索引 → 用 `ImpactAnalyzer.analyze_import_impact()` 增强
+  - `final_risk = max(keyword_risk, impact_risk)`
+  - 输出新增 `affected_files` / `impact_summary` / `impact_validation` / `risk_source`
+  - 无 target / 无索引 / 解析失败 → 退回纯关键词匹配（零回归）
+  - 保持 R0 只读语义（ImpactAnalyzer 只读索引）
+- **已知问题 #1 缓解**：中文语序漏匹配问题，在有索引+target 时改用真实依赖分析判定风险
+- **`test_risk_check.py` 扩展**：+6 tests（无 target / 无索引 / impact 增强 / max 风险 / 未解析 fallback / R0 只读）
+
+### Changed
+
+- risk.check 风险判断从"纯关键词"升级为"关键词 + 可选 impact 增强"
+
+### Test
+
+- **464 passed, 1 skipped** — 测试基线（458 → 464，+6）
+
+---
+
 ## [0.3.0] - 2026-06-07
 
 ### Added — Phase 7 Step 1: TreeSitterProvider 骨架

@@ -117,3 +117,122 @@ class TestRiskCheckSkill:
 
         assert len(result.data["reasoning"]) >= 1
         assert "权限" in result.data["reasoning"][0]
+
+
+# ── Phase 8 Step 1: code.impact 接入测试 ──────────────────────
+
+
+class TestRiskCheckImpactIntegration:
+    """risk.check 接入 code.impact 的优雅降级测试
+
+    核心验证：
+    - 无 target → 退回关键词匹配（零回归）
+    - 有 target 但无索引 → 退回关键词匹配
+    - 有 target 且有索引 → impact 增强 + 风险取最大值
+    """
+
+    def _build_python_project(self, tmp_path: Path) -> Path:
+        """建一个有 import 关系的小 Python 项目并索引。"""
+        project = tmp_path / "pyproj"
+        project.mkdir()
+        (project / "models.py").write_text(
+            "class User:\n    def __init__(self, name):\n        self.name = name\n"
+        )
+        # 两个文件 import models，构成影响范围
+        (project / "service.py").write_text(
+            "from models import User\n\ndef make_user(n):\n    return User(n)\n"
+        )
+        (project / "api.py").write_text(
+            "from models import User\n\ndef endpoint():\n    return User('x')\n"
+        )
+        from smartdev.context.project_index import ProjectIndex
+
+        index = ProjectIndex(project)
+        index.index()
+        index.close()
+        return project
+
+    def test_no_target_falls_back_to_keyword(self, tmp_path: Path):
+        """无 target → 纯关键词匹配，risk_source=keyword"""
+        skill = Skill.create("risk.check")
+        context = ProjectContext(
+            project_path=tmp_path,
+            task_description="统一 CSS 颜色",
+        )
+        result = skill.run(context)
+        assert result.success
+        assert result.data["risk_source"] == "keyword"
+        assert "affected_files" not in result.data
+
+    def test_target_without_index_falls_back(self, tmp_path: Path):
+        """有 target 但项目无索引 → 退回关键词匹配"""
+        project = tmp_path / "noindex"
+        project.mkdir()
+        skill = Skill.create("risk.check")
+        context = ProjectContext(
+            project_path=project,
+            task_description="修改 models.py",
+        )
+        result = skill.run(context, {"target": "models.py"})
+        assert result.success
+        assert result.data["risk_source"] == "keyword"
+
+    def test_target_with_index_enhances_risk(self, tmp_path: Path):
+        """有 target 且有索引 → impact 增强，输出受影响文件"""
+        project = self._build_python_project(tmp_path)
+        skill = Skill.create("risk.check")
+        context = ProjectContext(
+            project_path=project,
+            task_description="修改 User 模型",  # 关键词不含高风险词
+        )
+        result = skill.run(context, {"target": "models.py"})
+        assert result.success
+        # impact 应解析到依赖方，risk_source 应包含 impact
+        assert result.data["risk_source"] in ("impact", "both")
+        assert "affected_files" in result.data
+        # service.py 和 api.py 都 import 了 models
+        affected = result.data["affected_files"]
+        assert any("service.py" in f for f in affected)
+        assert any("api.py" in f for f in affected)
+
+    def test_final_risk_is_max_of_keyword_and_impact(self, tmp_path: Path):
+        """final_risk = max(keyword_risk, impact_risk)
+
+        任务描述含 R3 关键词（数据模型），即使 impact 只算出较低风险，
+        最终也应取 R3。
+        """
+        project = self._build_python_project(tmp_path)
+        skill = Skill.create("risk.check")
+        context = ProjectContext(
+            project_path=project,
+            task_description="修改数据模型 schema",  # R3 关键词
+        )
+        result = skill.run(context, {"target": "models.py"})
+        assert result.success
+        # R3 关键词命中，最终风险不应低于 R3
+        assert result.data["risk_level"] == "R3"
+        assert result.data["risk_source"] == "both"
+
+    def test_unresolved_target_falls_back(self, tmp_path: Path):
+        """target 在索引中找不到 → 退回关键词匹配"""
+        project = self._build_python_project(tmp_path)
+        skill = Skill.create("risk.check")
+        context = ProjectContext(
+            project_path=project,
+            task_description="改个文案",
+        )
+        result = skill.run(context, {"target": "does_not_exist_xyz"})
+        assert result.success
+        assert result.data["risk_source"] == "keyword"
+
+    def test_skill_remains_r0_readonly(self, tmp_path: Path):
+        """接入 impact 后 risk.check 仍是 R0 只读，不产生 changed_files"""
+        project = self._build_python_project(tmp_path)
+        skill = Skill.create("risk.check")
+        assert skill.risk_level == RiskLevel.R0
+        context = ProjectContext(
+            project_path=project,
+            task_description="修改 User",
+        )
+        result = skill.run(context, {"target": "models.py"})
+        assert result.changed_files == []

@@ -288,7 +288,7 @@ Go 提取能力（Step 2）：
 ## 5. 测试覆盖
 
 ```
-432 passed, 1 skipped — 0 failed
+464 passed, 1 skipped — 0 failed
 ```
 
 | 测试文件 | 数量 | 覆盖模块 |
@@ -302,7 +302,6 @@ Go 提取能力（Step 2）：
 | test_cli.py | 7 | CLI 入口 |
 | test_architecture_map.py | 11 | architecture.map Skill |
 | test_token_audit.py | 10 | token.audit Skill |
-| test_risk_check.py | 11 | risk.check Skill |
 | test_qa_checklist.py | 11 | qa.checklist Skill |
 | test_adapter.py | 14 | 项目适配器系统 |
 | test_doc_generate.py | 11 | doc.generate Skill |
@@ -325,6 +324,7 @@ Go 提取能力（Step 2）：
 | test_tree_sitter_provider.py | 20 | TreeSitterProvider 骨架 + 接口（Phase 7 Step 1） |
 | test_go_extraction.py | 27 | Go 结构提取 + import relations + 全链路（Phase 7 Step 2） |
 | test_go_full_pipeline.py | 26 | Go fixture 磁盘项目全链路验证（Phase 7 Step 3） |
+| test_risk_check.py | 17 | risk.check Skill + code.impact 接入（Phase 8 Step 1，11+6） |
 
 ---
 
@@ -332,7 +332,7 @@ Go 提取能力（Step 2）：
 
 | # | 问题 | 严重度 | 状态 |
 |---|------|--------|------|
-| 1 | risk.check 关键词匹配是短语匹配，中文语序灵活导致漏匹配（如"重构目录"≠"目录重构"） | 中 | 待优化 |
+| 1 | risk.check 关键词匹配是短语匹配，中文语序灵活导致漏匹配（如"重构目录"≠"目录重构"） | 中 | 已缓解（Phase 8 Step 1：有索引+target 时改用 impact 分析判定风险，关键词仅作 fallback） |
 | 2 | code.patch 生成的是占位符补丁，非真实代码变更 | 低 | 待 LLM 增强 |
 | 3 | 适配器用 JSON 格式，agent.md 设计的是 YAML | 低 | 可迁移 |
 
@@ -393,7 +393,7 @@ Go 提取能力（Step 2）：
 | Step | 交付物 | 状态 | 说明 |
 |------|--------|------|------|
 | Step 0 | 执行前设计 | ✅ 完成 | 设计文档 phase-8-design.md — 5 问题决策 + 优雅降级原则 |
-| Step 1 | risk.check ← code.impact | 🔲 待执行 | 关键词匹配升级为影响范围判断（顺带修已知问题 #1） |
+| Step 1 | risk.check ← code.impact | ✅ 完成 | 关键词匹配升级为影响范围判断 + 优雅降级（6 tests） |
 | Step 2 | architecture.map ← index | 🔲 待执行 | 复用索引 relations，支持多语言依赖图 |
 | Step 3 | task.plan ← impact | 🔲 待执行 | 任务项标注影响范围 |
 | Step 4 | 端到端验证 | 🔲 待执行 | workflow 消费 Context Layer + 真实项目验证 |
@@ -424,7 +424,7 @@ Go 提取能力（Step 2）：
 |------|------|------|
 | §3.1 先分析后修改 | ✅ | |
 | §3.2 小步快跑 | ✅ | |
-| §3.3 每步可验证 | ✅ | 458 个测试 |
+| §3.3 每步可验证 | ✅ | 464 个测试 |
 | §3.4 不扩大范围 | ✅ | |
 | §3.5 文档同步更新 | ✅ | 本文档即为证明 |
 | §3.6 每步提交 git | ✅ | 25+ commits |
