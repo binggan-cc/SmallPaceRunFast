@@ -1,8 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-07
-> 最后更新：2026-06-07
-> 当前阶段：Phase 7 Step 0 — Tree-sitter Multi-language Graph 设计确认
+> 当前阶段：Phase 7 Step 2 完成 — Go grammar 试点（TreeSitterProvider 激活）
 
 ---
 
@@ -164,6 +163,38 @@ NullStructureExtractor      → 不支持的语言
 - ❌ 不支持 TypeScript Compiler API 类型级别解析（Phase 6.3B）
 - ❌ 不支持 extends / references 多文件继承
 
+### Phase 7：Tree-sitter Multi-language Graph Provider（进行中）
+
+目标：为不支持的语言（首批 Go）提供高置信度解析，作为第三层 optional Provider。
+
+| Step | 交付物 | 状态 | 说明 |
+|------|--------|------|------|
+| Step 0 | 执行前设计 | ✅ 完成 | 设计文档 phase-7-design.md — 6 问题决策 + 实施路线 |
+| Step 1 | TreeSitterProvider 骨架 | ✅ 完成 | Provider 注册 + 依赖检测 + auto_detect + 接口合规测试 |
+| Step 2 | Go grammar 试点 | ✅ 完成 | Go AST 映射 + import relations + test_go_extraction.py（27 tests） |
+| Step 3 | Go fixture 全链路验证 | 🔲 待执行 | tests/fixtures/go_project/ + 全链路 index→search→map→validate |
+| Step 4 | 真实 Go 项目验证 | 🔲 待执行 | 只读验证，不改代码 |
+
+Provider 链（Phase 7 Step 2 状态）：
+```
+PythonAstExtractor      → python (confidence=1.0)
+NodeBridgeExtractor     → javascript, typescript (confidence=0.95)
+TreeSitterProvider      → go (confidence=0.98)  ← Step 2 激活
+JsTsRegexFallbackExtractor → JS/TS fallback (confidence=0.55)
+NullStructureExtractor  → 不支持的语言
+```
+
+Go 提取能力（Step 2）：
+- ✅ function_declaration → function（exported detection）
+- ✅ method_declaration → method（parent = receiver type）
+- ✅ type_declaration → class（struct）/ interface
+- ✅ import_declaration → import（单行 + block，alias/blank/dot）
+- ✅ Go imports → external:go:{module}（import_kind 区分）
+- ✅ 语法错误 → errors 列表，不崩溃
+- ❌ go.mod module path resolution（Step 3 后续可选）
+- ❌ struct 字段级解析（P2）
+- ❌ interface 实现关系（P2）
+
 ---
 
 ## 3. 已完成模块
@@ -257,7 +288,7 @@ NullStructureExtractor      → 不支持的语言
 ## 5. 测试覆盖
 
 ```
-386 passed — 0 failed, 1 skipped
+432 passed, 1 skipped — 0 failed
 ```
 
 | 测试文件 | 数量 | 覆盖模块 |
@@ -289,8 +320,10 @@ NullStructureExtractor      → 不支持的语言
 | test_project_map.py | 9 | 项目地图导出（Phase 6.2） |
 | test_graph_validator.py | 15 | 图谱校验（Phase 6.2） |
 | test_node_bridge_extractor.py | 20 | Node Bridge Python 适配（Phase 6.3） |
-| test_js_ts_full_pipeline.py | 39 | JS/TS 全链路集成（Phase 6.3） |
+| test_js_ts_full_pipeline.py | 40 | JS/TS 全链路集成（Phase 6.3） |
 | test_js_ts_path_alias.py | 15 | tsconfig paths alias（Phase 6.3） |
+| test_tree_sitter_provider.py | 20 | TreeSitterProvider 骨架 + 接口（Phase 7 Step 1） |
+| test_go_extraction.py | 27 | Go 结构提取 + import relations + 全链路（Phase 7 Step 2） |
 
 ---
 
@@ -304,7 +337,7 @@ NullStructureExtractor      → 不支持的语言
 
 ---
 
-### Phase 7 Step 0：Tree-sitter 设计确认（进行中）
+### Phase 7 Step 0：Tree-sitter 设计确认（✅ 完成）
 
 - [x] 设计文档：[phase-7-design.md](phase-7-design.md) — 6 问题决策 + 实施路线
 - 核心决策：
@@ -314,7 +347,29 @@ NullStructureExtractor      → 不支持的语言
   - 复用现有 Provider 接口 + CodeSymbol / ImportRecord
   - 不替换 Python AST / NodeBridge
 
-### Phase 7 Step 1-4（待设计确认后执行）
+### Phase 7 Step 1：TreeSitterProvider 骨架（✅ 完成）
+
+- [x] `tree_sitter_provider.py` — Provider 骨架，接口合规
+- [x] `structure_extractor.py` — auto_detect_treesitter 入口
+- [x] `test_tree_sitter_provider.py` — 20 tests（骨架 + 接口 + 依赖检测）
+- 测试基线：405 passed
+
+### Phase 7 Step 2：Go grammar 试点（✅ 完成）
+
+- [x] `tree_sitter_provider.py` 全面升级（_load_language("go") + Go AST 映射）
+- [x] `artifact_extractor.py` Go import relation 分支
+- [x] `test_go_extraction.py` — 27 tests（结构提取/import relations/全链路）
+- 测试基线：**432 passed, 1 skipped**
+
+### Phase 7 Step 3：Go fixture 全链路验证（🔲 待执行）
+
+- [ ] `tests/fixtures/go_project/` 磁盘 fixture
+- [ ] 全链路验证：index → search → project.map → graph.validate
+- 预计：~442 tests
+
+### Phase 7 Step 4：真实 Go 项目验证（🔲 待执行）
+
+- [ ] 拿一个小型 Go 项目跑完整诊断，只读验证
 
 ### Phase 6.3B/C（后续可选）
 
@@ -335,7 +390,7 @@ NullStructureExtractor      → 不支持的语言
 |------|------|------|
 | §3.1 先分析后修改 | ✅ | |
 | §3.2 小步快跑 | ✅ | |
-| §3.3 每步可验证 | ✅ | 386 个测试 |
+| §3.3 每步可验证 | ✅ | 432 个测试 |
 | §3.4 不扩大范围 | ✅ | |
 | §3.5 文档同步更新 | ✅ | 本文档即为证明 |
 | §3.6 每步提交 git | ✅ | 25+ commits |

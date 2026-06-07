@@ -180,11 +180,11 @@ smartdev-agent/
 
 ## 当前阶段
 
-Phase 6.3 — JS/TS Parser Provider v1（已完成，已冻结）
+Phase 7 Step 2 — Go grammar 试点（已完成）
 
-SmartDev 已具备基于 Node + Babel Parser 的 JS/TS/JSX/TSX 高置信度结构提取能力。
-Node bridge 为 optional dependency — 有 Node 时自动启用（confidence=0.95），无 Node 时静默 fallback 到 regex（confidence=0.55）。
-当前能力边界为 **module-level impact analysis**，不承诺完整符号级引用分析、函数调用图或多语言精确解析。
+SmartDev 已具备基于 tree-sitter-go 的 Go 语言结构提取能力，作为第三层 optional Provider 接入。
+tree-sitter / tree-sitter-go 已安装（optional dependency）。
+当前能力边界为 **Go module-level impact analysis**，不承诺 go.mod 解析、struct 字段级解析或 interface 实现关系。
 
 已完成：
 - ✅ Phase 1-5：10 Skill + Workflow + Adapter
@@ -198,14 +198,18 @@ Node bridge 为 optional dependency — 有 Node 时自动启用（confidence=0.
 - ✅ Phase 6.3 Step 4.2：JS/TS import target 归一化（code:module:{path}）
 - ✅ Phase 6.3 Step 5：tsconfig paths alias 解析（@/foo → src/foo）
 - ✅ Phase 6.3 Step 3 补充：磁盘 fixture 全链路验证（tests/fixtures/js_ts_project/）
+- ✅ Phase 7 Step 0：Tree-sitter 执行前设计（6 问题决策）
+- ✅ Phase 7 Step 1：TreeSitterProvider 骨架 + auto_detect（20 tests）
+- ✅ Phase 7 Step 2：Go grammar 试点（Go AST 映射 + import relations，27 tests）
+
+**测试基线：432 passed, 1 skipped**
 
 正在进行：
 
-### Phase 7 Step 0 — Tree-sitter Multi-language Graph 设计确认
-- 设计文档：[phase-7-design.md](docs/phase-7-design.md)
-- Tree-sitter 作为 **optional multi-language Provider**，不替换 Python AST / NodeBridge
-- 首批试点：Go（单语言），Python tree-sitter binding
-- 复用现有 Provider 接口 + CodeSymbol / ImportRecord
+### Phase 7 Step 3 — Go fixture 全链路验证（待执行）
+- `tests/fixtures/go_project/` — 小型磁盘 Go 项目
+- 验证：index → search → project.map → graph.validate
+- 预期：~442 tests
 
 ### Phase 6.3B/C（后续可选）
 - TypeScript Compiler API 增强（tsconfig 感知类型级别解析）

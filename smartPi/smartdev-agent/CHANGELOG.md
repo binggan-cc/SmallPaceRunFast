@@ -2,6 +2,52 @@
 
 本文档记录 SmartDev Agent 的重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.3.0] - 2026-06-07
+
+### Added — Phase 7 Step 1: TreeSitterProvider 骨架
+
+- **TreeSitterProvider 骨架**：实现 `StructureExtractorProvider` 接口，依赖缺失时静默跳过
+- **`_tree_sitter_available()`**：运行时检测 tree-sitter Python binding
+- **`_try_create_tree_sitter_provider()`**：安全创建 Provider，异常不传播
+- **auto_detect_treesitter**：`StructureExtractor.__init__` 新增自动注册入口
+- **Step 1 不接真实 grammar**：此时 TreeSitterProvider 只注册接口，不提取任何代码结构
+- **`test_tree_sitter_provider.py`**：20 tests（Provider 注册 + 接口合规 + 缺依赖跳过 + 不支持语言）
+- 测试基线：405 passed, 1 skipped
+
+### Added — Phase 7 Step 2: Go grammar 试点
+
+- **`_load_language("go")`**：tree-sitter-go grammar 加载适配层，隔离 API 差异
+- **`_extract_go()`**：Go AST 节点 → CodeSymbol 映射
+  - `function_declaration` → function（exported by 首字母大写）
+  - `method_declaration` → method（parent = receiver type）
+  - `type_declaration` → class（struct）/ interface
+  - `import_declaration` → import（单行 + block，alias/blank/dot 三种形式）
+  - 语法错误不崩溃，返回 errors 列表
+- **Go import relations**（`artifact_extractor.py`）：
+  - `.go` 文件语言映射
+  - `_parse_go_imports()` / `_resolve_go_import_target()`
+  - 所有 Go import → `external:go:{module}`
+  - import_kind 区分：go_import / go_import_alias / go_import_blank / go_import_dot
+  - Step 2 不做 go.mod module path resolution
+- **`test_go_extraction.py`**：27 tests
+  - 15 Go 结构提取测试（function/method/struct/interface/import）
+  - 5 Go import relation 测试
+  - 2 Go 文件检测测试
+  - 3 Go 全链路测试（index → artifact → relation → search）
+  - 2 Provider 隔离测试（Python/TS 不受影响）
+  - grammar 相关测试用 `skipif(_go_grammar_available)` 保护
+
+### Changed
+
+- `tree-sitter` + `tree-sitter-go` 已安装（optional dependency）
+- Provider 链新增第三层：`TreeSitterProvider → go (confidence=0.98)`
+
+### Test
+
+- **432 passed, 1 skipped** — 测试基线（405 → 432，+27）
+
+---
+
 ## [0.2.0] - 2026-06-06
 
 ### Added — Phase 6-MVP: Code Intelligence v0
