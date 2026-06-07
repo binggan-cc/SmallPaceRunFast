@@ -4,6 +4,26 @@
 
 ## [0.5.0] - 2026-06-07
 
+### Added — Phase 9 Step 1B: apply / rollback（写盘能力）
+
+- **`apply_patch()`**：补丁应用到磁盘，三重保护：
+  - 路径安全校验（P0-3，is_safe_target）→ 不安全则 skip
+  - old_hash 一致性校验（P0-2）→ 不一致则 reject（防 TOCTOU）
+  - 应用前备份原文件到 backup_dir
+  - **原子性**：任一文件被 reject 则整体不应用
+  - 支持 CREATE / MODIFY / DELETE 三种 action
+- **`rollback_patch()`**：从备份目录恢复——普通文件写回原位，`.absent` 标记则删除（撤销 CREATE）
+- **`ApplyResult` / `RollbackResult`**：结构化结果（applied/skipped/rejected/backup_path/errors）
+- **`_backup_file()`**：保留相对目录结构备份，CREATE 场景写 `.absent` 标记
+- **运行时风险约束**：apply_patch 是写盘能力（R2/R3），文档明确禁止绕过 Skill 层权限门直接调用
+- **`test_patch.py` 扩展**：+11 tests（apply 修改/备份/hash 拒绝/CREATE/DELETE/路径跳过 + rollback 恢复/删除/缺备份 + 端到端 propose→apply→rollback 闭环）
+
+### Test
+
+- **512 passed, 1 skipped** — 测试基线（501 → 512，+11）
+
+---
+
 ### Added — Phase 9 Step 1A: Safe Patch 可审查草案基础设施
 
 - **`get_index_if_available()` schema 加固**（Phase 9 前置）：不仅检查 `.smartdev/index.sqlite` 存在，还用只读连接校验核心表（files/artifacts/relations）。损坏/缺表/不兼容 → fallback，不报错。理由：Phase 9 依赖 impact 判风险，旧/损坏索引会让判断不可靠。

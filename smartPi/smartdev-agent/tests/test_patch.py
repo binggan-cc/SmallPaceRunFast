@@ -311,3 +311,182 @@ class TestPatchSerialization:
         id1 = generate_patch_id(p1)
         id2 = generate_patch_id(p2)
         assert id1.split("-")[-1] == id2.split("-")[-1]
+
+
+# ── Phase 9 Step 1B: apply / rollback 测试 ────────────────────
+
+from smartdev.core.patch import (
+    ApplyResult,
+    RollbackResult,
+    apply_patch,
+    rollback_patch,
+)
+
+
+class TestApplyPatch:
+    """apply_patch 写盘 + 备份 + hash 校验"""
+
+    def _project(self, tmp_path: Path) -> Path:
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        (proj / "a.css").write_text("color: #22C55E;\n")
+        (proj / "b.css").write_text("color: #22C55E; bg: #fff;\n")
+        return proj
+
+    def test_apply_modifies_files(self, tmp_path: Path):
+        proj = self._project(tmp_path)
+        patch = build_find_replace_patch(proj, "#22C55E", "var(--accent)", include_glob="**/*.css")
+        backup = proj / ".smartdev" / "patch_backups" / "t1"
+
+        result = apply_patch(patch, proj, backup)
+        assert result.success
+        assert len(result.applied_files) == 2
+        # 文件确实被改
+        assert "var(--accent)" in (proj / "a.css").read_text()
+        assert "#22C55E" not in (proj / "a.css").read_text()
+
+    def test_apply_creates_backup(self, tmp_path: Path):
+        proj = self._project(tmp_path)
+        original = (proj / "a.css").read_text()
+        patch = build_find_replace_patch(proj, "#22C55E", "var(--accent)", include_glob="**/*.css")
+        backup = proj / ".smartdev" / "patch_backups" / "t2"
+
+        apply_patch(patch, proj, backup)
+        # 备份保留了原内容
+        assert (backup / "a.css").read_text() == original
+
+    def test_apply_rejects_on_hash_mismatch(self, tmp_path: Path):
+        """propose 后文件被改 → apply 拒绝（P0-2 防 TOCTOU）"""
+        proj = self._project(tmp_path)
+        patch = build_find_replace_patch(proj, "#22C55E", "var(--accent)", include_glob="**/*.css")
+
+        # 模拟 propose 与 apply 之间文件被外部修改
+        (proj / "a.css").write_text("color: #000000;\n")
+
+        backup = proj / ".smartdev" / "patch_backups" / "t3"
+        result = apply_patch(patch, proj, backup)
+
+        assert result.success is False
+        assert any("a.css" in p for p, _ in result.rejected_files)
+        # 原子性：有拒绝项时整体不应用，b.css 也不应被改
+        assert "#22C55E" in (proj / "b.css").read_text()
+
+    def test_apply_create_action(self, tmp_path: Path):
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        fp = create_file_patch("new.py", "", "print('hi')\n", reason="new file")
+        patch = Patch(task_description="create", files=[fp])
+        backup = proj / ".smartdev" / "patch_backups" / "t4"
+
+        result = apply_patch(patch, proj, backup)
+        assert result.success
+        assert (proj / "new.py").read_text() == "print('hi')\n"
+
+    def test_apply_create_rejects_if_exists(self, tmp_path: Path):
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        (proj / "exists.py").write_text("old\n")
+        fp = create_file_patch("exists.py", "", "new\n", reason="create")
+        # create_file_patch 检测 old 为空 → CREATE action
+        patch = Patch(task_description="create", files=[fp])
+        backup = proj / ".smartdev" / "patch_backups" / "t5"
+
+        result = apply_patch(patch, proj, backup)
+        assert result.success is False
+        assert any("exists.py" in p for p, _ in result.rejected_files)
+
+    def test_apply_delete_action(self, tmp_path: Path):
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        (proj / "gone.py").write_text("delete me\n")
+        fp = create_file_patch("gone.py", "delete me\n", "", reason="delete")
+        fp.old_hash = compute_content_hash("delete me\n")
+        patch = Patch(task_description="delete", files=[fp])
+        backup = proj / ".smartdev" / "patch_backups" / "t6"
+
+        result = apply_patch(patch, proj, backup)
+        assert result.success
+        assert not (proj / "gone.py").exists()
+
+    def test_apply_skips_unsafe_paths(self, tmp_path: Path):
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        fp = create_file_patch("../escape.py", "", "x\n", reason="escape")
+        patch = Patch(task_description="escape", files=[fp])
+        backup = proj / ".smartdev" / "patch_backups" / "t7"
+
+        result = apply_patch(patch, proj, backup)
+        # 路径逃逸 → 跳过，不写盘
+        assert any("escape" in p for p, _ in result.skipped_files)
+        assert not (tmp_path / "escape.py").exists()
+
+
+class TestRollbackPatch:
+    """rollback_patch 从备份恢复"""
+
+    def test_rollback_restores_modified(self, tmp_path: Path):
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        (proj / "a.css").write_text("color: #22C55E;\n")
+        original = (proj / "a.css").read_text()
+
+        patch = build_find_replace_patch(proj, "#22C55E", "var(--accent)", include_glob="**/*.css")
+        backup = proj / ".smartdev" / "patch_backups" / "r1"
+        apply_patch(patch, proj, backup)
+        assert "var(--accent)" in (proj / "a.css").read_text()
+
+        rb = rollback_patch(backup, proj)
+        assert rb.success
+        assert (proj / "a.css").read_text() == original
+
+    def test_rollback_removes_created(self, tmp_path: Path):
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        fp = create_file_patch("new.py", "", "print('hi')\n", reason="new")
+        patch = Patch(task_description="create", files=[fp])
+        backup = proj / ".smartdev" / "patch_backups" / "r2"
+
+        apply_patch(patch, proj, backup)
+        assert (proj / "new.py").exists()
+
+        rb = rollback_patch(backup, proj)
+        assert rb.success
+        # CREATE 被撤销 → 文件应删除
+        assert not (proj / "new.py").exists()
+
+    def test_rollback_missing_backup(self, tmp_path: Path):
+        rb = rollback_patch(tmp_path / "nonexistent", tmp_path)
+        assert rb.success is False
+        assert rb.errors
+
+
+class TestApplyRollbackEndToEnd:
+    """propose → apply → rollback 闭环"""
+
+    def test_full_cycle_restores_original(self, tmp_path: Path):
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        (proj / "a.css").write_text("color: #22C55E;\n")
+        (proj / "b.css").write_text(".y { color: #22C55E; }\n")
+        snapshot = {
+            "a.css": (proj / "a.css").read_text(),
+            "b.css": (proj / "b.css").read_text(),
+        }
+
+        # propose
+        patch = build_find_replace_patch(proj, "#22C55E", "var(--accent)", include_glob="**/*.css")
+        patches_dir = proj / ".smartdev" / "patches"
+        patch_id = save_patch(patch, patches_dir)
+
+        # load + apply（模拟 apply 阶段消费已存 patch）
+        loaded = load_patch(patch_id, patches_dir)
+        backup = proj / ".smartdev" / "patch_backups" / patch_id
+        apply_result = apply_patch(loaded, proj, backup)
+        assert apply_result.success
+        assert "var(--accent)" in (proj / "a.css").read_text()
+
+        # rollback
+        rb = rollback_patch(backup, proj)
+        assert rb.success
+        for name, content in snapshot.items():
+            assert (proj / name).read_text() == content

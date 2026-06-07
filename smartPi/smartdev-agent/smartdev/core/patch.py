@@ -514,3 +514,217 @@ def load_patch(patch_id: str, patches_dir: Path) -> Patch | None:
         return Patch.from_dict(data)
     except (OSError, ValueError, KeyError):
         return None
+
+
+# ── Phase 9 Step 1B: apply / rollback（写盘能力）──────────────
+#
+# ⚠️ apply_patch 是写盘能力（运行时 R2/R3）。
+# 任何对真实项目的调用都必须经 Skill 层权限门（risk.check + --apply + R3 强确认），
+# 禁止绕过 Skill 直接调用。core 层只保证"安全写盘 + 可回滚"，权限判断在 Skill 层。
+
+
+@dataclass
+class ApplyResult:
+    """补丁应用结果
+
+    Attributes:
+        success: 是否全部成功应用
+        applied_files: 成功应用的文件路径
+        skipped_files: 跳过的文件（路径不安全等），(path, reason)
+        rejected_files: 拒绝的文件（hash 不一致等），(path, reason)
+        backup_path: 本次备份目录（可用于 rollback）
+        errors: 应用过程中的错误
+    """
+    success: bool = False
+    applied_files: list[str] = field(default_factory=list)
+    skipped_files: list[tuple[str, str]] = field(default_factory=list)
+    rejected_files: list[tuple[str, str]] = field(default_factory=list)
+    backup_path: str = ""
+    errors: list[str] = field(default_factory=list)
+
+    def summary(self) -> str:
+        lines = [
+            f"应用结果: {'成功' if self.success else '部分失败/已拒绝'}",
+            f"已应用: {len(self.applied_files)} 个文件",
+        ]
+        if self.skipped_files:
+            lines.append(f"跳过: {len(self.skipped_files)} 个")
+        if self.rejected_files:
+            lines.append(f"拒绝: {len(self.rejected_files)} 个")
+        if self.backup_path:
+            lines.append(f"备份目录: {self.backup_path}")
+        for path, reason in self.rejected_files:
+            lines.append(f"  ✗ {path}: {reason}")
+        return "\n".join(lines)
+
+
+@dataclass
+class RollbackResult:
+    """回滚结果"""
+    success: bool = False
+    restored_files: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+
+    def summary(self) -> str:
+        lines = [
+            f"回滚结果: {'成功' if self.success else '失败'}",
+            f"已恢复: {len(self.restored_files)} 个文件",
+        ]
+        for e in self.errors:
+            lines.append(f"  ✗ {e}")
+        return "\n".join(lines)
+
+
+def _backup_file(
+    rel_path: str, project_path: Path, backup_dir: Path
+) -> None:
+    """把原文件备份到 backup_dir，保留相对目录结构。
+
+    文件不存在（CREATE 场景）则记录一个 .absent 标记，
+    rollback 时据此删除被创建的文件。
+    """
+    src = project_path / rel_path
+    dest = backup_dir / rel_path
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if src.exists():
+        dest.write_bytes(src.read_bytes())
+    else:
+        # 标记：原本不存在，rollback 应删除
+        (backup_dir / (rel_path + ".absent")).parent.mkdir(parents=True, exist_ok=True)
+        (backup_dir / (rel_path + ".absent")).write_text("", encoding="utf-8")
+
+
+def apply_patch(
+    patch: Patch,
+    project_path: Path,
+    backup_dir: Path,
+) -> ApplyResult:
+    """应用补丁到磁盘（写盘能力，运行时 R2/R3）。
+
+    应用前对每个文件：
+    1. 路径安全校验（P0-3）→ 不安全则 skip
+    2. old_hash 一致性校验（P0-2）→ 不一致则 reject（防 TOCTOU）
+    3. 备份原文件到 backup_dir
+    然后按 action 执行 CREATE / MODIFY / DELETE。
+
+    若任一文件被 reject，整体 success=False（但已应用的文件不自动回滚——
+    调用方可用 backup_path 调 rollback_patch）。
+
+    参数：
+        patch: 待应用的 Patch
+        project_path: 项目根目录
+        backup_dir: 本次应用的备份目录（如 .smartdev/patch_backups/{ts}）
+
+    返回：
+        ApplyResult
+    """
+    project_path = Path(project_path)
+    backup_dir = Path(backup_dir)
+    result = ApplyResult(backup_path=str(backup_dir))
+
+    # 预检：先校验所有文件，任何 reject 则整体不应用（原子性优先）
+    for fp in patch.files:
+        safe, reason = is_safe_target(fp.file_path, project_path)
+        if not safe:
+            result.skipped_files.append((fp.file_path, reason))
+            continue
+
+        abs_path = project_path / fp.file_path
+
+        # MODIFY / DELETE 需校验 old_hash（P0-2）
+        if fp.action in (PatchAction.MODIFY, PatchAction.DELETE):
+            if not abs_path.exists():
+                result.rejected_files.append((fp.file_path, "目标文件不存在"))
+                continue
+            try:
+                current = abs_path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as e:
+                result.rejected_files.append((fp.file_path, f"读取失败: {e}"))
+                continue
+            if fp.old_hash and compute_content_hash(current) != fp.old_hash:
+                result.rejected_files.append(
+                    (fp.file_path, "文件已变更（hash 不一致），请重新 propose")
+                )
+                continue
+        elif fp.action == PatchAction.CREATE:
+            if abs_path.exists():
+                result.rejected_files.append((fp.file_path, "CREATE 目标已存在"))
+                continue
+
+    # 有拒绝项 → 整体不应用（原子性）
+    if result.rejected_files:
+        result.success = False
+        result.errors.append("存在被拒绝的文件，整体未应用（原子性保护）")
+        return result
+
+    # 实际应用（已通过预检的文件）
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    skipped_paths = {p for p, _ in result.skipped_files}
+
+    for fp in patch.files:
+        if fp.file_path in skipped_paths:
+            continue
+        abs_path = project_path / fp.file_path
+        try:
+            _backup_file(fp.file_path, project_path, backup_dir)
+            if fp.action == PatchAction.CREATE:
+                abs_path.parent.mkdir(parents=True, exist_ok=True)
+                abs_path.write_text(fp.new_content, encoding="utf-8")
+            elif fp.action == PatchAction.MODIFY:
+                abs_path.write_text(fp.new_content, encoding="utf-8")
+            elif fp.action == PatchAction.DELETE:
+                abs_path.unlink()
+            result.applied_files.append(fp.file_path)
+        except OSError as e:
+            result.errors.append(f"{fp.file_path}: {e}")
+
+    result.success = not result.errors and bool(result.applied_files)
+    return result
+
+
+def rollback_patch(backup_dir: Path, project_path: Path) -> RollbackResult:
+    """从备份目录恢复文件（撤销一次 apply）。
+
+    - 备份中的普通文件 → 写回原位（恢复 MODIFY/DELETE 前的内容）
+    - 备份中的 {path}.absent 标记 → 删除该文件（撤销 CREATE）
+
+    参数：
+        backup_dir: apply 时生成的备份目录
+        project_path: 项目根目录
+
+    返回：
+        RollbackResult
+    """
+    backup_dir = Path(backup_dir)
+    project_path = Path(project_path)
+    result = RollbackResult()
+
+    if not backup_dir.exists():
+        result.errors.append(f"备份目录不存在: {backup_dir}")
+        return result
+
+    for backup_file in sorted(backup_dir.rglob("*")):
+        if not backup_file.is_file():
+            continue
+        rel = backup_file.relative_to(backup_dir)
+        rel_str = str(rel)
+
+        try:
+            if rel_str.endswith(".absent"):
+                # 撤销 CREATE：删除被创建的文件
+                original_rel = rel_str[: -len(".absent")]
+                target = project_path / original_rel
+                if target.exists():
+                    target.unlink()
+                result.restored_files.append(original_rel)
+            else:
+                # 恢复 MODIFY/DELETE 前的内容
+                target = project_path / rel_str
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(backup_file.read_bytes())
+                result.restored_files.append(rel_str)
+        except OSError as e:
+            result.errors.append(f"{rel_str}: {e}")
+
+    result.success = not result.errors
+    return result
