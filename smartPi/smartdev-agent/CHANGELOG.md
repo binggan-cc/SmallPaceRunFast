@@ -95,6 +95,52 @@ Phase 6.2 的目标是让 SmartDev 能从"搜索相关文件"升级为"基于项
 
 - 350 个测试全部通过（332 原有 + 18 新增）
 
+### Added — Phase 6.3 Step 4.1: 排除 .d.ts 避免 Artifact 膨胀（同日）
+
+- **跳过 .d.ts 文件**：`artifact_extractor.py` 增加 `.d.ts` 过滤（如 wrangler types 生成的声明文件）
+- **scripts/verify_gateway.py**：真实项目 13 项指标收集脚本
+- 修复：artifacts 756→78（-90%），全链路健康
+
+### Added — Phase 6.3 Step 4.2: JS/TS Import Target 归一化（同日）
+
+- **`_resolve_js_ts_import_target()`**：relative import 文件系统解析（ext + index 候选）
+- **归一化到 `code:module:{path}`**：`../types` / `./types` / `../../types` → 同一 `code:module:src/types.ts`
+- **`unresolved:relative_file_not_found`**：文件不存在的 import 明确标记
+- **project_map hotspot 聚合**：按 resolved target_id 聚合而非 raw specifier
+- **graph_validator 新增**：`unresolved_relative_import` warning
+- 355 tests
+
+### Added — Phase 6.3 Step 5: tsconfig paths alias 解析（同日）
+
+- **`tsconfig_resolver.py`**：读取 `tsconfig.json` / `jsconfig.json` 的 `compilerOptions.paths` + `baseUrl`
+- **精确匹配**：`@types → src/types.ts`
+- **通配符匹配**：`@/* → src/*` → `@/lib/x → src/lib/x`
+- **懒加载 + 缓存**：`_get_tsconfig_resolver()` 同一批次只读一次配置
+- **graph_validator 新增**：`alias_target_not_found` warning
+- 新增 `test_js_ts_path_alias.py`（15 tests）
+- 370 tests
+
+### Added — Phase 6.3 Step 3 补充: 磁盘 Fixture 全链路验证
+
+- **`tests/fixtures/js_ts_project/`**：独立于 inline fixture 的磁盘项目
+  - 7 个文件：`package.json` + `tsconfig.json` + 5 个 TS/TSX 源文件
+  - 覆盖：interface, type alias, class, function, arrow function, import, re-export, JSX component
+- **`TestJsTsFixtureProject`**（16 tests）：基于磁盘 fixture 的全链路验证
+  - index → search → project.map → graph.validate 端到端
+  - Node bridge Provider 注册 + TSX 命中验证
+  - 源码不可变性验证
+- **`TestJsTsFixtureNoNodeFallback`**（1 test）：Node 不可用时的 regex fallback 路径
+- 395 tests（原有 370 + 25 新增）
+
+### Changed
+
+- Phase 6.3A 正式完成：Node bridge (Babel) JS/TS 高置信度解析链路闭合
+
+### Test（最终）
+
+- **395 tests passed**（370 → 395，+25 fixture 验证测试）
+- 1 skipped（Node 不可用 fallback 测试，Node 可用时自动跳过）
+
 ---
 
 ## [0.1.0] - 2026-06-03

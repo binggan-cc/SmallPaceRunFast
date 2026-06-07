@@ -1,0 +1,9 @@
+{
+  "name": "js-ts-fixture",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Phase 6.3 Step 3 — JS/TS 全链路验证 fixture 项目",
+  "dependencies": {
+    "react": "^18.0.0"
+  }
+}

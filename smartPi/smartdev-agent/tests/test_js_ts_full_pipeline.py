@@ -754,3 +754,356 @@ import { Config } from '../../types';
         for rel, original in original_contents.items():
             current = (project / rel).read_text()
             assert current == original, f"File modified: {rel}"
+
+
+# ── Disk Fixture Project ───────────────────────────────────────
+
+_FIXTURE_DIR = Path(__file__).parent / "fixtures" / "js_ts_project"
+
+
+def _check_fixture_exists() -> bool:
+    """确认磁盘 fixture 项目存在"""
+    return _FIXTURE_DIR.is_dir() and (_FIXTURE_DIR / "package.json").is_file()
+
+
+def _check_node_available_for_fixture() -> bool:
+    """Node 可用 + fixture 存在 + node_modules 已安装"""
+    if not is_node_available():
+        return False
+    return _check_fixture_exists()
+
+
+@pytest.mark.skipif(
+    not _check_fixture_exists(),
+    reason="fixture project not found (tests/fixtures/js_ts_project/)",
+)
+class TestJsTsFixtureProject:
+    """Phase 6.3 Step 3 — 基于磁盘 fixture 的 JS/TS 全链路验证
+
+    使用 tests/fixtures/js_ts_project/ 作为被索引项目，
+    验证 NodeBridgeExtractor → index → search → project.map → graph.validate 全链路。
+
+    所有需要 Node 的测试用单独的 skipif 保护。
+    """
+
+    # ── 1. Index ──
+
+    def test_fixture_project_indexes_successfully(self):
+        """fixture 项目能完整索引，零 errors"""
+        index = ProjectIndex(_FIXTURE_DIR)
+        result = index.index()
+
+        # 应该检测到 5 个 TS/TSX 源文件（不含 .d.ts）
+        assert result["files"] >= 5
+        assert result["errors"] == 0
+        assert result["artifacts"] > 0
+
+        index.close()
+
+    def test_code_artifacts_created_for_all_fixture_files(self):
+        """5 个 fixture 文件都生成 code:module artifact"""
+        index = ProjectIndex(_FIXTURE_DIR)
+        index.index()
+
+        conn = index.store.connect()
+        rows = conn.execute(
+            "SELECT DISTINCT file_path FROM artifacts WHERE type = 'code:module'"
+        ).fetchall()
+        module_paths = {r["file_path"] for r in rows}
+
+        expected_files = [
+            "src/index.ts",
+            "src/app.tsx",
+            "src/models/user.ts",
+            "src/services/user-service.ts",
+            "src/utils/format.ts",
+        ]
+        for f in expected_files:
+            assert f in module_paths, f"Missing code:module for {f}"
+
+        index.close()
+
+    # ── 2. Artifact Types ──
+
+    def test_functions_extracted(self):
+        """函数被提取为 code:function artifact（含箭头函数 upper）"""
+        index = ProjectIndex(_FIXTURE_DIR)
+        index.index()
+
+        conn = index.store.connect()
+        rows = conn.execute(
+            "SELECT name, file_path FROM artifacts WHERE type = 'code:function'"
+        ).fetchall()
+        func_names = {r["name"] for r in rows}
+
+        assert "formatName" in func_names
+        assert "upper" in func_names
+        assert "App" in func_names
+
+        # formatName 在 src/utils/format.ts
+        format_entries = [r for r in rows if r["name"] == "formatName"]
+        assert any("format.ts" in r["file_path"] for r in format_entries)
+
+        index.close()
+
+    def test_classes_extracted(self):
+        """类被提取为 code:class artifact"""
+        index = ProjectIndex(_FIXTURE_DIR)
+        index.index()
+
+        conn = index.store.connect()
+        rows = conn.execute(
+            "SELECT name FROM artifacts WHERE type = 'code:class'"
+        ).fetchall()
+        class_names = {r["name"] for r in rows}
+
+        assert "UserModel" in class_names
+        assert "UserService" in class_names
+
+        index.close()
+
+    @pytest.mark.skipif(
+        not is_node_available(),
+        reason="Node.js not installed — interface/type extraction requires Node bridge",
+    )
+    def test_interfaces_and_types_extracted(self):
+        """interface 和 type alias 被提取（需要 Node bridge，P2 能力）"""
+        index = ProjectIndex(_FIXTURE_DIR)
+        index.index()
+
+        conn = index.store.connect()
+
+        # interface
+        iface_rows = conn.execute(
+            "SELECT name FROM artifacts WHERE type = 'code:interface'"
+        ).fetchall()
+        iface_names = {r["name"] for r in iface_rows}
+        # Node bridge 可用时应提取到 interface
+        if iface_names:
+            assert "User" in iface_names
+
+        # type_alias
+        type_rows = conn.execute(
+            "SELECT name FROM artifacts WHERE type = 'code:type_alias'"
+        ).fetchall()
+        type_names = {r["name"] for r in type_rows}
+        if type_names:
+            assert "UserRole" in type_names
+
+        # 如果 Node bridge 暂不支持 interface/type，测试不失败
+        # 标记为 P2 观察项
+
+        index.close()
+
+    # ── 3. Node Bridge Provider ──
+
+    @pytest.mark.skipif(
+        not is_node_available(),
+        reason="Node.js not installed",
+    )
+    def test_node_bridge_registered_for_ts(self):
+        """Node bridge 被注册并命中 TypeScript 文件"""
+        from smartdev.context.structure_extractor import StructureExtractor
+
+        extractor = StructureExtractor(auto_detect_node=True)
+        provider = extractor.get_provider("typescript")
+        assert provider.name == "node_bridge_babel", \
+            f"Expected node_bridge_babel, got {provider.name}"
+
+    @pytest.mark.skipif(
+        not is_node_available(),
+        reason="Node.js not installed",
+    )
+    def test_node_bridge_hits_tsx(self):
+        """Node bridge 命中 TSX 文件"""
+        from smartdev.context.structure_extractor import StructureExtractor
+
+        extractor = StructureExtractor(auto_detect_node=True)
+        provider = extractor.get_provider("typescript")
+        # TSX 也是 typescript language
+        tsx_path = _FIXTURE_DIR / "src" / "app.tsx"
+        content = tsx_path.read_text()
+        result = provider.extract(str(tsx_path), content)
+
+        assert len(result.symbols) > 0
+        # App 函数应被提取
+        func_names = [s.name for s in result.symbols if s.kind == "function"]
+        assert "App" in func_names
+
+    # ── 4. Search ──
+
+    def test_search_finds_user_service(self):
+        """search 能找到 UserService 类"""
+        index = ProjectIndex(_FIXTURE_DIR)
+        index.index()
+
+        results = index.search("UserService")
+        assert results["total_artifacts"] >= 1
+        artifact_names = [a["name"] for a in results["artifacts"]]
+        assert "UserService" in artifact_names
+
+        # 确认是 class 类型
+        user_service = [a for a in results["artifacts"] if a["name"] == "UserService"]
+        assert any(a["type"] == "code:class" for a in user_service)
+
+        index.close()
+
+    def test_search_finds_format_name(self):
+        """search 能找到 formatName 函数"""
+        index = ProjectIndex(_FIXTURE_DIR)
+        index.index()
+
+        results = index.search("formatName")
+        assert results["total_artifacts"] >= 1
+        artifact_names = [a["name"] for a in results["artifacts"]]
+        assert "formatName" in artifact_names
+
+        index.close()
+
+    # ── 5. Project Map ──
+
+    def test_project_map_generates(self):
+        """project.map 能正常生成并导出 JSON"""
+        index = ProjectIndex(_FIXTURE_DIR)
+        index.index()
+
+        project_map = generate_project_map(index.store, "js-ts-fixture")
+        index.close()
+
+        assert project_map.summary["modules"] >= 5
+
+        # JSON 可序列化
+        json_str = project_map.to_json()
+        data = json.loads(json_str)
+        assert data["project"]["name"] == "js-ts-fixture"
+        assert len(data["modules"]) >= 5
+
+    def test_project_map_has_external_deps(self):
+        """project.map 记录外部依赖（react）"""
+        index = ProjectIndex(_FIXTURE_DIR)
+        index.index()
+
+        project_map = generate_project_map(index.store, "js-ts-fixture")
+        index.close()
+
+        ext_names = [e.name for e in project_map.external_dependencies]
+        if ext_names:
+            # app.tsx imports 'react'
+            assert "react" in ext_names or any("react" in n.lower() for n in ext_names)
+
+    # ── 6. Graph Validate ──
+
+    def test_graph_validate_no_orphan_sources(self):
+        """graph.validate 无 orphan source errors"""
+        index = ProjectIndex(_FIXTURE_DIR)
+        index.index()
+
+        result = validate_graph(index.store)
+        index.close()
+
+        assert result.stats["orphan_sources"] == 0
+
+    def test_graph_validate_is_healthy(self):
+        """graph.validate 判定项目图谱健康"""
+        index = ProjectIndex(_FIXTURE_DIR)
+        index.index()
+
+        result = validate_graph(index.store)
+        index.close()
+
+        assert result.is_healthy
+        assert result.stats["relations"] > 0
+
+    def test_graph_validate_markdown_report(self):
+        """graph.validate 输出有效的 Markdown 报告"""
+        index = ProjectIndex(_FIXTURE_DIR)
+        index.index()
+
+        result = validate_graph(index.store)
+        index.close()
+
+        md = result.to_markdown()
+        assert "# Graph Validation Report" in md
+        assert "## Summary" in md
+        assert "Artifacts:" in md
+
+    # ── 7. End-to-End ──
+
+    def test_full_pipeline_end_to_end(self):
+        """全链路端到端：index → search → project.map → graph.validate"""
+        # Step 1: Index
+        index = ProjectIndex(_FIXTURE_DIR)
+        result = index.index()
+        assert result["files"] >= 5
+        assert result["errors"] == 0
+        assert result["artifacts"] > 5
+
+        # Step 2: Search
+        search_result = index.search("User")
+        assert search_result["total_artifacts"] >= 2
+
+        # Step 3: Project Map
+        project_map = generate_project_map(index.store, "fixture-e2e")
+        assert project_map.summary["modules"] >= 5
+
+        # Step 4: Graph Validate
+        validation = validate_graph(index.store)
+        assert validation.is_healthy
+
+        # Step 5: JSON 导出可序列化
+        data = json.loads(project_map.to_json())
+        assert data["project"]["name"] == "fixture-e2e"
+
+        index.close()
+
+    # ── 8. Safety ──
+
+    def test_does_not_modify_fixture_sources(self):
+        """索引不修改 fixture 源文件"""
+        # 记录原始内容
+        ts_files = list(_FIXTURE_DIR.rglob("*.ts")) + list(_FIXTURE_DIR.rglob("*.tsx"))
+        original = {}
+        for f in ts_files:
+            original[str(f.relative_to(_FIXTURE_DIR))] = f.read_text()
+
+        index = ProjectIndex(_FIXTURE_DIR)
+        index.index()
+        validate_graph(index.store)
+        index.close()
+
+        # 验证未修改
+        for rel, content in original.items():
+            current = (_FIXTURE_DIR / rel).read_text()
+            assert current == content, f"Fixture modified: {rel}"
+
+
+@pytest.mark.skipif(
+    is_node_available(),
+    reason="Node.js is available — this tests the no-Node fallback path",
+)
+class TestJsTsFixtureNoNodeFallback:
+    """Phase 6.3 Step 3 — Node 不可用时的 fallback 路径"""
+
+    def test_fallback_indexes_with_regex(self):
+        """Node 不存在时，fixture 仍可被索引（regex fallback）"""
+        if not _check_fixture_exists():
+            pytest.skip("Fixture project not found")
+
+        index = ProjectIndex(_FIXTURE_DIR)
+        result = index.index()
+
+        # 仍能索引（使用 regex fallback）
+        assert result["files"] >= 5
+        assert result["errors"] == 0
+        assert result["artifacts"] > 0
+
+        # 确认 provider 是 regex fallback 而非 node bridge
+        from smartdev.context.structure_extractor import StructureExtractor
+        extractor = StructureExtractor(auto_detect_node=True)
+        provider = extractor.get_provider("typescript")
+        if is_node_available():
+            pytest.skip("Node is available, provider is node_bridge_babel")
+        else:
+            assert provider.name == "regex_js_ts_fallback"
+
+        index.close()

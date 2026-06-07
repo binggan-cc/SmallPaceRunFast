@@ -170,7 +170,7 @@ smartdev-agent/
 │   ├── adapters/      # 项目适配器（JSON）
 │   ├── models.py      # 核心数据模型
 │   └── cli.py         # CLI 入口
-├── tests/             # 测试（274 tests）
+├── tests/             # 测试（395 tests）
 ├── docs/              # 开发进度、Phase 6 技术文档
 ├── pyproject.toml     # 项目配置
 └── CHANGELOG.md       # 变更记录
@@ -180,32 +180,35 @@ smartdev-agent/
 
 ## 当前阶段
 
-Phase 6.2 — Code Intelligence v1（已完成，已冻结）
+Phase 6.3 — JS/TS Parser Provider v1（已完成，已冻结）
 
-SmartDev 已具备基于 Python AST 的轻量代码结构提取、模块级 import 关系图谱、反向依赖影响分析、项目地图导出和图谱健康校验能力。
-这个阶段的目标是让 SmartDev 能从"搜索相关文件"升级为"基于项目语义关系判断影响范围"。
+SmartDev 已具备基于 Node + Babel Parser 的 JS/TS/JSX/TSX 高置信度结构提取能力。
+Node bridge 为 optional dependency — 有 Node 时自动启用（confidence=0.95），无 Node 时静默 fallback 到 regex（confidence=0.55）。
 当前能力边界为 **module-level impact analysis**，不承诺完整符号级引用分析、函数调用图或多语言精确解析。
 
 已完成：
 - ✅ Phase 1-5：10 Skill + Workflow + Adapter
 - ✅ Phase 6-MVP：SQLite 索引 + artifact 提取 + search + impact
-- ✅ Phase 6.2 Step 1：多语言结构提取（Provider 机制）
-- ✅ Phase 6.2 Step 2A：Python import relations
-- ✅ Phase 6.2 Step 2A.1：Import relation graph hardening
-- ✅ Phase 6.2 Step 3：ImpactAnalyzer 消费 import relations
-- ✅ Phase 6.2 Step 4：project.map 导出（JSON + Markdown）
-- ✅ Phase 6.2 Step 5：graph.validate v0
+- ✅ Phase 6.2：Code Intelligence v1（Python AST + import relations + project.map + graph.validate）
+- ✅ Phase 6.3 Step 0：JS/TS Parser Provider 执行前设计
+- ✅ Phase 6.3 Step 1：Node bridge 骨架（@babel/parser + JSONL 协议）
+- ✅ Phase 6.3 Step 2：Python NodeBridgeExtractor 集成（子进程单例 + 三层 fallback）
+- ✅ Phase 6.3 Step 3：JS/TS import relations + 全链路集成验证（7 种 ES module 模式）
+- ✅ Phase 6.3 Step 4.1：排除 .d.ts 文件避免 artifact 膨胀
+- ✅ Phase 6.3 Step 4.2：JS/TS import target 归一化（code:module:{path}）
+- ✅ Phase 6.3 Step 5：tsconfig paths alias 解析（@/foo → src/foo）
+- ✅ Phase 6.3 Step 3 补充：磁盘 fixture 全链路验证（tests/fixtures/js_ts_project/）
 
 下一步：
 
-### Phase 6.3 — JS/TS Parser Provider
-- 评估 Babel Parser vs TypeScript Compiler API
-- Node Parser Bridge 设计
-- 不继续强化 regex fallback（保留为 fallback，不作为能力主线）
-
 ### Phase 7 — Tree-sitter Multi-language Graph
 - Tree-sitter 多语言统一精确解析
-- 该阶段待 Phase 6.3 完成后再启动
+- 完整调用图 / 引用解析
+- code.patch 真实实现（替换占位符）
+
+### Phase 6.3B（后续可选）
+- TypeScript Compiler API 增强（tsconfig 感知类型级别解析）
+- Vue SFC / Svelte script 块抽取（Phase 6.3C）
 
 ---
 
