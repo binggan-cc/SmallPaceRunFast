@@ -62,11 +62,7 @@ def create_server(project_path: Path):
                 "Health check. Confirms the SmartDev MCP Server is running "
                 "and returns the bound project path."
             ),
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
+            inputSchema={"type": "object", "properties": {}, "required": []},
         ),
         Tool(
             name="smartdev_version",
@@ -74,11 +70,7 @@ def create_server(project_path: Path):
                 "Returns SmartDev version and the full tool capability list "
                 "(including tools not yet available in this step)."
             ),
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
+            inputSchema={"type": "object", "properties": {}, "required": []},
         ),
         Tool(
             name="smartdev_list_tools",
@@ -86,20 +78,82 @@ def create_server(project_path: Path):
                 "Lists all currently available MCP tools with their "
                 "permission levels and descriptions."
             ),
+            inputSchema={"type": "object", "properties": {}, "required": []},
+        ),
+        Tool(
+            name="smartdev_code_search",
+            description=(
+                "Full-text search over indexed files and artifacts. "
+                "Requires running smartdev_code_index first."
+            ),
             inputSchema={
                 "type": "object",
-                "properties": {},
-                "required": [],
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search term (file name, function name, artifact type, etc.)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results (default: 20)",
+                        "default": 20,
+                    },
+                },
+                "required": ["query"],
             },
+        ),
+        Tool(
+            name="smartdev_code_impact",
+            description=(
+                "Analyze the change impact of a file, module, or artifact via import reverse lookup. "
+                "Returns affected files, risk level, and validation suggestions. "
+                "Requires running smartdev_code_index first."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": "Target to analyze (file path, module name, or artifact name)",
+                    },
+                    "max_depth": {
+                        "type": "integer",
+                        "description": "Maximum depth for impact traversal (default: 3)",
+                        "default": 3,
+                    },
+                },
+                "required": ["target"],
+            },
+        ),
+        Tool(
+            name="smartdev_project_map",
+            description=(
+                "Export a project structure map including modules, hotspots, and external dependencies. "
+                "Requires running smartdev_code_index first."
+            ),
+            inputSchema={"type": "object", "properties": {}, "required": []},
+        ),
+        Tool(
+            name="smartdev_graph_validate",
+            description=(
+                "Validate the health of the project graph: orphan nodes, duplicates, "
+                "hotspots, and unresolved imports. "
+                "Requires running smartdev_code_index first."
+            ),
+            inputSchema={"type": "object", "properties": {}, "required": []},
         ),
     ]
 
     # ── 工具路由表 ────────────────────────────────────────────────
 
     _HANDLERS = {
-        "smartdev_ping":       t.handle_ping,
-        "smartdev_version":    t.handle_version,
-        "smartdev_list_tools": t.handle_list_tools,
+        "smartdev_ping":          t.handle_ping,
+        "smartdev_version":       t.handle_version,
+        "smartdev_list_tools":    t.handle_list_tools,
+        "smartdev_code_search":   t.handle_code_search,
+        "smartdev_code_impact":   t.handle_code_impact,
+        "smartdev_project_map":   t.handle_project_map,
+        "smartdev_graph_validate":t.handle_graph_validate,
     }
 
     # ── 注册 list_tools handler ────────────────────────────────────
