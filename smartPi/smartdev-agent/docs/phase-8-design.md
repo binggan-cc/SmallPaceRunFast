@@ -1,8 +1,36 @@
-# Phase 8 Step 0 — Context Layer ↔ Skill 接入打通 执行前设计
+# Phase 8 — Context Layer ↔ Skill 接入打通
 
-> 状态：设计文档（Step 0），不动代码
-> 前置：Phase 7 已完成并冻结（458 tests，清洁基线）
+> 状态：✅ 已完成并冻结
+> 测试基线：484 passed, 1 skipped（458 → 484，+26）
+> 前置（开工时）：Phase 7 已完成（458 tests，清洁基线）
 > 目标：把已建好的 Context Layer（索引/impact/relations）真正喂给 Skill 层，消除"眼睛和大脑两座孤岛"
+
+---
+
+## 0. 完成状态 / 收口结果
+
+Phase 8 已按本设计文档完整落地，所有 Step 均已实现并通过测试。
+
+| Step | 交付物 | 状态 | 实际结果 |
+|------|--------|------|---------|
+| Step 1 | risk.check ← code.impact | ✅ | 可选 target 接入，`final_risk = max(keyword, impact)`，优雅降级；+6 tests（464） |
+| Step 2 | architecture.map ← index | ✅ | 索引 relations 构建多语言依赖图（Python/JS-TS/Go）+ 循环依赖检测复用 AST 算法；+7 tests（471） |
+| Step 3 | task.plan ← impact | ✅ | 推荐方案标注真实受影响文件 + target 自动提取；+6 tests（477） |
+| Step 4 | 端到端验证 | ✅ | `WorkflowEngine.run(target=...)` 注入驱动 impact + 真实项目（gnet-examples）只读验证；+7 tests（484） |
+
+**实际完成的四项接入：**
+- risk.check 已接入 code.impact（影响范围驱动风险判断）
+- architecture.map 已接入 index relations（多语言依赖图）
+- task.plan 已接入 impact（受影响文件标注）
+- workflow 端到端可消费 Context Layer（`--target` 驱动）
+
+**核心原则全部守住：** 优雅降级（有索引增强、无索引退回原逻辑，零回归）；只改 skills/，不动 context/；风险取 max(keyword, impact)。
+
+**收口后发现的两个加固项（已记入 Phase 9 前置 / 后续优化）：**
+1. `get_index_if_available()` 当前只检查 `.smartdev/index.sqlite` 是否存在，未校验 schema 版本 / 损坏。Phase 9 依赖 impact 判风险，需补"存在但 schema 不兼容/损坏 → fallback，不报错"。记为优化项，Phase 9 Step 1 前置处理。
+2. `task.plan` 的 target 解析优先级应固定为 **inputs.target > 明确文件路径 token > 不解析**，不引入自然语言猜测（当前实现已符合：inputs.target 优先，其次文件 token 正则，无则不解析）。
+
+---
 
 ---
 
