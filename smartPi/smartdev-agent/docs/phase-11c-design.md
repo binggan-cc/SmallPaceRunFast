@@ -153,11 +153,21 @@ SmartDev 生成 Change Manifest + capability snapshots
 
 ### 4.1 Change Manifest（新建）
 
-每次 `code.apply` 或 `git commit` 执行后生成，写入 `.smartdev/runs/`：
+可由三种来源生成，写入 `.smartdev/runs/<run_id>/`：
+
+```
+manifest source:
+  - patch_apply       # code.apply 执行后
+  - git_commit        # git commit 执行后
+  - working_tree_diff # 当前 git diff 生成临时 manifest（提交前检查）
+```
+
+> 设计要点：Doc Steward 往往应该在 **commit 前** 介入检查文档一致性，因此 manifest 不能只在 commit 后生成。`working_tree_diff` 来源让"改完还没提交"时也能检查。
 
 ```json
 {
   "run_id": "string",
+  "source": "patch_apply | git_commit | working_tree_diff",
   "timestamp": "ISO",
   "changed_files": ["path"],
   "change_type": "feature | fix | refactor | docs | test",
@@ -342,14 +352,15 @@ Step 5  doc.update.plan Skill（R0，只读）
         - 区分：状态同步 vs 能力边界 vs 表达口径
 
 Step 6  doc.patch.propose（R1，不落盘）
-        - 生成文档 patch（复用 Phase 9 的 find-replace patch 模型）
+        - 第一版优先支持确定性 find-replace / section replace（复用 Phase 9 patch 模型）
+        - 复杂文档改写：只生成 update plan，由高阶模型生成候选内容后再进入 patch.propose
         - patch_id 持久化到 .smartdev/patches/
         - 不自动 apply
 
 Step 7  MCP 暴露只读工具
         - smartdev_doc_consistency
         - smartdev_doc_update_plan
-        - 不暴露 doc.patch.propose（写文档需要人确认）
+        - doc.patch.propose 暂不暴露（propose 不写文档，但生成质量需先在 CLI 跑稳后再评估）
 ```
 
 ---

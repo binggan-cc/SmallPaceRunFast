@@ -545,6 +545,26 @@ Go 提取能力（Step 2）：
 
 设计文档：[phase-11c-design.md](phase-11c-design.md)
 
+### Phase 11D：Collaboration Handoff v0（设计确认，暂不实现）
+
+目标：基于 SmartDev run artifacts，把工程事实裁剪成角色化上下文包（code-agent / doc-steward / reviewer），让多模型协作不靠共享聊天记忆。
+
+| Step | 交付物 | 状态 |
+|------|--------|------|
+| Step 0 | 设计文档 phase-11d-design.md | ✅ 完成 |
+| Step 1 | Run Artifact 目录约定 | 🔲 暂不实现 |
+| Step 2 | Scope Gate（11D 唯一新增核心）| 🔲 暂不实现 |
+| Step 3 | handoff code（≤8k）| 🔲 暂不实现 |
+| Step 4 | handoff doc（≤6k，依赖 11C）| 🔲 暂不实现 |
+| Step 5 | handoff review（≤10k）| 🔲 暂不实现 |
+| Step 6 | MCP 暴露只读 handoff 工具 | 🔲 暂不实现 |
+
+边界：11C 生产事实，11D 组装事实给角色消费。先有事实层，再有协作层。
+设计文档：[phase-11d-design.md](phase-11d-design.md)
+
+**Phase 11 整体路线（已调整）：** 11A ✅ → 11C → 11D → 11B → Phase 12
+（原计划 11A→11B→11C，因当前已在实际使用双模型协作，Doc Steward 需求更急，故 11C/11D 提前，Guard Skills 稍后）
+
 设计文档：[phase-11-design.md](phase-11-design.md)
 
 目标：把 SmartDev 已有 L1–L4 能力暴露给外部 Agent（Claude / Kiro / Cursor 等），不继续新增底层分析能力。

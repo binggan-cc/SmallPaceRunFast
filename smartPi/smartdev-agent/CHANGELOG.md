@@ -4,7 +4,23 @@
 
 ## [Unreleased] — Phase 11A: Git Governance v0（进行中）
 
-### Added — Phase 11C Step 0: Documentation Governance v0 设计文档
+### Added — Phase 11D Step 0: Collaboration Handoff v0 设计文档 + 11C 修正
+
+- **`docs/phase-11d-design.md`**：多模型协作交接层设计（独立于 11C，暂不实现）
+  - 定位：把 SmartDev run artifacts 裁剪成角色化上下文包，降低 token，协作基于同一份工程事实
+  - 角色权限矩阵：Code Agent / Doc Steward / Reviewer / SmartDev / Human
+  - Run Artifact 目录约定（.smartdev/runs/<run_id>/）
+  - 三个 handoff pack（code ≤8k / doc ≤6k / review ≤10k），只生成 markdown 不调模型
+  - Scope Gate（11D 唯一新增核心）+ 其余 4 个 Gate 复用前序 Phase
+  - 顺序协作 vs 高风险并行审查两种流程
+  - 三阶段演进：模式 A 手动（现在可用）→ B MCP → C Model Router
+- **`docs/phase-11c-design.md` 3 处修正**：
+  - Change Manifest 支持三种来源（patch_apply / git_commit / working_tree_diff），Doc Steward 可在 commit 前介入
+  - doc.patch.propose 第一版优先 find-replace/section replace，复杂改写走 update plan
+  - MCP 暂不暴露 doc.patch.propose 的原因改为"生成质量需先在 CLI 跑稳"（而非"写文档"）
+- **Phase 11 路线调整**：11A ✅ → 11C → 11D → 11B → Phase 12
+
+
 
 - **`docs/phase-11c-design.md`**：Doc Governance v0 完整设计
   - 定位：SmartDev 提供文档一致性检查的工具链，高阶模型担任 Doc Steward 角色
