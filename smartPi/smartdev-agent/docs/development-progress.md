@@ -528,6 +528,23 @@ Go 提取能力（Step 2）：
 
 **Phase 11A（Git Governance v0）完成。** 7 步全部交付，906 tests，MCP 工具 14 → 19。
 
+### Phase 11C：Documentation Governance v0（设计确认）
+
+目标：SmartDev 提供文档一致性检查工具链，高阶模型担任 Doc Steward 角色。
+
+| Step | 交付物 | 状态 |
+|------|--------|------|
+| Step 0 | 设计文档 phase-11c-design.md | ✅ 完成 |
+| Step 1 | Change Manifest 生成 | 🔲 待开始 |
+| Step 2 | Capability Snapshot 导出（skill / cli / mcp）| 🔲 待开始 |
+| Step 3 | doc.map Skill（R0 只读）| 🔲 待开始 |
+| Step 4 | doc.consistency Skill（5 条规则）| 🔲 待开始 |
+| Step 5 | doc.update.plan Skill | 🔲 待开始 |
+| Step 6 | doc.patch.propose（不落盘）| 🔲 待开始 |
+| Step 7 | MCP 暴露只读工具 | 🔲 待开始 |
+
+设计文档：[phase-11c-design.md](phase-11c-design.md)
+
 设计文档：[phase-11-design.md](phase-11-design.md)
 
 目标：把 SmartDev 已有 L1–L4 能力暴露给外部 Agent（Claude / Kiro / Cursor 等），不继续新增底层分析能力。

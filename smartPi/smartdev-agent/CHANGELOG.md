@@ -4,7 +4,18 @@
 
 ## [Unreleased] — Phase 11A: Git Governance v0（进行中）
 
-### Added — Phase 11A Step 7: MCP 暴露只读 Git 工具（工具总数 14 → 19）
+### Added — Phase 11C Step 0: Documentation Governance v0 设计文档
+
+- **`docs/phase-11c-design.md`**：Doc Governance v0 完整设计
+  - 定位：SmartDev 提供文档一致性检查的工具链，高阶模型担任 Doc Steward 角色
+  - 角色分工：高阶模型判断 + SmartDev 提供事实 + 人确认 apply
+  - 两个模型协作协议：通过 run artifacts 共享上下文，不靠聊天记忆
+  - 5 种结构化上下文：Change Manifest / Project Map / Skill Snapshot / CLI Snapshot / Doc Map
+  - 5 条确定性检查规则：代码能力 / Phase 状态 / 能力边界 / 测试基线 / 公共接口
+  - 8 步实施路线（Step 0–7）
+  - 与 Phase 12 Model Collaboration Layer 的关系（Doc Steward 作为注册 role）
+
+（工具总数 14 → 19）
 
 - **`smartdev_git_status`**（READ）：查询 git 状态快照，调用 `git.status` Skill
 - **`smartdev_git_diff_explain`**（READ）：确定性结构化 diff 解释，调用 `git.diff.explain` Skill
