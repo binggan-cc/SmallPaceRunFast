@@ -1,0 +1,39 @@
+# SmartDev Skill: doc.consistency
+# 文档一致性检查 — 5 条确定性规则，输出 issues 列表
+
+id: doc.consistency
+name: 文档一致性检查
+capability: doc_governance
+risk: R0
+mode: read_only
+
+description: >
+  基于 5 条确定性规则，检查代码能力与文档描述是否一致。
+  消费 skill_snapshot / cli_snapshot / doc_map / change_manifest，
+  输出 issues 列表（type / severity / code_fact / doc_claim）。
+  供 Doc Steward 高阶模型判断，不自动修改任何文档。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - skill_snapshot    # SkillSnapshot dict（不传则现场生成）
+    - cli_snapshot      # CliSnapshot dict（不传则现场生成）
+    - doc_map           # doc.map 输出 dict（不传则现场运行 doc.map）
+    - change_manifest   # ChangeManifest dict（不传则跳过规则 5）
+
+outputs:
+  - issues             # ConsistencyIssue 列表
+  - issue_count        # 问题数量
+  - docs_required      # 是否需要文档更新
+  - severity_summary   # 各严重度数量统计
+  - generated_at       # 检查时间
+
+preconditions:
+  - project_path_exists
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
