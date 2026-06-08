@@ -579,6 +579,69 @@ def _write_git_audit(project_path: Path, task: str, payload: dict) -> None:
         pass  # 审计失败不阻断主流程
 
 
+def _cmd_snapshot(args: argparse.Namespace) -> int:
+    """snapshot — 导出能力快照（skill / cli / mcp）（Phase 11C Step 2）
+
+    子命令：
+      skills  —— 从 Skill.get_registry() + skill.yaml 导出 JSON
+      cli     —— 从 argparse 结构内省导出 JSON
+      mcp     —— 从 mcp/server.py _TOOLS 列表导出 JSON
+
+    设计约束（phase-11c-design.md §4.3 §4.4）：
+    - 纯只读，R0，不修改任何文件
+    - mcp 包未安装时 mcp 快照返回 available=False（不崩溃）
+    - --save 把快照写入 .smartdev/runs/<timestamp>/，不影响源码
+    """
+    import time as _time
+
+    from smartdev.core.snapshot import (
+        build_cli_snapshot,
+        build_mcp_snapshot,
+        build_skill_snapshot,
+        save_snapshot,
+    )
+
+    project_path = Path(args.project).resolve()
+    if not project_path.exists():
+        print(f"错误: 项目路径不存在: {project_path}", file=sys.stderr)
+        return 1
+
+    subcmd = getattr(args, "snapshot_command", None)
+    do_save: bool = getattr(args, "save", False)
+    runs_dir = project_path / ".smartdev" / "runs"
+    run_id = f"snapshot-{_time.strftime('%Y%m%d-%H%M%S')}"
+
+    if subcmd == "skills":
+        snap = build_skill_snapshot(project_path)
+        if do_save:
+            out = save_snapshot(snap.to_dict(), "skill", runs_dir, run_id)
+            print(f"✅ Skill Snapshot 已保存: {out}")
+            print()
+        print(snap.to_json())
+        return 0
+
+    if subcmd == "cli":
+        snap = build_cli_snapshot()
+        if do_save:
+            out = save_snapshot(snap.to_dict(), "cli", runs_dir, run_id)
+            print(f"✅ CLI Snapshot 已保存: {out}")
+            print()
+        print(snap.to_json())
+        return 0
+
+    if subcmd == "mcp":
+        snap = build_mcp_snapshot()
+        if do_save:
+            out = save_snapshot(snap.to_dict(), "mcp", runs_dir, run_id)
+            print(f"✅ MCP Snapshot 已保存: {out}")
+            print()
+        print(snap.to_json())
+        return 0
+
+    print(f"错误: 未知子命令 '{subcmd}'", file=sys.stderr)
+    return 1
+
+
 def _cmd_manifest(args: argparse.Namespace) -> int:
     """manifest — 生成 / 查看 Change Manifest（Phase 11C Step 1）
 
@@ -818,6 +881,61 @@ def main() -> None:
 
     manifest_parser.set_defaults(
         func=lambda a: (manifest_parser.print_help(), sys.exit(1))
+    )
+
+    # snapshot 命令组（Phase 11C Step 2 新增）
+    snapshot_parser = subparsers.add_parser(
+        "snapshot",
+        help="导出能力快照（skill / cli / mcp），供 Doc Steward 使用",
+    )
+    snapshot_subparsers = snapshot_parser.add_subparsers(
+        dest="snapshot_command", help="snapshot 子命令"
+    )
+
+    # snapshot skills
+    snap_skills_parser = snapshot_subparsers.add_parser(
+        "skills",
+        help="导出 Skill 注册表快照（从 Skill.get_registry() + skill.yaml 内省）",
+    )
+    snap_skills_parser.add_argument(
+        "--project", "-p", default=".", help="项目根目录路径（默认当前目录）"
+    )
+    snap_skills_parser.add_argument(
+        "--save", action="store_true",
+        help="把快照保存到 .smartdev/runs/<timestamp>/skill-snapshot.json",
+    )
+    snap_skills_parser.set_defaults(func=_cmd_snapshot, snapshot_command="skills")
+
+    # snapshot cli
+    snap_cli_parser = snapshot_subparsers.add_parser(
+        "cli",
+        help="导出 CLI 命令快照（从 argparse 结构内省）",
+    )
+    snap_cli_parser.add_argument(
+        "--project", "-p", default=".", help="项目根目录路径（默认当前目录）"
+    )
+    snap_cli_parser.add_argument(
+        "--save", action="store_true",
+        help="把快照保存到 .smartdev/runs/<timestamp>/cli-snapshot.json",
+    )
+    snap_cli_parser.set_defaults(func=_cmd_snapshot, snapshot_command="cli")
+
+    # snapshot mcp
+    snap_mcp_parser = snapshot_subparsers.add_parser(
+        "mcp",
+        help="导出 MCP 工具快照（从 mcp/server.py 内省，mcp 未安装时返回 available=false）",
+    )
+    snap_mcp_parser.add_argument(
+        "--project", "-p", default=".", help="项目根目录路径（默认当前目录）"
+    )
+    snap_mcp_parser.add_argument(
+        "--save", action="store_true",
+        help="把快照保存到 .smartdev/runs/<timestamp>/mcp-snapshot.json",
+    )
+    snap_mcp_parser.set_defaults(func=_cmd_snapshot, snapshot_command="mcp")
+
+    snapshot_parser.set_defaults(
+        func=lambda a: (snapshot_parser.print_help(), sys.exit(1))
     )
 
     args = parser.parse_args()
