@@ -351,6 +351,234 @@ def _cmd_impact(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_git_commit(args: argparse.Namespace) -> int:
+    """git commit — 默认 dry-run，--apply 才真正写 Git 历史（R2）
+
+    设计约束（phase-11-design.md §4.4）：
+    - 默认 dry-run：只输出"将要执行什么"，不创建 commit
+    - --apply：调用 GitService.commit()，真正写 Git 历史
+    - protected branch 拒绝（除非 policy 明确允许）
+    - 不做 push / merge / rebase / reset
+    - 执行后写审计到 .smartdev/index.sqlite runs 表
+    """
+    import json as _json
+    import time as _time
+
+    from smartdev.core.git import GitNotAvailable, GitService, load_git_policy
+
+    project_path = Path(args.project).resolve()
+    if not project_path.exists():
+        print(f"错误: 项目路径不存在: {project_path}", file=sys.stderr)
+        return 1
+
+    message: str = args.message
+    files: list[str] = args.files or []
+    apply: bool = args.apply
+
+    svc = GitService(project_path)
+    if not svc.is_available():
+        print("错误: git 不可用或当前目录不是 git 仓库", file=sys.stderr)
+        return 1
+
+    policy = load_git_policy(project_path)
+
+    # ── 当前状态 ──────────────────────────────────────────
+    try:
+        branch = svc.current_branch()
+        status = svc.status(recent_commit_count=0)
+    except GitNotAvailable as e:
+        print(f"错误: {e}", file=sys.stderr)
+        return 1
+
+    # ── policy 检查 ───────────────────────────────────────
+    policy_issues: list[str] = []
+
+    if branch in policy.protected_branches:
+        policy_issues.append(
+            f"✗ 拒绝：当前分支 '{branch}' 是 protected branch "
+            f"（policy.branch.protected = {policy.protected_branches}）"
+        )
+
+    staged_count = len(status.staged)
+    total_files = len(files) if files else staged_count
+    if total_files > policy.max_files_per_commit:
+        policy_issues.append(
+            f"⚠ 警告：变更文件数 {total_files} 超过 "
+            f"policy.max_files_per_commit={policy.max_files_per_commit}"
+        )
+
+    # ── dry-run 输出 ──────────────────────────────────────
+    print(f"Will commit:")
+    print(f"  branch:  {branch}")
+    if files:
+        print(f"  files:   {files}")
+    else:
+        staged_paths = [f["path"] for f in
+                        [{"path": f.path} for f in status.staged]]
+        print(f"  files:   {staged_paths if staged_paths else '(已 stage 的文件)'}")
+    print(f"  message: {message}")
+    print(f"  policy checks:")
+
+    has_blocker = any("✗" in i for i in policy_issues)
+    if not policy_issues:
+        print(f"    ✓ branch not protected")
+        print(f"    ✓ files ({total_files}) <= max_files_per_commit ({policy.max_files_per_commit})")
+    else:
+        for issue in policy_issues:
+            print(f"    {issue}")
+
+    print()
+
+    # ── blocker 时拒绝 ────────────────────────────────────
+    if has_blocker:
+        print("Commit 被拒绝（存在 policy blocker）。修复上述问题后重试。")
+        return 1
+
+    if not apply:
+        print("No commit created. Add --apply to execute.")
+        return 0
+
+    # ── 执行 commit ───────────────────────────────────────
+    print("执行 git commit...")
+    try:
+        out = svc.commit(message=message, files=files if files else None)
+        print(out)
+    except GitNotAvailable as e:
+        print(f"错误: {e}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"错误: git commit 失败: {e}", file=sys.stderr)
+        return 1
+
+    # ── 审计 ──────────────────────────────────────────────
+    _write_git_audit(project_path, "git.commit", {
+        "branch": branch,
+        "message": message,
+        "files": files,
+        "policy_warnings": [i for i in policy_issues if "⚠" in i],
+    })
+
+    print("\n✅ Commit 创建成功。")
+    return 0
+
+
+def _cmd_git_tag(args: argparse.Namespace) -> int:
+    """git tag — 默认 dry-run，--apply 才真正打 tag（R2）
+
+    设计约束（phase-11-design.md §4.4）：
+    - 默认 dry-run：只输出"将要执行什么"，不创建 tag
+    - --apply：调用 GitService.tag()，真正写 Git 历史
+    - tag 名称格式建议 vX.Y.Z（不强制）
+    - 不做 push
+    """
+    from smartdev.core.git import GitNotAvailable, GitService, load_git_policy
+
+    project_path = Path(args.project).resolve()
+    if not project_path.exists():
+        print(f"错误: 项目路径不存在: {project_path}", file=sys.stderr)
+        return 1
+
+    version: str = args.version
+    tag_message: str | None = args.message or None
+    apply: bool = args.apply
+
+    svc = GitService(project_path)
+    if not svc.is_available():
+        print("错误: git 不可用或当前目录不是 git 仓库", file=sys.stderr)
+        return 1
+
+    try:
+        branch = svc.current_branch()
+        existing_tags = svc.tags()
+    except GitNotAvailable as e:
+        print(f"错误: {e}", file=sys.stderr)
+        return 1
+
+    # ── 重复 tag 检查 ─────────────────────────────────────
+    policy_issues: list[str] = []
+    if version in existing_tags:
+        policy_issues.append(f"✗ 拒绝：tag '{version}' 已存在")
+
+    tag_type = "annotated" if tag_message else "lightweight"
+
+    # ── dry-run 输出 ──────────────────────────────────────
+    print(f"Will tag:")
+    print(f"  version: {version}")
+    print(f"  type:    {tag_type}")
+    print(f"  branch:  {branch}")
+    if tag_message:
+        print(f"  message: {tag_message}")
+    print(f"  policy checks:")
+
+    has_blocker = any("✗" in i for i in policy_issues)
+    if not policy_issues:
+        print(f"    ✓ tag '{version}' does not exist")
+    else:
+        for issue in policy_issues:
+            print(f"    {issue}")
+
+    print()
+
+    if has_blocker:
+        print("Tag 被拒绝（存在 policy blocker）。修复上述问题后重试。")
+        return 1
+
+    if not apply:
+        print("No tag created. Add --apply to execute.")
+        return 0
+
+    # ── 执行 tag ──────────────────────────────────────────
+    print("执行 git tag...")
+    try:
+        svc.tag(name=version, message=tag_message)
+        print(f"tag '{version}' 创建成功。")
+    except GitNotAvailable as e:
+        print(f"错误: {e}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"错误: git tag 失败: {e}", file=sys.stderr)
+        return 1
+
+    # ── 审计 ──────────────────────────────────────────────
+    _write_git_audit(project_path, "git.tag", {
+        "version": version,
+        "tag_type": tag_type,
+        "branch": branch,
+        "message": tag_message,
+    })
+
+    print(f"\n✅ Tag '{version}' 创建成功。")
+    return 0
+
+
+def _write_git_audit(project_path: Path, task: str, payload: dict) -> None:
+    """写 git 执行审计到 .smartdev/index.sqlite runs 表（若索引存在）。
+
+    复用 code.apply 的审计模式，失败时静默处理。
+    """
+    import json as _json
+    import sqlite3
+    import time as _time
+
+    db_path = project_path / ".smartdev" / "index.sqlite"
+    if not db_path.exists():
+        return
+    try:
+        run_id = f"{task}-{int(_time.time())}"
+        summary = _json.dumps(payload, ensure_ascii=False)
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(
+            "INSERT OR REPLACE INTO runs (id, task, created_at, summary_json) VALUES (?, ?, ?, ?)",
+            (run_id, task,
+             _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
+             summary),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass  # 审计失败不阻断主流程
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     """启动 MCP Server（供外部 Agent 通过 stdio 调用）"""
     # 先检查 mcp 包，未安装时给出提示
@@ -442,6 +670,37 @@ def main() -> None:
     )
     mcp_parser.add_argument("--project", "-p", required=True, help="项目根目录路径")
     mcp_parser.set_defaults(func=_cmd_mcp)
+
+    # git 命令组（Phase 11A 新增）
+    git_parser = subparsers.add_parser(
+        "git",
+        help="Git 治理命令（commit/tag，默认 dry-run，--apply 才执行）",
+    )
+    git_subparsers = git_parser.add_subparsers(dest="git_command", help="git 子命令")
+
+    # git commit
+    git_commit_parser = git_subparsers.add_parser(
+        "commit",
+        help="创建 git commit（默认 dry-run；--apply 才写 Git 历史，R2）",
+    )
+    git_commit_parser.add_argument("--project", "-p", default=".", help="项目根目录路径（默认当前目录）")
+    git_commit_parser.add_argument("--message", "-m", required=True, help="commit message")
+    git_commit_parser.add_argument("--files", "-f", nargs="*", help="要 stage 的文件路径（不指定则使用已 staged 文件）")
+    git_commit_parser.add_argument("--apply", action="store_true", help="真正执行 commit（不加此参数为 dry-run）")
+    git_commit_parser.set_defaults(func=_cmd_git_commit)
+
+    # git tag
+    git_tag_parser = git_subparsers.add_parser(
+        "tag",
+        help="创建 git tag（默认 dry-run；--apply 才写 Git 历史，R2）",
+    )
+    git_tag_parser.add_argument("--project", "-p", default=".", help="项目根目录路径（默认当前目录）")
+    git_tag_parser.add_argument("--version", "-v", required=True, help="tag 名称（如 v0.4.0）")
+    git_tag_parser.add_argument("--message", "-m", default=None, help="附注 tag 消息（不指定则创建轻量 tag）")
+    git_tag_parser.add_argument("--apply", action="store_true", help="真正执行 tag（不加此参数为 dry-run）")
+    git_tag_parser.set_defaults(func=_cmd_git_tag)
+
+    git_parser.set_defaults(func=lambda a: (git_parser.print_help(), sys.exit(1)))
 
     args = parser.parse_args()
 

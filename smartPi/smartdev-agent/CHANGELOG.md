@@ -4,7 +4,21 @@
 
 ## [Unreleased] — Phase 11A: Git Governance v0（进行中）
 
-### Added — Phase 11A Step 5: git-policy.json 示例配置 + 文档
+### Added — Phase 11A Step 6: git commit / git tag CLI Command（R2）
+
+- **`smartdev git commit`**（R2，默认 dry-run）：
+  - 默认只输出"将要执行什么"，不创建 commit
+  - `--apply` 才调用 `GitService.commit()`，真正写 Git 历史
+  - policy 门控：protected branch → blocker（rc=1）；超 max_files → warning
+  - 执行后写审计到 `.smartdev/index.sqlite` runs 表
+- **`smartdev git tag`**（R2，默认 dry-run）：
+  - 默认 dry-run；`--apply` 才打 tag
+  - 重复 tag → blocker（rc=1）
+  - 支持 `--message` 创建 annotated tag
+- **`_write_git_audit()`**：复用 code.apply 的审计模式，无索引时静默处理
+- **`tests/test_git_commit_command.py`**：28 tests（dry-run / apply / policy / error / audit）
+
+
 
 - **`.smartdev/git-policy.json`**：项目级 git policy 示例配置文件
   - policy 实现已在 Step 1 `core/git.py` 完成（`GitPolicy` + `load_git_policy()`）
