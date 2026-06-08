@@ -32,5 +32,7 @@ from smartdev.skills.git_commit_plan import skill as _git_commit_plan_skill  # n
 from smartdev.skills.git_commit_message import skill as _git_commit_message_skill  # noqa: F401
 from smartdev.skills.git_release_plan import skill as _git_release_plan_skill  # noqa: F401
 from smartdev.skills.git_merge_check import skill as _git_merge_check_skill  # noqa: F401
+# Phase 11C — Documentation Governance
+from smartdev.skills.doc_map import skill as _doc_map_skill  # noqa: F401
 
 __all__ = ["Skill"]

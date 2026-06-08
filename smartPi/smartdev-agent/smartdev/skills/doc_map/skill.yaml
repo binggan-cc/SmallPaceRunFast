@@ -1,0 +1,35 @@
+# SmartDev Skill: doc.map
+# 文档地图 — 扫描项目文档，提取 headings / mentions / last_modified
+
+id: doc.map
+name: 文档地图
+capability: doc_governance
+risk: R0
+mode: read_only
+
+description: >
+  扫描项目文档（docs/ + README.md + CHANGELOG.md + CLAUDE.md 等），
+  提取每个文档的 headings、mentions（版本号/Phase/工具名等关键词）、
+  last_modified 时间，输出结构化 doc_map JSON。
+  供 doc.consistency Skill 和 Doc Steward 高阶模型消费。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - extra_paths        # 额外要扫描的文件路径列表（相对于 project_path）
+    - mention_keywords   # 额外的 mention 关键词列表
+
+outputs:
+  - docs              # 文档条目列表（path / headings / mentions / last_modified）
+  - doc_count         # 扫描到的文档数量
+  - generated_at      # 快照生成时间
+
+preconditions:
+  - project_path_exists
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
