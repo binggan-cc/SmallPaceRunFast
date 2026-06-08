@@ -522,7 +522,7 @@ Go 提取能力（Step 2）：
 | Step 2 | git.status + git.diff.explain（R0）| ✅ 完成 | 57 | 730 |
 | Step 3 | git.commit.plan + git.commit.message（R0）| ✅ 完成 | 59 | 789 |
 | Step 4 | git.release.plan + git.merge.check（R0）| ✅ 完成 | 56 | 845 |
-| Step 5 | git-policy.json 读取 + 默认策略 | 🔲 待开始 | — | — |
+| Step 5 | git-policy.json 示例文件 + 文档补充 | ✅ 完成 | 0 | 845 |
 | Step 6 | git commit / git tag CLI Command（R2）| 🔲 待开始 | — | — |
 | Step 7 | MCP 暴露只读 Git 工具（+5 工具）| 🔲 待开始 | — | — |
 

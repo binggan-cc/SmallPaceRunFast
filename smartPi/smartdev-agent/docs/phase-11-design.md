@@ -479,10 +479,14 @@ Step 4  git.release.plan + git.merge.check（R1，~707 tests）
         - 当前分支干净度 / 测试基线提示
         - graph.validate / patch_backups 信号
 
-Step 5  git-policy.yaml 读取 + 默认策略（R1，~719 tests）
-        - protected branches / dangerous operations forbidden
-        - commit convention / release files
-        - 无文件用默认，有文件只覆盖明确字段
+Step 5  git-policy.json 读取 + 默认策略（R0，Step 1 已实现，845 tests）✅
+        - GitPolicy 数据类（含安全默认值）已在 core/git.py 实现
+        - load_git_policy()：.smartdev/git-policy.json（优先）或 smartdev.git.json
+        - 字段覆盖：只覆盖明确指定字段，缺失字段保留默认值
+        - 静默降级：文件不存在或格式错误时退回默认值
+        - policy 格式：JSON（零依赖，标准库 json）
+        - 示例文件：.smartdev/git-policy.json（已创建）
+        - 6 个 policy 测试已在 test_git_service.py 覆盖
 
 Step 6  git commit / git tag CLI Command（R2，~735 tests）
         - 默认 dry-run，--apply 才执行

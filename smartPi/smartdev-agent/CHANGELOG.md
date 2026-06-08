@@ -4,6 +4,15 @@
 
 ## [Unreleased] — Phase 11A: Git Governance v0（进行中）
 
+### Added — Phase 11A Step 5: git-policy.json 示例配置 + 文档
+
+- **`.smartdev/git-policy.json`**：项目级 git policy 示例配置文件
+  - policy 实现已在 Step 1 `core/git.py` 完成（`GitPolicy` + `load_git_policy()`）
+  - 格式：JSON（零依赖，标准库 `json` 解析）
+  - 字段：branch.protected / commit.convention+max_files / release.changelog+version_files / dangerous 全 forbid
+  - 无文件时使用安全默认值；有文件时只覆盖明确指定字段
+- **`docs/phase-11-design.md`**：Step 5 标注已完成，补充实现说明和示例
+
 ### Added — Phase 11A Step 4: git.release.plan + git.merge.check Skill
 
 - **`git.release.plan` Skill**（R0 只读）：分析 commits / CHANGELOG / version 文件，给出 semver bump 建议
