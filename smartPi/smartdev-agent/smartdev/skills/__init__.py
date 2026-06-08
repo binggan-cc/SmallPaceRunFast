@@ -36,5 +36,6 @@ from smartdev.skills.git_merge_check import skill as _git_merge_check_skill  # n
 from smartdev.skills.doc_map import skill as _doc_map_skill  # noqa: F401
 from smartdev.skills.doc_consistency import skill as _doc_consistency_skill  # noqa: F401
 from smartdev.skills.doc_update_plan import skill as _doc_update_plan_skill  # noqa: F401
+from smartdev.skills.doc_patch_propose import skill as _doc_patch_propose_skill  # noqa: F401
 
 __all__ = ["Skill"]

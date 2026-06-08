@@ -1,0 +1,38 @@
+# SmartDev Skill: doc.patch.propose
+# 文档 Patch 生成 — 对 status_sync 类更新生成确定性 find-replace patch
+
+id: doc.patch.propose
+name: 文档 Patch 生成
+capability: doc_governance
+risk: R1
+mode: propose_only
+
+description: >
+  消费 doc.update.plan 的 update_items，对 status_sync 类型的更新
+  生成确定性 find-replace patch（复用 Phase 9 Patch 模型）。
+  capability_boundary 类型只生成 hint，不生成 patch（需人工或 Doc Steward 起草内容）。
+  patch_id 持久化到 .smartdev/patches/，不修改任何文档（不落盘）。
+  apply 需通过 CLI `smartdev apply --patch-id <id>` 显式执行。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - update_items       # doc.update.plan 输出的 update_items 列表
+    - consistency_issues # doc.consistency 输出的 issues（不传 update_items 时用）
+
+outputs:
+  - patches            # 生成的 patch 列表（patch_id / doc / find / replace / summary）
+  - hints              # capability_boundary 类型的更新 hint（需人工起草内容）
+  - patch_count        # 生成的 patch 数量
+  - hint_count         # hint 数量
+  - generated_at       # 生成时间
+
+preconditions:
+  - project_path_exists
+
+postconditions:
+  - no_source_file_modified  # 只写 .smartdev/patches/，不改文档本身
+
+adapter_support:
+  - generic
