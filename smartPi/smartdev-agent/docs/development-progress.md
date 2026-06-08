@@ -532,11 +532,11 @@ Go 提取能力（Step 2）：
 
 目标：SmartDev 提供文档一致性检查工具链，高阶模型担任 Doc Steward 角色。
 
-| Step | 交付物 | 状态 |
-|------|--------|------|
-| Step 0 | 设计文档 phase-11c-design.md | ✅ 完成 |
-| Step 1 | Change Manifest 生成 | 🔲 待开始 |
-| Step 2 | Capability Snapshot 导出（skill / cli / mcp）| 🔲 待开始 |
+| Step | 交付物 | 状态 | 新增 tests | 累计 tests |
+|------|--------|------|-----------|-----------|
+| Step 0 | 设计文档 phase-11c-design.md | ✅ 完成 | 0 | 906 |
+| Step 1 | Change Manifest 生成 | ✅ 完成 | 54 | 960 |
+| Step 2 | Capability Snapshot 导出（skill / cli / mcp）| 🔲 待开始 | | |
 | Step 3 | doc.map Skill（R0 只读）| 🔲 待开始 |
 | Step 4 | doc.consistency Skill（5 条规则）| 🔲 待开始 |
 | Step 5 | doc.update.plan Skill | 🔲 待开始 |

@@ -2,7 +2,35 @@
 
 本文档记录 SmartDev Agent 的重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)。
 
-## [Unreleased] — Phase 11A: Git Governance v0（进行中）
+## [Unreleased] — Phase 11C: Documentation Governance v0（进行中）
+
+### Added — Phase 11C Step 1: Change Manifest 生成
+
+- **`smartdev/core/manifest.py`**：ChangeManifest 数据模型 + 生成器 + 持久化
+  - `ChangeManifest` dataclass：run_id / source / timestamp / changed_files / change_type / risk_level / public_surface_changed / cli_changed / skill_changed / mcp_changed / docs_likely_needed / validation / commit_message / patch_id
+  - 三种来源工厂函数：`manifest_from_git_diff`（working_tree_diff）/ `manifest_from_patch_apply`（patch_apply）/ `manifest_from_git_commit`（git_commit）
+  - 通用入口 `manifest_from_files`：自动推断 change_type / risk_level / surface flags / docs_likely_needed
+  - 持久化：`save_manifest` 写入 `.smartdev/runs/<run_id>/change-manifest.json`；`load_manifest` / `load_latest_manifest` 加载
+  - git 不可用时 `manifest_from_git_diff` 返回空 manifest，不崩溃
+- **`smartdev/cli.py`**：新增 `manifest` 子命令组
+  - `smartdev manifest diff [--save] [--run-id]`：从工作区 diff 生成 ChangeManifest，可选保存
+  - `smartdev manifest last`：展示最近一次已保存的 ChangeManifest
+  - `smartdev manifest show <run_id>`：按 run_id 查看指定 ChangeManifest
+- **`tests/test_manifest.py`**：54 tests，全绿
+  - 数据模型序列化 / 反序列化 / roundtrip
+  - change_type 推断（commit prefix 优先 / 文件路径特征）
+  - risk_level 推断（文件数量 / public_surface）
+  - surface flags（cli / mcp / skill / pyproject.toml / skill.yaml）
+  - docs_likely_needed 推断
+  - 三种来源工厂函数验证
+  - 真实 git 仓库测试（staged / unstaged / dedup）
+  - 持久化 save / load / load_latest 全路径
+
+测试基线：**960 passed, 1 skipped**
+
+---
+
+## [Unreleased] — Phase 11A: Git Governance v0（已完成）
 
 ### Added — Phase 11D Step 0: Collaboration Handoff v0 设计文档 + 11C 修正
 
