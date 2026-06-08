@@ -122,7 +122,7 @@ class TestMCPProtocol:
         r = c.send("tools/list")
         assert "result" in r
         tools = r["result"]["tools"]
-        assert len(tools) == 19
+        assert len(tools) == 21
 
     def test_tools_list_has_required_names(self, client):
         c, _ = client
@@ -140,6 +140,8 @@ class TestMCPProtocol:
             "smartdev_git_status", "smartdev_git_diff_explain",
             "smartdev_git_commit_plan", "smartdev_git_release_plan",
             "smartdev_git_merge_check",
+            # Phase 11C: 只读 Doc Governance 工具
+            "smartdev_doc_consistency", "smartdev_doc_update_plan",
         }
         assert required == names
 
@@ -166,7 +168,7 @@ class TestBasicTools:
         d = c.call_tool("smartdev_version")
         assert d["ok"] is True
         assert "version" in d["data"]
-        assert len(d["data"]["tools"]) == 19
+        assert len(d["data"]["tools"]) == 21
         # 所有工具都应标记为 available（v0 全量完成）
         statuses = {t["name"]: t["status"] for t in d["data"]["tools"]}
         assert all(s == "available" for s in statuses.values())

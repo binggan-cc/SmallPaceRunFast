@@ -90,6 +90,9 @@ async def handle_version(arguments: dict, project_path: Path) -> list[TextConten
         {"name": "smartdev_git_commit_plan",  "permission": "READ",          "status": "available"},
         {"name": "smartdev_git_release_plan", "permission": "READ",          "status": "available"},
         {"name": "smartdev_git_merge_check",  "permission": "READ",          "status": "available"},
+        # Phase 11C Step 7: 只读 Doc Governance 工具
+        {"name": "smartdev_doc_consistency",  "permission": "READ",          "status": "available"},
+        {"name": "smartdev_doc_update_plan",  "permission": "READ",          "status": "available"},
     ]
     return [TextContent(
         type="text",
@@ -200,6 +203,17 @@ async def handle_list_tools(arguments: dict, project_path: Path) -> list[TextCon
             "name": "smartdev_git_merge_check",
             "permission": "READ",
             "description": "Pre-merge readiness check: blockers and warnings before merging a branch.",
+        },
+        # Phase 11C Step 7: 只读 Doc Governance 工具
+        {
+            "name": "smartdev_doc_consistency",
+            "permission": "READ",
+            "description": "Check documentation consistency against code using 5 deterministic rules. Returns issues list.",
+        },
+        {
+            "name": "smartdev_doc_update_plan",
+            "permission": "READ",
+            "description": "Generate structured doc update plan from consistency issues: what to change, why, what not to touch.",
         },
     ]
     return [TextContent(
@@ -1064,4 +1078,115 @@ async def handle_git_merge_check(arguments: dict, project_path: Path) -> list[Te
         return [TextContent(
             type="text",
             text=formatter.error("smartdev_git_merge_check", "INTERNAL_ERROR", f"git.merge.check failed: {e}"),
+        )]
+
+# ── Phase 11C Step 7 工具：只读 Doc Governance 工具 ──────────────
+#
+# 设计原则（phase-11c-design.md §7 Step 7）：
+# - 两个工具全部 READ 权限，调用对应 doc Skill（R0）
+# - doc.patch.propose 暂不暴露（生成质量需先在 CLI 跑稳后再评估）
+# - 所有快照（skill_snapshot / cli_snapshot / doc_map）在 handler 内现场生成，调用方无需提供
+
+
+async def handle_doc_consistency(arguments: dict, project_path: Path) -> list[TextContent]:
+    """基于 5 条确定性规则检查文档与代码一致性，输出 issues 列表
+
+    不接受输入参数，所有快照现场生成：
+    - skill_snapshot：从 Skill.get_registry() 内省
+    - cli_snapshot：从 argparse 结构内省
+    - doc_map：扫描项目文档
+
+    change_manifest 参数为可选（不传则跳过规则 5）。
+    """
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    try:
+        skill = Skill.create("doc.consistency")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_doc_consistency",
+                    "PROJECT_NOT_FOUND",
+                    f"Project path does not exist: {project_path}",
+                ),
+            )]
+
+        # 构建输入（可选 change_manifest）
+        inputs: dict = {}
+        if "change_manifest" in arguments:
+            inputs["change_manifest"] = arguments["change_manifest"]
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_doc_consistency",
+                result.data,
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_doc_consistency",
+                "INTERNAL_ERROR",
+                f"doc.consistency failed: {e}",
+            ),
+        )]
+
+
+async def handle_doc_update_plan(arguments: dict, project_path: Path) -> list[TextContent]:
+    """消费 doc.consistency issues，输出结构化文档更新计划
+
+    可选参数：
+        consistency_issues: list  doc.consistency 输出的 issues（不传则自动运行）
+    """
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    try:
+        skill = Skill.create("doc.update.plan")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_doc_update_plan",
+                    "PROJECT_NOT_FOUND",
+                    f"Project path does not exist: {project_path}",
+                ),
+            )]
+
+        # 构建输入（可选 consistency_issues）
+        inputs: dict = {}
+        if "consistency_issues" in arguments:
+            ci = arguments["consistency_issues"]
+            if isinstance(ci, list):
+                inputs["consistency_issues"] = ci
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_doc_update_plan",
+                result.data,
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_doc_update_plan",
+                "INTERNAL_ERROR",
+                f"doc.update.plan failed: {e}",
+            ),
         )]

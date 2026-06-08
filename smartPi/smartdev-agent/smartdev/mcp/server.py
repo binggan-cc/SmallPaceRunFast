@@ -388,6 +388,49 @@ def create_server(project_path: Path):
                 "required": [],
             },
         ),
+        # ── Phase 11C Step 7: 只读 Doc Governance 工具 ───────────
+        Tool(
+            name="smartdev_doc_consistency",
+            description=(
+                "Check documentation consistency against code using 5 deterministic rules. "
+                "Automatically generates skill/cli/mcp snapshots and doc map. "
+                "Returns issues list with type, severity, code_fact, doc_claim. "
+                "Read-only — does NOT modify any files."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "change_manifest": {
+                        "type": "object",
+                        "description": "(Optional) ChangeManifest dict from smartdev manifest diff. "
+                                       "Enables Rule 5 (public surface changed docs not updated).",
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="smartdev_doc_update_plan",
+            description=(
+                "Generate structured documentation update plan from consistency issues. "
+                "Outputs: update_items (what to change and why), "
+                "no_change_items (docs that must not be modified). "
+                "Classifies updates as status_sync / capability_boundary / expression_alignment. "
+                "Read-only — does NOT modify any files."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "consistency_issues": {
+                        "type": "array",
+                        "description": "(Optional) issues list from smartdev_doc_consistency. "
+                                       "If omitted, runs doc.consistency automatically.",
+                        "items": {"type": "object"},
+                    },
+                },
+                "required": [],
+            },
+        ),
     ]
 
     # ── 工具路由表 ────────────────────────────────────────────────
@@ -413,6 +456,9 @@ def create_server(project_path: Path):
         "smartdev_git_commit_plan":  t.handle_git_commit_plan,
         "smartdev_git_release_plan": t.handle_git_release_plan,
         "smartdev_git_merge_check":  t.handle_git_merge_check,
+        # Phase 11C Step 7: 只读 Doc Governance 工具
+        "smartdev_doc_consistency":  t.handle_doc_consistency,
+        "smartdev_doc_update_plan":  t.handle_doc_update_plan,
     }
 
     # ── 注册 list_tools handler ────────────────────────────────────

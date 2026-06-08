@@ -80,11 +80,11 @@ class TestGitToolsRegistered:
             assert tool in names, f"{tool} not in version tool list"
 
     @pytest.mark.asyncio
-    async def test_total_tool_count_is_19(self, tmp_path: Path):
+    async def test_total_tool_count_is_21(self, tmp_path: Path):
         from smartdev.mcp.tools import handle_version
         result = await handle_version({}, tmp_path)
         data = _parse(result)
-        assert len(data["data"]["tools"]) == 19
+        assert len(data["data"]["tools"]) == 21
 
     @pytest.mark.asyncio
     async def test_git_tools_in_list_tools(self, tmp_path: Path):
