@@ -1,0 +1,36 @@
+# SmartDev Skill: doc.update.plan
+# 文档更新计划 — 消费 doc.consistency issues，输出结构化更新方案
+
+id: doc.update.plan
+name: 文档更新计划
+capability: doc_governance
+risk: R0
+mode: read_only
+
+description: >
+  消费 doc.consistency 的 issues 列表，输出结构化文档更新计划：
+  哪些文档需要改、为什么、不应该改哪些、更新的性质是什么。
+  区分三类更新性质：状态同步 / 能力边界 / 表达口径。
+  不生成文档内容，不修改任何文件，只输出计划供人审阅和 doc.patch.propose 消费。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - consistency_issues  # doc.consistency 输出的 issues 列表（不传则自动运行 doc.consistency）
+    - doc_map             # doc.map 输出 dict（用于补充文档元数据）
+
+outputs:
+  - update_items         # 需要更新的文档条目列表
+  - no_change_items      # 明确不应改动的文档列表（含理由）
+  - update_count         # 需要更新的文档数
+  - generated_at         # 计划生成时间
+
+preconditions:
+  - project_path_exists
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
