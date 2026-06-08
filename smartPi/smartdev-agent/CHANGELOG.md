@@ -4,6 +4,32 @@
 
 ## [Unreleased] — Phase 11C: Documentation Governance v0（进行中）
 
+### Added — Phase 11C Step 3: doc.map Skill
+
+- **`smartdev/skills/doc_map/skill.py`**：文档地图 Skill（R0 只读）
+  - 扫描范围：项目根 README.md / CHANGELOG.md / CLAUDE.md / CONTRIBUTING.md / AGENTS.md + `docs/` 目录所有 `.md/.rst/.txt` + 可选 `extra_paths`
+  - `_extract_headings`：Markdown `#`~`######` 标题提取，保留层级前缀
+  - `_extract_mentions`：6 类确定性 mention 模式（version / phase / test_baseline / mcp_tool / cli_command / skill_name），去重，最多 20 个
+  - CHANGELOG 专用：提取 `latest_version` / `version_sections`（`## [xxx]` 节）
+  - `extra_paths` 参数：支持扫描额外指定文件
+  - `mention_keywords` 参数：支持自定义精确字符串关键词（自动转为正则）
+  - 文件不存在 / 读取失败时跳过，不崩溃；结果包含 `skipped` 列表
+  - `_parse_skill_yaml_lite` 零依赖 YAML 解析（复用 snapshot.py）
+- **`smartdev/skills/doc_map/skill.yaml`**：Skill 元数据
+- **`smartdev/skills/__init__.py`**：注册 `doc.map`（Skill 总数 18 → 19）
+- **`tests/test_doc_map.py`**：50 tests，全绿
+  - 注册 / can_run / 空项目
+  - README / CHANGELOG / docs/ 扫描
+  - headings / mentions / last_modified / size_bytes
+  - CHANGELOG latest_version / version_sections
+  - extra_paths / mention_keywords 参数
+  - _extract_headings / _extract_mentions / _collect_doc_paths 单元测试
+  - DocEntry.to_dict 结构验证
+
+测试基线：**1063 passed, 1 skipped**
+
+---
+
 ### Added — Phase 11C Step 2: Capability Snapshot 导出
 
 - **`smartdev/core/snapshot.py`**：三种能力快照导出器 + 数据模型
