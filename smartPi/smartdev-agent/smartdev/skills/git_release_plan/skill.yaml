@@ -1,0 +1,38 @@
+# SmartDev Skill: git.release.plan
+# 发布规划 — 读取 CHANGELOG / version 文件 / commits，建议 semver bump
+
+id: git.release.plan
+name: 发布规划
+capability: git_governance
+risk: R0
+mode: read_only
+
+description: >
+  读取 CHANGELOG、version 文件（pyproject.toml 等）和最近 commits，
+  推断 semver bump 建议（major / minor / patch）并输出发布检查清单。
+  不执行任何 git 操作，只读分析。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - since_tag   # 从哪个 tag 开始统计（默认最新 tag）
+
+outputs:
+  - current_version      # 从 version 文件读出的当前版本
+  - suggested_bump       # major / minor / patch / none
+  - suggested_version    # 建议的下一个版本字符串
+  - bump_reason          # 判断依据（commits 分析）
+  - changelog_status     # CHANGELOG 文件状态
+  - release_checklist    # 发布前检查清单
+  - recent_commits       # 用于分析的提交列表
+
+preconditions:
+  - project_path_exists
+  - git_available
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic

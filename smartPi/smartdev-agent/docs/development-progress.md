@@ -511,7 +511,22 @@ Go 提取能力（Step 2）：
 - 生成与应用分离：code.patch(propose, R1) / code.apply(R2/R3 确认) / code.rollback(R1)
 - 默认安全：不加 --apply 绝不碰磁盘
 
-### Phase 10：MCP Server v0（✅ 完成）
+### Phase 11A：Git Governance v0（进行中）
+
+目标：补齐 AI 编程闭环的后两步（版本提交 + 发布治理），覆盖交付记录层（L5）。
+
+| Step | 交付物 | 状态 | 新增 tests | 累计 tests |
+|------|--------|------|-----------|-----------|
+| Step 0 | 设计文档 phase-11-design.md | ✅ 完成 | 0 | 637 |
+| Step 1 | core/git.py（GitService + GitPolicy）| ✅ 完成 | 36 | 673 |
+| Step 2 | git.status + git.diff.explain（R0）| ✅ 完成 | 57 | 730 |
+| Step 3 | git.commit.plan + git.commit.message（R0）| ✅ 完成 | 59 | 789 |
+| Step 4 | git.release.plan + git.merge.check（R0）| ✅ 完成 | 56 | 845 |
+| Step 5 | git-policy.json 读取 + 默认策略 | 🔲 待开始 | — | — |
+| Step 6 | git commit / git tag CLI Command（R2）| 🔲 待开始 | — | — |
+| Step 7 | MCP 暴露只读 Git 工具（+5 工具）| 🔲 待开始 | — | — |
+
+设计文档：[phase-11-design.md](phase-11-design.md)
 
 目标：把 SmartDev 已有 L1–L4 能力暴露给外部 Agent（Claude / Kiro / Cursor 等），不继续新增底层分析能力。
 

@@ -30,5 +30,7 @@ from smartdev.skills.git_status import skill as _git_status_skill  # noqa: F401
 from smartdev.skills.git_diff_explain import skill as _git_diff_explain_skill  # noqa: F401
 from smartdev.skills.git_commit_plan import skill as _git_commit_plan_skill  # noqa: F401
 from smartdev.skills.git_commit_message import skill as _git_commit_message_skill  # noqa: F401
+from smartdev.skills.git_release_plan import skill as _git_release_plan_skill  # noqa: F401
+from smartdev.skills.git_merge_check import skill as _git_merge_check_skill  # noqa: F401
 
 __all__ = ["Skill"]

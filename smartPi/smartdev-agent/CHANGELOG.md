@@ -4,7 +4,30 @@
 
 ## [Unreleased] — Phase 11A: Git Governance v0（进行中）
 
-### Added — Phase 11A Step 3: git.commit.plan + git.commit.message Skill
+### Added — Phase 11A Step 4: git.release.plan + git.merge.check Skill
+
+- **`git.release.plan` Skill**（R0 只读）：分析 commits / CHANGELOG / version 文件，给出 semver bump 建议
+  - `_infer_bump()`：Conventional Commit type → major/minor/patch/none（BREAKING→major, feat→minor, 其余→patch）
+  - `_bump_version()`：semver 字符串 bump，保留 v 前缀，格式非法时返回原值
+  - `_read_version()`：读取 pyproject.toml / package.json 版本号，零依赖（正则/json）
+  - `_check_changelog()`：检查 CHANGELOG 存在性 + [Unreleased] 节
+  - `_build_release_checklist()`：发布前检查清单（含 major/dirty/backup 动态项）
+  - since_tag 输入支持
+- **`git.merge.check` Skill**（R0 只读）：合并前检查，blockers（阻断）vs warnings（警告）两级分类
+  - `_check_working_tree()`：工作区脏 → blocker
+  - `_check_patch_backups()`：未清理备份 → warning
+  - `_check_target_branch()`：同分支 → blocker；从 protected 分支合 → warning
+  - `_check_has_commits()`：无新 commit → warning
+  - `_check_index_available()`：无索引 → warning
+  - ready = blockers 为空
+- **`test_git_release_plan.py`**：56 tests（infer_bump / bump_version / read_version / changelog / merge_check 全部单元 + 集成）
+
+### Added — 防范"跳过提交"机制
+
+- **CLAUDE.md §2a**：新增"每步完成后的强制 Checklist"，明确触发条件和严禁行为
+- **Kiro hook**：`smartdev-step-commit-reminder`（postToolUse/write），每次写文件后自动检查是否完成可验证 Step
+
+
 
 - **`git.commit.plan` Skill**（R0 只读）：分析 diff，生成 Conventional Commit 拆分建议
   - `build_commit_suggestions()`：按文件类别分桶（source/test/doc/manifest/config），source 按顶层目录拆

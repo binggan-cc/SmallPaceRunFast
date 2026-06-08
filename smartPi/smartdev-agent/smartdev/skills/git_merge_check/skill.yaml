@@ -1,0 +1,37 @@
+# SmartDev Skill: git.merge.check
+# 合并前检查 — 确认当前分支可安全合并
+
+id: git.merge.check
+name: 合并前检查
+capability: git_governance
+risk: R0
+mode: read_only
+
+description: >
+  在合并（PR / MR）前检查当前分支的合并就绪状态：
+  工作区干净度、是否有未提交 patch 备份、graph.validate 信号、
+  protected path 检查、policy 合规性。
+  不执行任何 merge 操作，只输出检查结果和建议。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - target_branch   # 合并目标分支（默认 main/master）
+
+outputs:
+  - ready             # bool，是否通过所有检查
+  - checks            # 各项检查结果列表
+  - blockers          # 阻断项（必须修复才能合并）
+  - warnings          # 警告项（建议修复但不阻断）
+  - branch_info       # 当前分支信息
+
+preconditions:
+  - project_path_exists
+  - git_available
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
