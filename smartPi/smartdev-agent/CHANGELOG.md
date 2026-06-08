@@ -4,6 +4,31 @@
 
 ## [Unreleased] — Phase 11C: Documentation Governance v0（进行中）
 
+### Added — Phase 11C Step 4: doc.consistency Skill
+
+- **`smartdev/skills/doc_consistency/skill.py`**：文档一致性检查 Skill（R0 只读）
+  - 5 条确定性规则，全部独立执行（单条失败不阻断其他）：
+    - **Rule 1** `stale_capability`：skill_count vs doc_map skill mentions 数量差 > 3 触发；CLI 命令未在文档中提及触发（severity: medium/low）
+    - **Rule 2** `phase_status_mismatch`：CHANGELOG latest_version vs pyproject.toml version 不符；progress.md Phase mentions vs CLAUDE.md 差异（severity: medium/low）
+    - **Rule 3** `capability_overpromise`：设计文档 ❌ 声明 vs 其他文档关键词匹配（≥2 词命中才触发，severity: high）
+    - **Rule 4** `stale_test_baseline`：progress.md 最大测试数 vs 其他文档差距 > 50 触发（severity: low）
+    - **Rule 5** `public_surface_changed_docs_not_updated`：manifest.public_surface_changed=True 且 README/CHANGELOG/CLAUDE.md mtime 早于 manifest timestamp（severity: medium）
+  - 输入快照均为可选，不传时自动现场生成（方便 CLI 直接调用）
+  - 不传 change_manifest 时跳过规则 5（不视为错误）
+- **`smartdev/skills/doc_consistency/skill.yaml`**：Skill 元数据
+- **`smartdev/skills/__init__.py`**：注册 `doc.consistency`（Skill 总数 19 → 20）
+- **`tests/test_doc_consistency.py`**：39 tests，全绿
+  - 注册 / R0 / can_run
+  - 无问题路径（issue_count=0）
+  - 各规则触发 / 不触发条件
+  - 规则隔离（单条失败不阻断）
+  - 最简调用自动生成快照
+  - ConsistencyIssue.to_dict 结构 / severity_summary 统计
+
+测试基线：**1102 passed, 1 skipped**
+
+---
+
 ### Added — Phase 11C Step 3: doc.map Skill
 
 - **`smartdev/skills/doc_map/skill.py`**：文档地图 Skill（R0 只读）

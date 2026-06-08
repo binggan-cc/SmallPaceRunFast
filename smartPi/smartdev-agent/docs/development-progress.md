@@ -538,6 +538,7 @@ Go 提取能力（Step 2）：
 | Step 1 | Change Manifest 生成 | ✅ 完成 | 54 | 960 |
 | Step 2 | Capability Snapshot 导出（skill / cli / mcp）| ✅ 完成 | 53 | 1013 |
 | Step 3 | doc.map Skill（R0 只读）| ✅ 完成 | 50 | 1063 |
+| Step 4 | doc.consistency Skill（5 条规则）| ✅ 完成 | 39 | 1102 |
 | Step 3 | doc.map Skill（R0 只读）| 🔲 待开始 |
 | Step 4 | doc.consistency Skill（5 条规则）| 🔲 待开始 |
 | Step 5 | doc.update.plan Skill | 🔲 待开始 |
