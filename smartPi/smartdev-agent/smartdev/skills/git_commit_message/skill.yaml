@@ -1,0 +1,40 @@
+# SmartDev Skill: git.commit.message
+# Conventional Commit 消息生成 — 根据输入参数生成格式化 commit 消息
+
+id: git.commit.message
+name: Commit 消息生成
+capability: git_governance
+risk: R0
+mode: read_only
+
+description: >
+  根据 type / scope / subject / body / breaking_change 等参数，
+  生成符合 Conventional Commit 规范的 commit 消息。
+  不执行 commit，只输出消息字符串。
+
+inputs:
+  required:
+    - type      # feat / fix / docs / test / chore / build / refactor / style / ci / perf
+    - subject   # 一行描述（命令式，50 字以内）
+  optional:
+    - scope           # 影响范围（如 context / cli / mcp）
+    - body            # 详细描述（换行分段）
+    - breaking_change # BREAKING CHANGE 描述（非空时在 footer 加入）
+    - co_authors      # Co-authored-by 列表
+
+outputs:
+  - message     # 完整 commit 消息字符串
+  - header      # 第一行（type(scope): subject）
+  - is_breaking # 是否是 breaking change
+  - validation  # 格式校验结果
+
+preconditions:
+  - type_not_empty
+  - subject_not_empty
+
+postconditions:
+  - no_file_modified
+  - no_git_command_executed
+
+adapter_support:
+  - generic

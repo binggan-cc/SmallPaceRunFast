@@ -1,0 +1,35 @@
+# SmartDev Skill: git.commit.plan
+# 提交拆分建议 — 分析当前 diff，建议如何拆成多个 commit
+
+id: git.commit.plan
+name: Commit 拆分建议
+capability: git_governance
+risk: R0
+mode: read_only
+
+description: >
+  分析当前 staged/unstaged diff，建议如何拆成符合 Conventional Commit
+  规范的多个提交。不执行 commit，只输出建议方案。
+  每个建议 commit 包含：涉及文件、scope、type、reason。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - staged_only   # true=只看已 stage 文件（默认 false，全部 diff）
+    - scope_hint    # 调用方提供的 scope 提示（如 "context" "cli"）
+
+outputs:
+  - commits           # 建议 commit 列表（type/scope/subject/files/reason）
+  - policy_warnings   # policy 检查警告（超出 max_files 等）
+  - total_files       # 本次涉及的总文件数
+
+preconditions:
+  - project_path_exists
+  - git_available
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
