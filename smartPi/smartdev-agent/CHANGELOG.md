@@ -4,6 +4,30 @@
 
 ## [Unreleased] — Phase 11C: Documentation Governance v0（进行中）
 
+### Added — Phase 11C Step 2: Capability Snapshot 导出
+
+- **`smartdev/core/snapshot.py`**：三种能力快照导出器 + 数据模型
+  - `SkillSnapshot`：从 `Skill.get_registry()` + `skill.yaml` 内省，含 inputs/outputs 字段
+  - `CliSnapshot`：从 argparse 结构内省，递归遍历所有叶子命令（`_walk_subparsers`）
+  - `McpSnapshot`：从 `mcp/server.py` `_TOOLS` 内省，mcp 未安装时返回 `available=False`（不崩溃）
+  - `_parse_skill_yaml_lite`：零依赖 YAML 轻量解析，提取 inputs/outputs，内联注释自动剥离
+  - `save_snapshot`：写入 `.smartdev/runs/<run_id>/<name>-snapshot.json`
+- **`smartdev/cli.py`**：新增 `snapshot` 子命令组
+  - `smartdev snapshot skills [--save]`：导出 Skill 注册表快照（18 个 Skill）
+  - `smartdev snapshot cli [--save]`：导出 CLI 命令快照（17 条命令）
+  - `smartdev snapshot mcp [--save]`：导出 MCP 工具快照（19 个工具）
+- **`tests/test_snapshot.py`**：53 tests，全绿
+  - 三种数据模型序列化 / 反序列化 / roundtrip
+  - `_parse_skill_yaml_lite`：required/optional/内联注释/空文件
+  - `build_skill_snapshot`：注册表完整性 / git.status outputs 来自 yaml
+  - `build_cli_snapshot`：命令排序 / git commit args / snapshot 命令自身存在
+  - `build_mcp_snapshot`：mcp 安装 / 未安装 mock / 工具排序 / ping 工具存在
+  - `save_snapshot`：路径 / 内容 / 自动创建目录
+
+测试基线：**1013 passed, 1 skipped**
+
+---
+
 ### Added — Phase 11C Step 1: Change Manifest 生成
 
 - **`smartdev/core/manifest.py`**：ChangeManifest 数据模型 + 生成器 + 持久化
