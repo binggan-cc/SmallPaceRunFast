@@ -4,6 +4,32 @@
 
 ## [Unreleased] — Phase 11C: Documentation Governance v0（进行中）
 
+### Added — Phase 11C Step 6: doc.patch.propose Skill
+
+- **`smartdev/skills/doc_patch_propose/skill.py`**：文档 Patch 生成 Skill（R1，不落盘）
+  - `status_sync` 类型 → 确定性 find-replace patch（复用 Phase 9 `build_find_replace_patch` + `save_patch`）
+    - `stale_test_baseline`：从 issue 提取旧数字/新数字，生成精确替换
+    - `phase_status_mismatch`（版本类）：提取版本号对，生成版本替换
+    - find_str 不在目标文档中时静默跳过，不崩溃
+  - `capability_boundary` / `expression_alignment` 类型 → hint（不生成 patch，需人工起草内容）
+  - patch 持久化到 `.smartdev/patches/`，源文档不修改（propose only）
+  - `changed_files` 包含 patch 文件路径（供审计，不含源文档）
+  - 明确区分"传入 update_items"与"未传（自动运行 doc.update.plan）"
+- **`smartdev/skills/doc_patch_propose/skill.yaml`**：Skill 元数据（R1，propose_only）
+- **`smartdev/skills/__init__.py`**：注册 `doc.patch.propose`（Skill 总数 21 → 22）
+- **`tests/test_doc_patch_propose.py`**：40 tests，全绿
+  - 注册 / R1 / can_run / 空 items
+  - stale_test_baseline patch 生成（find/replace 内容 / patch_id / 持久化 / 源文档不修改）
+  - find_str 不存在时跳过
+  - version 类 phase_status_mismatch
+  - capability_boundary → hint（无 patch）
+  - 最简调用 / changed_files / to_dict 结构
+  - _extract_test_baseline_pair / _extract_version_pair 单元测试
+
+测试基线：**1185 passed, 1 skipped**
+
+---
+
 ### Added — Phase 11C Step 5: doc.update.plan Skill
 
 - **`smartdev/skills/doc_update_plan/skill.py`**：文档更新计划 Skill（R0 只读）
