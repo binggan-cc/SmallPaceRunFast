@@ -4,6 +4,37 @@
 
 ## [Unreleased] — Phase 11C: Documentation Governance v0（进行中）
 
+### Added — Phase 11C Step 5: doc.update.plan Skill
+
+- **`smartdev/skills/doc_update_plan/skill.py`**：文档更新计划 Skill（R0 只读）
+  - 消费 `doc.consistency` issues，输出结构化更新计划
+  - 三类更新性质区分：
+    - `status_sync`：状态同步（有明确新值，机械替换）← rule2 / rule4
+    - `capability_boundary`：能力边界（新增/修正能力描述）← rule1 / rule3 / rule5
+    - `expression_alignment`：表达口径（对齐多文档措辞）
+  - `build_update_plan`：按 doc 分组 issues，计算 update_kind（取优先级最高 kind）、priority（取最高 severity）、合并 reasons / suggestions
+  - `_is_no_change_doc`：设计文档（`-design.md`）/ CHANGELOG / LICENSE 自动归入不应修改列表
+  - `_build_suggestion`：按 issue type 生成确定性建议（数字替换 / 命令补充 / 过度承诺修正）
+  - `update_items` 按 priority 排序（high → medium → low）
+  - 明确区分"传入空 issues（已检查）"与"未传（自动运行 doc.consistency）"
+- **`smartdev/skills/doc_update_plan/skill.yaml`**：Skill 元数据
+- **`smartdev/skills/__init__.py`**：注册 `doc.update.plan`（Skill 总数 20 → 21）
+- **`tests/test_doc_update_plan.py`**：43 tests，全绿
+  - 注册 / R0 / can_run / 空 issues
+  - update_kind 分类（5 种 issue type）/ mixed kind 取最高优先
+  - priority 计算 / mixed severities
+  - no_change_items（design.md / CHANGELOG）/ _is_no_change_doc
+  - suggestions 生成（stale_baseline 数字替换 / phase_mismatch 版本 / stale_capability CLI）
+  - 多 issue 同一文档合并
+  - update_items 排序
+  - 最简调用 / 传入 consistency_issues
+  - UpdateItem / NoChangeItem to_dict 结构
+  - next_steps 建议
+
+测试基线：**1145 passed, 1 skipped**
+
+---
+
 ### Added — Phase 11C Step 4: doc.consistency Skill
 
 - **`smartdev/skills/doc_consistency/skill.py`**：文档一致性检查 Skill（R0 只读）
