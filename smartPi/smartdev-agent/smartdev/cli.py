@@ -579,6 +579,72 @@ def _write_git_audit(project_path: Path, task: str, payload: dict) -> None:
         pass  # 审计失败不阻断主流程
 
 
+def _cmd_manifest(args: argparse.Namespace) -> int:
+    """manifest — 生成 / 查看 Change Manifest（Phase 11C Step 1）
+
+    子命令：
+      diff   —— 从当前工作区 git diff 生成 ChangeManifest（working_tree_diff 来源）
+      last   —— 展示最近一次已保存的 ChangeManifest
+      show   —— 按 run_id 查看指定 ChangeManifest
+
+    设计约束（phase-11c-design.md §4.1）：
+    - diff / show 只写 .smartdev/runs/<run_id>/change-manifest.json，不动源码
+    - last / show 只读，零副作用
+    - git 不可用时 diff 返回空 manifest（不崩溃）
+    """
+    import json as _json
+
+    from smartdev.core.manifest import (
+        load_latest_manifest,
+        load_manifest,
+        manifest_from_git_diff,
+        save_manifest,
+    )
+
+    project_path = Path(args.project).resolve()
+    if not project_path.exists():
+        print(f"错误: 项目路径不存在: {project_path}", file=sys.stderr)
+        return 1
+
+    runs_dir = project_path / ".smartdev" / "runs"
+    subcmd = getattr(args, "manifest_command", None)
+
+    # ── diff 子命令 ───────────────────────────────────────
+    if subcmd == "diff" or subcmd is None:
+        run_id = getattr(args, "run_id", None) or None
+        m = manifest_from_git_diff(project_path, run_id=run_id)
+
+        if args.save:
+            out_path = save_manifest(m, runs_dir)
+            print(f"✅ Change Manifest 已保存: {out_path}")
+            print()
+
+        print(m.to_json())
+        return 0
+
+    # ── last 子命令 ───────────────────────────────────────
+    if subcmd == "last":
+        m = load_latest_manifest(runs_dir)
+        if m is None:
+            print("未找到任何 Change Manifest（.smartdev/runs/ 为空）", file=sys.stderr)
+            return 1
+        print(m.to_json())
+        return 0
+
+    # ── show 子命令 ───────────────────────────────────────
+    if subcmd == "show":
+        run_id = args.run_id
+        m = load_manifest(run_id, runs_dir)
+        if m is None:
+            print(f"未找到 run_id='{run_id}' 的 Change Manifest", file=sys.stderr)
+            return 1
+        print(m.to_json())
+        return 0
+
+    print(f"错误: 未知子命令 '{subcmd}'", file=sys.stderr)
+    return 1
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     """启动 MCP Server（供外部 Agent 通过 stdio 调用）"""
     # 先检查 mcp 包，未安装时给出提示
@@ -701,6 +767,58 @@ def main() -> None:
     git_tag_parser.set_defaults(func=_cmd_git_tag)
 
     git_parser.set_defaults(func=lambda a: (git_parser.print_help(), sys.exit(1)))
+
+    # manifest 命令组（Phase 11C Step 1 新增）
+    manifest_parser = subparsers.add_parser(
+        "manifest",
+        help="生成 / 查看 Change Manifest（文档一致性检查的事实基础）",
+    )
+    manifest_subparsers = manifest_parser.add_subparsers(
+        dest="manifest_command", help="manifest 子命令"
+    )
+
+    # manifest diff — 从工作区 diff 生成
+    manifest_diff_parser = manifest_subparsers.add_parser(
+        "diff",
+        help="从当前工作区 git diff 生成 ChangeManifest（working_tree_diff 来源）",
+    )
+    manifest_diff_parser.add_argument(
+        "--project", "-p", default=".", help="项目根目录路径（默认当前目录）"
+    )
+    manifest_diff_parser.add_argument(
+        "--run-id", dest="run_id", default=None,
+        help="指定 run_id（默认自动生成）",
+    )
+    manifest_diff_parser.add_argument(
+        "--save", action="store_true",
+        help="把生成的 manifest 保存到 .smartdev/runs/<run_id>/",
+    )
+    manifest_diff_parser.set_defaults(func=_cmd_manifest, manifest_command="diff")
+
+    # manifest last — 查看最近一次 manifest
+    manifest_last_parser = manifest_subparsers.add_parser(
+        "last",
+        help="展示最近一次已保存的 ChangeManifest",
+    )
+    manifest_last_parser.add_argument(
+        "--project", "-p", default=".", help="项目根目录路径（默认当前目录）"
+    )
+    manifest_last_parser.set_defaults(func=_cmd_manifest, manifest_command="last")
+
+    # manifest show — 按 run_id 查看
+    manifest_show_parser = manifest_subparsers.add_parser(
+        "show",
+        help="按 run_id 查看指定 ChangeManifest",
+    )
+    manifest_show_parser.add_argument(
+        "--project", "-p", default=".", help="项目根目录路径（默认当前目录）"
+    )
+    manifest_show_parser.add_argument("run_id", help="要查看的 run_id")
+    manifest_show_parser.set_defaults(func=_cmd_manifest, manifest_command="show")
+
+    manifest_parser.set_defaults(
+        func=lambda a: (manifest_parser.print_help(), sys.exit(1))
+    )
 
     args = parser.parse_args()
 
