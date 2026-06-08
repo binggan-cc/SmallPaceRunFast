@@ -2,7 +2,56 @@
 
 本文档记录 SmartDev Agent 的重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)。
 
-## [0.5.0] - 2026-06-07
+## [Unreleased] — Phase 11A: Git Governance v0（进行中）
+
+### Added — Phase 11A Step 3: git.commit.plan + git.commit.message Skill
+
+- **`git.commit.plan` Skill**（R0 只读）：分析 diff，生成 Conventional Commit 拆分建议
+  - `build_commit_suggestions()`：按文件类别分桶（source/test/doc/manifest/config），source 按顶层目录拆
+  - `_infer_type()`：category + status → Conventional Commit type（feat/fix/docs/test/build/chore/refactor）
+  - `_infer_scope()`：从文件路径顶层目录启发式推导，scope_hint 优先
+  - policy_warnings：超 max_files_per_commit / 在 protected branch 时提示
+  - staged_only 模式支持
+- **`git.commit.message` Skill**（R0 只读）：生成符合 Conventional Commit 规范的 commit 消息字符串
+  - `build_commit_message()`：组装 header + body + footers（BREAKING CHANGE / Co-authored-by）
+  - `validate_commit_inputs()`：6 项格式校验（type / 大写开头 / 句号结尾 / 超长 / 非法 type）— 只警告不拦截
+  - breaking change：同时加 `!` 标记和 `BREAKING CHANGE:` footer
+  - 不依赖 git 可用性（纯字符串生成）
+- **`test_git_commit_plan.py`**：59 tests（infer_type / infer_scope / build_suggestions / Skill 集成 / message 生成 / validation）
+
+### Added — Phase 11A Step 2: git.status + git.diff.explain Skill
+
+- **`git.status` Skill**（R0 只读）：查询当前 git 仓库状态快照
+  - 输出：branch / is_dirty / staged / unstaged / untracked / recent_commits / policy_hints
+  - policy_hints：当前分支是 protected branch 时提示
+  - next_steps：根据脏状态类型给出建议（diff.explain / commit.plan）
+- **`git.diff.explain` Skill**（R0 只读）：确定性结构化 diff 解释，不做自然语言总结
+  - `_classify_file()`：source / test / doc / manifest / config / other 6 分类
+  - `_compute_signals()`：touches_tests / touches_docs / touches_manifest / touches_protected_path
+  - `_compute_risk_hints()`：large_changeset / multi_file / cross_module / large_diff / manifest
+  - `_suggest_commit_split()`：按类别建议 commit 拆分方案
+  - staged=True / False 两种模式；空 diff 快速返回
+- **`test_git_status.py`**：20 tests；**`test_git_diff_explain.py`**：37 tests
+
+### Added — Phase 11A Step 1: core/git.py（GitService）
+
+- **`smartdev/core/git.py`**：Git 底层封装，所有 git Skill 的唯一 subprocess 接触点
+  - `GitNotAvailable`：统一异常，调用方捕获返回 GIT_NOT_FOUND，不崩溃
+  - `GitFileChange / GitStatus / GitDiff`：结构化数据模型
+  - `GitPolicy + load_git_policy()`：读取 `.smartdev/git-policy.json`，不存在时用安全默认值
+  - `GitService`：只读方法（status/diff/tags/log）+ 执行方法（commit/tag，仅供 CLI Command）
+  - subprocess 全部列表参数，无 shell=True，防注入
+- **`test_git_service.py`**：36 tests（is_available / status / diff / tags / log / policy / commit / tag）
+
+### Added — Phase 11A Step 0: 设计文档
+
+- **`docs/phase-11-design.md`**：Phase 11A Git Governance v0 完整设计
+  - 8 条硬原则（不自动提交 / Skill 只读 / Command 显式执行 / 默认 dry-run / 零依赖 / MCP 只暴露只读 / 不进 workflow / apply 与 commit 分离）
+  - 7 个核心问题拍板（policy 格式改为 JSON）
+  - 技术设计：GitService / Skill 模式 / CLI Command 模式 / MCP 工具接入
+  - 7 步实施路线 + 验收标准 14 条
+
+
 
 ### Added — Phase 9 Step 3+4: code.apply / code.rollback Skill + 端到端验证
 
