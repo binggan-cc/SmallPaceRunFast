@@ -84,6 +84,12 @@ async def handle_version(arguments: dict, project_path: Path) -> list[TextConten
         # Step 4（已实现）
         {"name": "smartdev_code_index",       "permission": "CACHE_WRITE",   "status": "available"},
         {"name": "smartdev_patch_propose",    "permission": "PATCH_PROPOSE", "status": "available"},
+        # Phase 11A Step 7: 只读 Git 工具
+        {"name": "smartdev_git_status",       "permission": "READ",          "status": "available"},
+        {"name": "smartdev_git_diff_explain", "permission": "READ",          "status": "available"},
+        {"name": "smartdev_git_commit_plan",  "permission": "READ",          "status": "available"},
+        {"name": "smartdev_git_release_plan", "permission": "READ",          "status": "available"},
+        {"name": "smartdev_git_merge_check",  "permission": "READ",          "status": "available"},
     ]
     return [TextContent(
         type="text",
@@ -168,6 +174,32 @@ async def handle_list_tools(arguments: dict, project_path: Path) -> list[TextCon
             "name": "smartdev_patch_propose",
             "permission": "PATCH_PROPOSE",
             "description": "Generate find-replace patch proposal (diff + patch_id). Does NOT modify source files.",
+        },
+        # Phase 11A Step 7: 只读 Git 工具
+        {
+            "name": "smartdev_git_status",
+            "permission": "READ",
+            "description": "Query git status: branch, dirty files, staged/unstaged/untracked, recent commits.",
+        },
+        {
+            "name": "smartdev_git_diff_explain",
+            "permission": "READ",
+            "description": "Deterministic structured diff explanation: line counts, signals, commit split suggestion.",
+        },
+        {
+            "name": "smartdev_git_commit_plan",
+            "permission": "READ",
+            "description": "Generate Conventional Commit split suggestions from current diff. Does not execute commit.",
+        },
+        {
+            "name": "smartdev_git_release_plan",
+            "permission": "READ",
+            "description": "Suggest semver bump and release checklist from commits + CHANGELOG.",
+        },
+        {
+            "name": "smartdev_git_merge_check",
+            "permission": "READ",
+            "description": "Pre-merge readiness check: blockers and warnings before merging a branch.",
         },
     ]
     return [TextContent(
@@ -841,3 +873,195 @@ def _build_diff_explain(data: dict) -> list[dict]:
         })
 
     return explains
+
+
+# ── Phase 11A Step 7 工具：只读 Git 工具 ─────────────────────────
+#
+# 设计原则（phase-11-design.md §4.5）：
+# - 5 个工具全部 READ 权限，调用对应 git Skill（R0）
+# - 无 git 时返回 GIT_NOT_FOUND，优雅降级不崩溃
+# - 永不暴露 git commit / tag / push / merge / rebase / reset
+
+
+def _git_not_found_error(tool: str) -> list[TextContent]:
+    """git 不可用时的统一错误响应"""
+    return [TextContent(
+        type="text",
+        text=formatter.error(
+            tool,
+            "GIT_NOT_FOUND",
+            "git is not available or the project is not a git repository. "
+            "Git Governance tools require a valid git repository.",
+        ),
+    )]
+
+
+async def handle_git_status(arguments: dict, project_path: Path) -> list[TextContent]:
+    """查询 git 状态：当前分支 / 脏文件 / staged / untracked / 最近提交"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    try:
+        skill = Skill.create("git.status")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return _git_not_found_error("smartdev_git_status")
+
+        inputs = {}
+        if "recent_commit_count" in arguments:
+            inputs["recent_commit_count"] = int(arguments["recent_commit_count"])
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_git_status",
+                result.data,
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error("smartdev_git_status", "INTERNAL_ERROR", f"git.status failed: {e}"),
+        )]
+
+
+async def handle_git_diff_explain(arguments: dict, project_path: Path) -> list[TextContent]:
+    """确定性 diff 解释：行数统计 / 文件分类 / 风险信号 / 拆分建议（不做自然语言总结）"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    try:
+        skill = Skill.create("git.diff.explain")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return _git_not_found_error("smartdev_git_diff_explain")
+
+        inputs = {}
+        if "staged" in arguments:
+            inputs["staged"] = bool(arguments["staged"])
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_git_diff_explain",
+                result.data,
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error("smartdev_git_diff_explain", "INTERNAL_ERROR", f"git.diff.explain failed: {e}"),
+        )]
+
+
+async def handle_git_commit_plan(arguments: dict, project_path: Path) -> list[TextContent]:
+    """分析 diff，生成 Conventional Commit 拆分建议（不执行 commit）"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    try:
+        skill = Skill.create("git.commit.plan")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return _git_not_found_error("smartdev_git_commit_plan")
+
+        inputs = {}
+        if "staged_only" in arguments:
+            inputs["staged_only"] = bool(arguments["staged_only"])
+        if "scope_hint" in arguments:
+            inputs["scope_hint"] = str(arguments["scope_hint"])
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_git_commit_plan",
+                result.data,
+                warnings=result.data.get("policy_warnings", []),
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error("smartdev_git_commit_plan", "INTERNAL_ERROR", f"git.commit.plan failed: {e}"),
+        )]
+
+
+async def handle_git_release_plan(arguments: dict, project_path: Path) -> list[TextContent]:
+    """分析 commits / CHANGELOG / version 文件，给出 semver bump 建议和发布检查清单"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    try:
+        skill = Skill.create("git.release.plan")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return _git_not_found_error("smartdev_git_release_plan")
+
+        inputs = {}
+        if "since_tag" in arguments:
+            inputs["since_tag"] = str(arguments["since_tag"])
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_git_release_plan",
+                result.data,
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error("smartdev_git_release_plan", "INTERNAL_ERROR", f"git.release.plan failed: {e}"),
+        )]
+
+
+async def handle_git_merge_check(arguments: dict, project_path: Path) -> list[TextContent]:
+    """合并前检查：工作区干净度 / patch备份 / 分支方向 / 新commit / 索引状态"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    try:
+        skill = Skill.create("git.merge.check")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return _git_not_found_error("smartdev_git_merge_check")
+
+        inputs = {}
+        if "target_branch" in arguments:
+            inputs["target_branch"] = str(arguments["target_branch"])
+
+        result = skill.run(context, inputs)
+        ready = result.data.get("ready", False)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_git_merge_check",
+                result.data,
+                warnings=[b["message"] for b in result.data.get("blockers", [])],
+                risk_level="R0",
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error("smartdev_git_merge_check", "INTERNAL_ERROR", f"git.merge.check failed: {e}"),
+        )]

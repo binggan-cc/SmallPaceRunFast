@@ -4,7 +4,22 @@
 
 ## [Unreleased] — Phase 11A: Git Governance v0（进行中）
 
-### Added — Phase 11A Step 6: git commit / git tag CLI Command（R2）
+### Added — Phase 11A Step 7: MCP 暴露只读 Git 工具（工具总数 14 → 19）
+
+- **`smartdev_git_status`**（READ）：查询 git 状态快照，调用 `git.status` Skill
+- **`smartdev_git_diff_explain`**（READ）：确定性结构化 diff 解释，调用 `git.diff.explain` Skill
+- **`smartdev_git_commit_plan`**（READ）：Conventional Commit 拆分建议，调用 `git.commit.plan` Skill
+- **`smartdev_git_release_plan`**（READ）：semver bump 建议 + 发布清单，调用 `git.release.plan` Skill
+- **`smartdev_git_merge_check`**（READ）：合并前检查（blockers/warnings），调用 `git.merge.check` Skill
+- 所有工具在非 git 目录时返回 `GIT_NOT_FOUND`，不崩溃
+- commit / tag / push / merge 永不进 MCP
+- `handle_version` + `handle_list_tools` 更新工具清单（19 条）
+- **`test_mcp_git_tools.py`**：33 tests（注册验证 / GIT_NOT_FOUND / 5 个工具集成）
+- 更新旧有工具计数测试（14 → 19）：test_mcp_server / test_mcp_readonly_tools / test_mcp_skill_tools / test_mcp_patch_propose / test_mcp_integration
+
+**Phase 11A（Git Governance v0）完成。** 7 步全部交付，906 tests，MCP 工具 19 个。
+
+
 
 - **`smartdev git commit`**（R2，默认 dry-run）：
   - 默认只输出"将要执行什么"，不创建 commit

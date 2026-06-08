@@ -524,7 +524,9 @@ Go 提取能力（Step 2）：
 | Step 4 | git.release.plan + git.merge.check（R0）| ✅ 完成 | 56 | 845 |
 | Step 5 | git-policy.json 示例文件 + 文档补充 | ✅ 完成 | 0 | 845 |
 | Step 6 | git commit / git tag CLI Command（R2）| ✅ 完成 | 28 | 873 |
-| Step 7 | MCP 暴露只读 Git 工具（+5 工具）| 🔲 待开始 | — | — |
+| Step 7 | MCP 暴露只读 Git 工具（+5 工具，总数 19）| ✅ 完成 | 33 | 906 |
+
+**Phase 11A（Git Governance v0）完成。** 7 步全部交付，906 tests，MCP 工具 14 → 19。
 
 设计文档：[phase-11-design.md](phase-11-design.md)
 

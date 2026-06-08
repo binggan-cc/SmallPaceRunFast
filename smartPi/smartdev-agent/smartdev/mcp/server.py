@@ -292,6 +292,102 @@ def create_server(project_path: Path):
                 "required": ["find", "replace", "task_description"],
             },
         ),
+        # ── Phase 11A Step 7: 只读 Git 工具 ──────────────────────
+        Tool(
+            name="smartdev_git_status",
+            description=(
+                "Query current git status: branch, dirty files, staged/unstaged/untracked, "
+                "recent commits, and policy hints (e.g. protected branch). Read-only."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "recent_commit_count": {
+                        "type": "integer",
+                        "description": "Number of recent commits to include (default: 10)",
+                        "default": 10,
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="smartdev_git_diff_explain",
+            description=(
+                "Deterministic structured diff explanation: line counts, file categories, "
+                "risk signals (touches_tests/docs/manifest/protected_path), "
+                "and suggested commit split. Does NOT generate natural language summaries."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "staged": {
+                        "type": "boolean",
+                        "description": "True to explain staged diff (--cached), False for worktree diff (default: false)",
+                        "default": False,
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="smartdev_git_commit_plan",
+            description=(
+                "Analyze current diff and generate Conventional Commit split suggestions. "
+                "Does NOT execute commit. Groups files by category (source/test/doc/manifest) "
+                "and suggests per-directory scope."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "staged_only": {
+                        "type": "boolean",
+                        "description": "Only analyze staged files (default: false, all diff)",
+                        "default": False,
+                    },
+                    "scope_hint": {
+                        "type": "string",
+                        "description": "Optional scope hint to override inferred scope (e.g. 'context', 'cli')",
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="smartdev_git_release_plan",
+            description=(
+                "Analyze commits, CHANGELOG, and version files to suggest semver bump "
+                "(major/minor/patch/none) and generate a release checklist."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "since_tag": {
+                        "type": "string",
+                        "description": "Analyze commits since this tag (default: latest tag)",
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="smartdev_git_merge_check",
+            description=(
+                "Pre-merge readiness check: working tree cleanliness, patch backups, "
+                "branch direction, new commits, and semantic index availability. "
+                "Returns blockers (must fix) and warnings (should fix)."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "target_branch": {
+                        "type": "string",
+                        "description": "Target branch to merge into (default: first protected branch from policy)",
+                    },
+                },
+                "required": [],
+            },
+        ),
     ]
 
     # ── 工具路由表 ────────────────────────────────────────────────
@@ -311,6 +407,12 @@ def create_server(project_path: Path):
         "smartdev_qa_checklist":     t.handle_qa_checklist,
         "smartdev_code_index":       t.handle_code_index,
         "smartdev_patch_propose":    t.handle_patch_propose,
+        # Phase 11A Step 7: 只读 Git 工具
+        "smartdev_git_status":       t.handle_git_status,
+        "smartdev_git_diff_explain": t.handle_git_diff_explain,
+        "smartdev_git_commit_plan":  t.handle_git_commit_plan,
+        "smartdev_git_release_plan": t.handle_git_release_plan,
+        "smartdev_git_merge_check":  t.handle_git_merge_check,
     }
 
     # ── 注册 list_tools handler ────────────────────────────────────

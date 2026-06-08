@@ -305,7 +305,7 @@ class TestStep4ToolsRegistration:
         result = await handle_list_tools({}, tmp_path)
         data = json.loads(result[0].text)
         # Step 4 后：3 基础 + 4 Context + 5 Skill + 2 Patch = 14
-        assert data["data"]["total"] == 14
+        assert data["data"]["total"] == 19
 
     @pytest.mark.asyncio
     async def test_version_marks_step4_as_available(self, tmp_path):
