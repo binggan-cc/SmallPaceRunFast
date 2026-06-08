@@ -1,0 +1,39 @@
+# SmartDev Skill: git.status
+# Git 状态快照 — 只读查询当前分支、脏文件、最近提交
+
+id: git.status
+name: Git 状态快照
+capability: git_governance
+risk: R0
+mode: read_only
+
+description: >
+  查询当前 git 仓库状态：当前分支、是否有未提交变更、
+  staged / unstaged / untracked 文件、最近提交摘要。
+  只读操作，不修改任何文件。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - recent_commit_count   # 最近提交数量，默认 10
+
+outputs:
+  - branch                  # 当前分支名
+  - is_dirty                # 是否有未提交变更
+  - staged                  # 已 stage 的文件列表
+  - unstaged                # 未 stage 的文件列表
+  - untracked               # 未跟踪的文件列表
+  - recent_commits          # 最近提交 oneline 列表
+  - summary                 # 可读摘要
+  - policy_hints            # policy 相关提示（protected branch 等）
+
+preconditions:
+  - project_path_exists
+  - git_available
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic

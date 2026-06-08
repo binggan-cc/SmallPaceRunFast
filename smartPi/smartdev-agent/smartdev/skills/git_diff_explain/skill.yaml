@@ -1,0 +1,36 @@
+# SmartDev Skill: git.diff.explain
+# 确定性 diff 解释 — 结构化分析变更信号，供外部 Agent 消费
+
+id: git.diff.explain
+name: Diff 结构化解释
+capability: git_governance
+risk: R0
+mode: read_only
+
+description: >
+  对当前 git diff 做确定性结构化解释：行数统计、文件分类、
+  风险信号（是否动了 protected path / 依赖 manifest / 测试 / 文档）、
+  拆分提交建议。不做自然语言总结，输出结构化 JSON 供外部 Agent 消费。
+
+inputs:
+  required:
+    - project_path
+  optional:
+    - staged   # true=只看 staged diff，false=看 worktree diff（默认 false）
+
+outputs:
+  - summary              # 行数统计（files_changed / insertions / deletions）
+  - signals              # 变更信号（touches_tests / touches_docs 等）
+  - file_categories      # 文件按类型分组
+  - risk_hints           # 风险提示列表
+  - suggested_commit_split  # 建议的 commit 拆分
+
+preconditions:
+  - project_path_exists
+  - git_available
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic

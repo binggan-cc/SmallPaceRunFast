@@ -25,5 +25,10 @@ from smartdev.skills.code_search import skill as _code_search_skill  # noqa: F40
 from smartdev.skills.code_impact import skill as _code_impact_skill  # noqa: F401
 from smartdev.skills.code_apply import skill as _code_apply_skill  # noqa: F401
 from smartdev.skills.code_rollback import skill as _code_rollback_skill  # noqa: F401
+# Phase 11A — Git Governance
+from smartdev.skills.git_status import skill as _git_status_skill  # noqa: F401
+from smartdev.skills.git_diff_explain import skill as _git_diff_explain_skill  # noqa: F401
+from smartdev.skills.git_commit_plan import skill as _git_commit_plan_skill  # noqa: F401
+from smartdev.skills.git_commit_message import skill as _git_commit_message_skill  # noqa: F401
 
 __all__ = ["Skill"]
