@@ -541,6 +541,7 @@ Go 提取能力（Step 2）：
 | Step 4 | doc.consistency Skill（5 条规则）| ✅ 完成 | 39 | 1102 |
 | Step 5 | doc.update.plan Skill | ✅ 完成 | 43 | 1145 |
 | Step 6 | doc.patch.propose（不落盘）| ✅ 完成 | 40 | 1185 |
+| Step 7 | MCP 暴露只读工具（19→21）| ✅ 完成 | 23 | 1208 |
 | Step 3 | doc.map Skill（R0 只读）| 🔲 待开始 |
 | Step 4 | doc.consistency Skill（5 条规则）| 🔲 待开始 |
 | Step 5 | doc.update.plan Skill | 🔲 待开始 |

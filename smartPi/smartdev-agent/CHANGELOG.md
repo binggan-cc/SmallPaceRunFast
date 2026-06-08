@@ -4,6 +4,28 @@
 
 ## [Unreleased] — Phase 11C: Documentation Governance v0（进行中）
 
+### Added — Phase 11C Step 7: MCP 暴露只读 Doc Governance 工具
+
+- **`smartdev/mcp/tools.py`**：新增两个 handler
+  - `handle_doc_consistency`：调用 `doc.consistency` Skill，所有快照现场生成，可选接受 `change_manifest` 参数（启用 Rule 5）
+  - `handle_doc_update_plan`：调用 `doc.update.plan` Skill，可选接受 `consistency_issues` 参数（传空列表=不自动运行；不传=自动运行）
+  - `handle_version` / `handle_list_tools` 工具清单更新（19 → 21 工具）
+- **`smartdev/mcp/server.py`**：
+  - 注册两个 Tool Schema（READ 权限，inputSchema 含可选参数说明）
+  - `_HANDLERS` 路由新增两条
+- **`tests/test_mcp_doc_tools.py`**：23 tests，全绿（新文件）
+  - 工具注册验证（version / list_tools 各包含两个新工具）
+  - 工具总数 21 / READ 权限
+  - handle_doc_consistency：成功路径 / 预期字段 / 不存在项目报错 / change_manifest 参数
+  - handle_doc_update_plan：成功路径 / 预期字段 / 不存在项目报错 / consistency_issues 参数驱动计划
+- 旧测试工具计数更新（19 → 21）：test_mcp_server / test_mcp_readonly_tools / test_mcp_skill_tools / test_mcp_patch_propose / test_mcp_git_tools / test_mcp_integration
+
+**MCP 工具总数：19 → 21（READ×18 + CACHE_WRITE×1 + PATCH_PROPOSE×1 + DOC_PROPOSE×1（暂不暴露））**
+
+测试基线：**1208 passed, 1 skipped**
+
+---
+
 ### Added — Phase 11C Step 6: doc.patch.propose Skill
 
 - **`smartdev/skills/doc_patch_propose/skill.py`**：文档 Patch 生成 Skill（R1，不落盘）
