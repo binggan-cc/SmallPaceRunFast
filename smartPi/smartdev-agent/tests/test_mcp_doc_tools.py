@@ -2,14 +2,14 @@
 MCP 只读 Doc Governance 工具测试 — Phase 11C Step 7
 
 覆盖：
-1. 两个工具在 version 清单和 list_tools 中均已注册（19 → 21 工具）
+1. 两个工具在 version 清单和 list_tools 中均已注册（19 → 24 工具）
 2. 项目路径不存在时返回 PROJECT_NOT_FOUND（不崩溃）
 3. 有效项目时 handle_doc_consistency 返回成功
 4. handle_doc_consistency data 包含预期字段（issue_count / issues / docs_required）
 5. handle_doc_update_plan 返回成功
 6. handle_doc_update_plan data 包含预期字段（update_count / update_items / no_change_items）
 7. handle_doc_update_plan 接受 consistency_issues 参数
-8. 工具计数从 19 → 21
+8. 工具计数从 19 → 24
 """
 
 from __future__ import annotations
@@ -49,11 +49,11 @@ class TestToolRegistration:
             assert tool in names, f"{tool} missing from version list"
 
     @pytest.mark.asyncio
-    async def test_total_tool_count_21(self, tmp_path: Path):
+    async def test_total_tool_count_24(self, tmp_path: Path):
         """MCP 工具总数应为 21（19 + 2 个 doc 工具）。"""
         result = await handle_version({}, tmp_path)
         data = _parse(result)
-        assert len(data["data"]["tools"]) == 21
+        assert len(data["data"]["tools"]) == 24
 
     @pytest.mark.asyncio
     async def test_doc_tools_in_list_tools(self, tmp_path: Path):
@@ -78,10 +78,10 @@ class TestToolRegistration:
         assert tools["smartdev_doc_update_plan"]["permission"] == "READ"
 
     @pytest.mark.asyncio
-    async def test_list_tools_total_count_21(self, tmp_path: Path):
+    async def test_list_tools_total_count_24(self, tmp_path: Path):
         result = await handle_list_tools({}, tmp_path)
         data = _parse(result)
-        assert data["data"]["total"] == 21
+        assert data["data"]["total"] == 24
 
 
 # ── handle_doc_consistency ────────────────────────────────

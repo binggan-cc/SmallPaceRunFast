@@ -84,7 +84,7 @@ class TestGitToolsRegistered:
         from smartdev.mcp.tools import handle_version
         result = await handle_version({}, tmp_path)
         data = _parse(result)
-        assert len(data["data"]["tools"]) == 21
+        assert len(data["data"]["tools"]) == 24
 
     @pytest.mark.asyncio
     async def test_git_tools_in_list_tools(self, tmp_path: Path):

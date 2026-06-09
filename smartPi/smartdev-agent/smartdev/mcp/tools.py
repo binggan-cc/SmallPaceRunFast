@@ -93,6 +93,10 @@ async def handle_version(arguments: dict, project_path: Path) -> list[TextConten
         # Phase 11C Step 7: 只读 Doc Governance 工具
         {"name": "smartdev_doc_consistency",  "permission": "READ",          "status": "available"},
         {"name": "smartdev_doc_update_plan",  "permission": "READ",          "status": "available"},
+        # Phase 11D Step 7: Handoff Pack 工具 (CACHE_WRITE: 只写 .smartdev/runs/)
+        {"name": "smartdev_handoff_code",     "permission": "CACHE_WRITE",   "status": "available"},
+        {"name": "smartdev_handoff_doc",      "permission": "CACHE_WRITE",   "status": "available"},
+        {"name": "smartdev_handoff_review",   "permission": "CACHE_WRITE",   "status": "available"},
     ]
     return [TextContent(
         type="text",
@@ -214,6 +218,22 @@ async def handle_list_tools(arguments: dict, project_path: Path) -> list[TextCon
             "name": "smartdev_doc_update_plan",
             "permission": "READ",
             "description": "Generate structured doc update plan from consistency issues: what to change, why, what not to touch.",
+        },
+        # Phase 11D Step 7: Handoff Pack 工具
+        {
+            "name": "smartdev_handoff_code",
+            "permission": "CACHE_WRITE",
+            "description": "Generate code-agent-pack.md and write to .smartdev/runs/<run_id>/handoff/.",
+        },
+        {
+            "name": "smartdev_handoff_doc",
+            "permission": "CACHE_WRITE",
+            "description": "Generate doc-steward-pack.md and write to .smartdev/runs/<run_id>/handoff/.",
+        },
+        {
+            "name": "smartdev_handoff_review",
+            "permission": "CACHE_WRITE",
+            "description": "Generate reviewer-pack.md and write to .smartdev/runs/<run_id>/handoff/.",
         },
     ]
     return [TextContent(
@@ -1188,5 +1208,161 @@ async def handle_doc_update_plan(arguments: dict, project_path: Path) -> list[Te
                 "smartdev_doc_update_plan",
                 "INTERNAL_ERROR",
                 f"doc.update.plan failed: {e}",
+            ),
+        )]
+
+
+# ── Phase 11D Step 7: Handoff Pack 工具 ──────────────────────
+
+
+async def handle_handoff_code(arguments: dict, project_path: Path) -> list[TextContent]:
+    """生成 code-agent-pack.md 并写入 .smartdev/runs/<run_id>/handoff/。
+
+    required: run_id
+    optional: changed_files, target
+    """
+    run_id = arguments.get("run_id", "")
+    if not run_id:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_handoff_code", "INVALID_ARGUMENT",
+                "Missing required parameter: run_id",
+            ),
+        )]
+
+    try:
+        from smartdev.core.handoff_code import generate_code_agent_pack
+        changed = arguments.get("changed_files") or None
+        target = arguments.get("target", "") or ""
+        result = generate_code_agent_pack(
+            project_path, run_id,
+            changed_files=changed if isinstance(changed, list) else None,
+            target=target,
+        )
+        if result.error:
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_handoff_code", "GENERATION_FAILED", result.error,
+                ),
+            )]
+        return [TextContent(
+            type="text",
+            text=formatter.ok("smartdev_handoff_code", {
+                "run_id": run_id,
+                "output_path": str(result.output_path),
+                "char_count": result.char_count,
+                "sections": result.sections,
+                "skipped": [],
+                "note": "Code Agent Pack 已生成。将此文件提供给 Code Agent 作为实现上下文。",
+            }),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_handoff_code", "INTERNAL_ERROR", f"handoff-code failed: {e}",
+            ),
+        )]
+
+
+async def handle_handoff_doc(arguments: dict, project_path: Path) -> list[TextContent]:
+    """生成 doc-steward-pack.md 并写入 .smartdev/runs/<run_id>/handoff/。
+
+    required: run_id
+    optional: run_tests
+    """
+    run_id = arguments.get("run_id", "")
+    if not run_id:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_handoff_doc", "INVALID_ARGUMENT",
+                "Missing required parameter: run_id",
+            ),
+        )]
+
+    try:
+        from smartdev.core.handoff_doc import generate_doc_steward_pack
+        run_tests = bool(arguments.get("run_tests", False))
+        result = generate_doc_steward_pack(project_path, run_id, run_test_report=run_tests)
+        if result.error:
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_handoff_doc", "GENERATION_FAILED", result.error,
+                ),
+            )]
+        return [TextContent(
+            type="text",
+            text=formatter.ok("smartdev_handoff_doc", {
+                "run_id": run_id,
+                "output_path": str(result.output_path),
+                "char_count": result.char_count,
+                "sections": result.sections,
+                "skipped": result.skipped[:5],
+                "note": "Doc Steward Pack 已生成。将此文件提供给 Doc Steward 作为审查上下文。",
+            }),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_handoff_doc", "INTERNAL_ERROR", f"handoff-doc failed: {e}",
+            ),
+        )]
+
+
+async def handle_handoff_review(arguments: dict, project_path: Path) -> list[TextContent]:
+    """生成 reviewer-pack.md 并写入 .smartdev/runs/<run_id>/handoff/。
+
+    required: run_id
+    optional: changed_files, target, run_tests
+    """
+    run_id = arguments.get("run_id", "")
+    if not run_id:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_handoff_review", "INVALID_ARGUMENT",
+                "Missing required parameter: run_id",
+            ),
+        )]
+
+    try:
+        from smartdev.core.handoff_review import generate_reviewer_pack
+        changed = arguments.get("changed_files") or None
+        target = arguments.get("target", "") or ""
+        run_tests = bool(arguments.get("run_tests", False))
+        result = generate_reviewer_pack(
+            project_path, run_id,
+            changed_files=changed if isinstance(changed, list) else None,
+            target=target,
+            run_test_report=run_tests,
+        )
+        if result.error:
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_handoff_review", "GENERATION_FAILED", result.error,
+                ),
+            )]
+        return [TextContent(
+            type="text",
+            text=formatter.ok("smartdev_handoff_review", {
+                "run_id": run_id,
+                "output_path": str(result.output_path),
+                "char_count": result.char_count,
+                "sections": result.sections,
+                "skipped": [],
+                "note": "Reviewer Pack 已生成。将此文件提供给 Reviewer 作为风险/架构/安全审查上下文。",
+            }),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_handoff_review", "INTERNAL_ERROR", f"handoff-review failed: {e}",
             ),
         )]

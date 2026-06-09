@@ -431,6 +431,89 @@ def create_server(project_path: Path):
                 "required": [],
             },
         ),
+        # Phase 11D Step 7: Handoff Pack 工具
+        Tool(
+            name="smartdev_handoff_code",
+            description=(
+                "Generate code-agent-pack.md and write to .smartdev/runs/<run_id>/handoff/. "
+                "Consumes task-card.md and scope.json. "
+                "CACHE_WRITE — writes only to .smartdev/runs/, does NOT modify source files."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "run_id": {
+                        "type": "string",
+                        "description": "Task run identifier (.smartdev/runs/<run_id>/)",
+                    },
+                    "changed_files": {
+                        "type": "array",
+                        "description": "(Optional) Changed file paths for Scope Gate integration.",
+                        "items": {"type": "string"},
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "(Optional) Change target for impact analysis.",
+                    },
+                },
+                "required": ["run_id"],
+            },
+        ),
+        Tool(
+            name="smartdev_handoff_doc",
+            description=(
+                "Generate doc-steward-pack.md and write to .smartdev/runs/<run_id>/handoff/. "
+                "Aggregates manifest, diff, snapshots, doc_map, phase status, "
+                "doc.consistency, and update focus. "
+                "CACHE_WRITE — writes only to .smartdev/runs/, does NOT modify source files."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "run_id": {
+                        "type": "string",
+                        "description": "Task run identifier (.smartdev/runs/<run_id>/)",
+                    },
+                    "run_tests": {
+                        "type": "boolean",
+                        "description": "(Optional) Run pytest to collect test results.",
+                    },
+                },
+                "required": ["run_id"],
+            },
+        ),
+        Tool(
+            name="smartdev_handoff_review",
+            description=(
+                "Generate reviewer-pack.md and write to .smartdev/runs/<run_id>/handoff/. "
+                "Aggregates risk+impact, changed files, dependency changes, "
+                "security checklist, and git.diff.explain. "
+                "CACHE_WRITE — writes only to .smartdev/runs/, does NOT modify source files."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "run_id": {
+                        "type": "string",
+                        "description": "Task run identifier (.smartdev/runs/<run_id>/)",
+                    },
+                    "changed_files": {
+                        "type": "array",
+                        "description": "(Optional) Changed file paths.",
+                        "items": {"type": "string"},
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "(Optional) Change target for impact analysis.",
+                    },
+                    "run_tests": {
+                        "type": "boolean",
+                        "description": "(Optional) Run pytest to collect test results.",
+                    },
+                },
+                "required": ["run_id"],
+            },
+        ),
     ]
 
     # ── 工具路由表 ────────────────────────────────────────────────
@@ -459,6 +542,10 @@ def create_server(project_path: Path):
         # Phase 11C Step 7: 只读 Doc Governance 工具
         "smartdev_doc_consistency":  t.handle_doc_consistency,
         "smartdev_doc_update_plan":  t.handle_doc_update_plan,
+        # Phase 11D Step 7: Handoff Pack 工具
+        "smartdev_handoff_code":     t.handle_handoff_code,
+        "smartdev_handoff_doc":      t.handle_handoff_doc,
+        "smartdev_handoff_review":   t.handle_handoff_review,
     }
 
     # ── 注册 list_tools handler ────────────────────────────────────

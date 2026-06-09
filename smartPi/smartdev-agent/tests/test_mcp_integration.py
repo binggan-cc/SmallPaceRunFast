@@ -122,7 +122,7 @@ class TestMCPProtocol:
         r = c.send("tools/list")
         assert "result" in r
         tools = r["result"]["tools"]
-        assert len(tools) == 21
+        assert len(tools) == 24
 
     def test_tools_list_has_required_names(self, client):
         c, _ = client
@@ -142,8 +142,11 @@ class TestMCPProtocol:
             "smartdev_git_merge_check",
             # Phase 11C: 只读 Doc Governance 工具
             "smartdev_doc_consistency", "smartdev_doc_update_plan",
+            # Phase 11D: Handoff Pack 工具
+            "smartdev_handoff_code", "smartdev_handoff_doc",
+            "smartdev_handoff_review",
         }
-        assert required == names
+        assert required.issubset(names), f"Missing: {required - names}"
 
     def test_unknown_tool_returns_error(self, client):
         c, _ = client
@@ -168,7 +171,7 @@ class TestBasicTools:
         d = c.call_tool("smartdev_version")
         assert d["ok"] is True
         assert "version" in d["data"]
-        assert len(d["data"]["tools"]) == 21
+        assert len(d["data"]["tools"]) == 24
         # 所有工具都应标记为 available（v0 全量完成）
         statuses = {t["name"]: t["status"] for t in d["data"]["tools"]}
         assert all(s == "available" for s in statuses.values())
