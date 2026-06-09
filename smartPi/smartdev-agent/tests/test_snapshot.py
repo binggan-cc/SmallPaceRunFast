@@ -393,6 +393,16 @@ class TestBuildCliSnapshot:
         assert "--role" in ctx.args
         assert "--info" in ctx.args
 
+    def test_report_present(self):
+        """Phase 11D Step 6B: smartdev run report 出现在 CLI 快照中"""
+        snap = build_cli_snapshot()
+        rp = next((c for c in snap.commands if c.command == "smartdev run report"), None)
+        assert rp is not None, "smartdev run report 应出现在 CLI 快照中"
+        assert "run_id" in rp.args
+        assert "--changed-files" in rp.args
+        assert "--tests" in rp.args
+        assert "--status" in rp.args
+
     def test_to_json_roundtrip(self):
         snap = build_cli_snapshot()
         restored = CliSnapshot.from_dict(json.loads(snap.to_json()))

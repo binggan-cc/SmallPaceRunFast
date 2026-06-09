@@ -451,3 +451,51 @@ class TestCLIRunContext:
         assert result.returncode == 1
         assert "exists:" in result.stdout
         assert "handoff-review" in result.stdout
+
+
+class TestCLIRunReport:
+    """Phase 11D Step 6B: smartdev run report CLI 集成测试"""
+
+    def _setup_run(self, tmp_path: Path, run_id: str = "rr-test"):
+        """创建 run artifact。"""
+        from smartdev.core.run_artifact import ScopeConfig
+        scope = ScopeConfig(allowed_paths=["smartdev/", "tests/"])
+        run_dir = tmp_path / ".smartdev" / "runs" / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "scope.json").write_text(scope.to_json(), encoding="utf-8")
+        (run_dir / "task-card.md").write_text(
+            "# test\n\n## 目标\n\n测试\n\n## 验收标准\n\n验收\n", encoding="utf-8",
+        )
+        (run_dir / "agent-output").mkdir(exist_ok=True)
+
+    def test_writes_changed_files(self, tmp_path: Path):
+        """--changed-files 写入 agent-output/changed-files.txt"""
+        self._setup_run(tmp_path, "rr-1")
+        result = _run_cli(
+            "run", "report", "rr-1", "--project", str(tmp_path),
+            "--changed-files", "smartdev/a.py", "tests/test_a.py",
+        )
+        assert result.returncode == 0
+        cf = tmp_path / ".smartdev" / "runs" / "rr-1" / "agent-output" / "changed-files.txt"
+        assert cf.exists()
+        assert "smartdev/a.py" in cf.read_text("utf-8")
+
+    def test_runs_test_command(self, tmp_path: Path):
+        """--tests 运行命令并写入 test-report.txt"""
+        self._setup_run(tmp_path, "rr-2")
+        result = _run_cli(
+            "run", "report", "rr-2", "--project", str(tmp_path),
+            "--tests", "echo 'all passed'",
+        )
+        assert result.returncode == 0
+        tr = tmp_path / ".smartdev" / "runs" / "rr-2" / "agent-output" / "test-report.txt"
+        assert tr.exists()
+        assert "all passed" in tr.read_text("utf-8")
+
+    def test_missing_run_dir(self, tmp_path: Path):
+        """不存在的 run_id → 错误"""
+        result = _run_cli(
+            "run", "report", "no-such-run", "--project", str(tmp_path),
+        )
+        assert result.returncode == 1
+        assert "不存在" in result.stderr

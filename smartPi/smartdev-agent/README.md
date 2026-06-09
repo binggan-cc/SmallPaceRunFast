@@ -55,6 +55,7 @@ pip install -e .
 | `smartdev run handoff-doc <id>` | 生成 Doc Steward Handoff Pack |
 | `smartdev run handoff-review <id>` | 生成 Reviewer Handoff Pack |
 | `smartdev run context <id> --role` | 打印角色激活包到 stdout（可管道/复制给目标模型）|
+| `smartdev run report <id> --tests --status` | Code Agent 完成后写回 agent-output/（changed-files / test-report / result）|
 | `smartdev index --project --force` | 构建语义索引 |
 | `smartdev search --project <query> --limit` | FTS5 代码搜索 |
 | `smartdev impact --project <target> --depth` | 影响分析 |
@@ -119,11 +120,11 @@ smartdev mcp --project .
 
 ## 当前状态
 
-- **Phase**：11D Step 5 完成（handoff review）；Role Activation Preamble + run context 完成；Step 6 MCP handoff tools 待实现
-- **测试**：1394 passed，1 skipped
+- **Phase**：11D Step 6B 完成（smartdev run report + handoff doc 消费 agent-output）；Step 7 MCP handoff tools 待实现
+- **测试**：1417 passed，1 skipped
 - **MCP 工具**：21 个（READ×18 + CACHE_WRITE×1 + PATCH_PROPOSE×1）
 - **Skill**：22 个
-- **CLI 命令**：23 条
+- **CLI 命令**：24 条
 
 ---
 

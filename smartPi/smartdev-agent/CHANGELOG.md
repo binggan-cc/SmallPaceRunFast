@@ -4,6 +4,25 @@
 
 ## [Unreleased] — Phase 11D: Collaboration Handoff v0（进行中）
 
+### Added — Phase 11D Step 6B: smartdev run report + handoff doc 消费 agent-output
+
+- **`smartdev/core/run_report.py`**（新增）：`write_run_report()` — Code Agent 报告写入核心
+  - `--changed-files`：手动指定变更文件，写入 `agent-output/changed-files.txt`
+  - `--auto-changed-files`：从 `git diff HEAD` 自动推断（git 不可用时优雅跳过）
+  - `--tests <cmd>`：运行测试命令，输出写入 `agent-output/test-report.txt`
+  - `--status <completed|blocked|partial>`：更新 `code-agent-result.md` Status 字段
+  - `code-agent-result.md` 模板不存在时自动从 §14 结构生成
+- **`smartdev/cli.py`**：新增 `smartdev run report <run_id>` CLI 子命令（R1）
+- **`smartdev/core/handoff_doc.py`**：新增 `_try_agent_output()`
+  - 若 `agent-output/code-agent-result.md` 存在，在 doc-steward-pack 中加入 "Agent Output" 节
+  - Doc Steward 不再需要 Human 传递 Code Agent 的结果
+- **`smartdev/core/snapshot.py`**：CLI Snapshot 同步 `smartdev run report`（23 → 24 commands）
+- **`tests/test_run_report.py`**（新增）：17 tests
+- **`tests/test_cli.py`**：`TestCLIRunReport` +3 tests
+- **`tests/test_snapshot.py`**：`test_report_present` +1 test
+
+测试基线：**1417 passed, 1 skipped**
+
 ### Added — Phase 11D Step 6 设计：Agent Output & Review Artifact Protocol
 
 - **`docs/phase-11d-design.md`**：重大更新——固定输出回流协议

@@ -478,7 +478,31 @@ patch_propose_only: true（Doc Steward 不直接 apply）
     else:
         skipped.append(f"Phase Status: {phase_text}")
 
-    # 7. Doc Consistency
+    # Agent Output（若 code-agent-result.md 存在，纳入摘要）
+    agent_result_path = run_dir / "agent-output" / "code-agent-result.md"
+    if agent_result_path.exists():
+        try:
+            agent_content = agent_result_path.read_text(encoding="utf-8")
+            # 提取 Status 行和前几行摘要
+            lines = agent_content.splitlines()
+            status_line = ""
+            for line in lines:
+                if line.startswith("## Status"):
+                    status_line = lines[lines.index(line) + 1] if lines.index(line) + 1 < len(lines) else ""
+                    break
+            pack += f"""## {sec_num}. Agent Output
+
+Code Agent 已写回 agent-output/:
+- Status: {status_line.strip() if status_line else '（未知）'}
+- 详见: `.smartdev/runs/{run_id}/agent-output/code-agent-result.md`
+
+"""
+            sections.append(f"{sec_num}. Agent Output")
+            sec_num += 1
+        except Exception:
+            skipped.append("Agent Output: 读取失败")
+
+    # Doc Consistency
     consistency_text, consistency_ok = _try_doc_consistency(project_path)
     if consistency_ok:
         pack += f"""## {sec_num}. Doc Consistency Issues

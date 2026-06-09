@@ -537,6 +537,45 @@ def _cmd_run_handoff_review(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_run_report(args: argparse.Namespace) -> int:
+    """写入 Code Agent 运行报告到 agent-output/（Phase 11D Step 6B，R1）
+
+    Code Agent 完成任务后执行，自动写入 changed-files.txt / test-report.txt /
+    code-agent-result.md 到 .smartdev/runs/<run_id>/agent-output/。
+    """
+    from smartdev.core.run_report import write_run_report
+
+    project_path = Path(args.project).resolve()
+    if not project_path.exists():
+        print(f"错误: 项目路径不存在: {project_path}", file=sys.stderr)
+        return 1
+
+    run_id: str = args.run_id
+    changed_files: list[str] | None = getattr(args, "changed_files", None) or None
+    auto: bool = getattr(args, "auto_changed_files", False)
+    test_cmd: str | None = getattr(args, "tests", None) or None
+    status: str = getattr(args, "status", "completed")
+
+    result = write_run_report(
+        project_path, run_id,
+        changed_files=changed_files,
+        auto_changed_files=auto,
+        test_command=test_cmd,
+        status=status,
+    )
+
+    if result.error:
+        print(f"错误: {result.error}", file=sys.stderr)
+        return 1
+
+    print(f"✅ Run Report 已写入: {result.output_dir}")
+    for f in result.files_written:
+        print(f"   ✓ {f}")
+    for s in result.skipped:
+        print(f"   - {s}")
+    return 0
+
+
 def _cmd_index(args: argparse.Namespace) -> int:
     """建立项目索引"""
     from smartdev.context.project_index import ProjectIndex
@@ -1226,6 +1265,38 @@ def main() -> None:
         help="只打印元信息（路径/是否存在/建议命令）",
     )
     run_context_parser.set_defaults(func=_cmd_run_context)
+
+    # run report <run_id>（Phase 11D Step 6B）
+    run_report_parser = run_subparsers.add_parser(
+        "report",
+        help="写入 Code Agent 运行报告到 agent-output/（R1）",
+    )
+    run_report_parser.add_argument(
+        "run_id",
+        help="任务唯一标识（.smartdev/runs/<run_id>/）",
+    )
+    run_report_parser.add_argument(
+        "--project", "-p", default=".",
+        help="项目根目录路径（默认当前目录）",
+    )
+    run_report_parser.add_argument(
+        "--changed-files", nargs="*",
+        help="变更文件列表（写入 changed-files.txt）",
+    )
+    run_report_parser.add_argument(
+        "--auto-changed-files", action="store_true",
+        help="从 git diff HEAD 自动推断 changed-files",
+    )
+    run_report_parser.add_argument(
+        "--tests",
+        help="要运行的测试命令（输出写入 test-report.txt）",
+    )
+    run_report_parser.add_argument(
+        "--status", default="completed",
+        choices=["completed", "blocked", "partial"],
+        help="任务状态（写入 code-agent-result.md，默认 completed）",
+    )
+    run_report_parser.set_defaults(func=_cmd_run_report)
 
     # index 命令（Phase 6-MVP 新增）
     index_parser = subparsers.add_parser("index", help="建立项目代码索引（文件 + 工件）")

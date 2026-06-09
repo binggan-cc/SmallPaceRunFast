@@ -638,6 +638,15 @@ def _build_cli_parser():
     run_ctx_p.add_argument("--project", "-p", default=".")
     run_ctx_p.add_argument("--info", action="store_true")
 
+    run_rp_p = run_sub.add_parser("report", help="写入 Code Agent 运行报告到 agent-output/（R1）",
+                                    description="写入 Code Agent 运行报告到 agent-output/（R1，只写 .smartdev/runs/）")
+    run_rp_p.add_argument("run_id")
+    run_rp_p.add_argument("--project", "-p", default=".")
+    run_rp_p.add_argument("--changed-files", nargs="*")
+    run_rp_p.add_argument("--auto-changed-files", action="store_true")
+    run_rp_p.add_argument("--tests")
+    run_rp_p.add_argument("--status", default="completed")
+
     # index
     idx_p = subparsers.add_parser("index", help="建立项目代码索引",
                                    description="建立项目代码索引（文件 + 工件）")

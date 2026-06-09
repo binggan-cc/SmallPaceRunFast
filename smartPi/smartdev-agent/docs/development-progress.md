@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-09
-> 当前阶段：Phase 11D Step 6A 完成 — agent-output/ review/ 目录协议落地（23 CLI 命令，1400 tests）→ 进入 Step 6B / Step 7
+> 当前阶段：Phase 11D Step 6B 完成 — smartdev run report + handoff doc 消费 agent-output（24 CLI 命令，1417 tests）
 
 ---
 
@@ -562,8 +562,8 @@ Go 提取能力（Step 2）：
 | Step 3 | handoff code（≤8k）| ✅ 完成 |
 | Step 4 | handoff doc（≤6k，依赖 11C）| ✅ 完成 |
 | Step 5 | handoff review（≤10k）+ Role Activation Preamble + run context | ✅ 完成 |
-| Step 6 | Agent Output & Review Artifact Protocol | 🔲 进行中 |
-| Step 7 | MCP 暴露只读 handoff 工具 | 🔲 待开始 |
+| Step 6 | Agent Output & Review Artifact Protocol | ✅ 完成（6A + 6B）|
+| Step 7 | MCP 暴露只读 handoff 工具 | 🔲 下一步 |
 
 边界：11C 生产事实，11D 组装事实给角色消费。先有事实层，再有协作层。
 设计文档：[phase-11d-design.md](phase-11d-design.md)
@@ -581,6 +581,10 @@ Step 5 验证：`smartdev run handoff-review <id>` 可生成 `.smartdev/runs/<id
 Role Activation 验证：三个 handoff pack（code-agent / doc-steward / reviewer）均在文件头加入角色激活前言（Role Activation Preamble），包含协作架构图、角色职责、第一步指引、输出格式和禁止项；`smartdev run context <id> --role` 可打印对应 pack 到 stdout；`--info` 模式打印元信息；CLI Snapshot 已同步 `smartdev run context`，CLI 命令数 22 → 23。测试基线：1394 passed, 1 skipped。
 
 Step 6 设计：`phase-11d-design.md` 完成重大更新——固定输出回流协议。§4 Run Artifact 扩展加入 `agent-output/`（Code Agent 写回）和 `review/`（Doc Steward 写回）两层，三层职责划分（handoff=输入层 / agent-output=执行层 / review=审查层）；§7 协作流程重写，Human 全程不复制聊天内容，只看 `review/commit-readiness.md` 做决策；§14 新增 Code Agent 输出协议；§15 新增 Doc Steward 输出协议；§8 Step 6 重定义，MCP 工具暴露后移为 Step 7。测试基线：1394 passed, 1 skipped（纯文档）。
+
+Step 6A 验证：`smartdev run new` 在创建 run artifact 时额外创建 `agent-output/` 和 `review/` 子目录，分别放入 `code-agent-result.template.md`（§14）和 `commit-readiness.template.md`（§15）模板文件；test_run_artifact.py 新增 `TestAgentOutputAndReviewDirectories`（6 tests）。CLI 命令数不变（23）。测试基线：1400 passed, 1 skipped。
+
+Step 6B 验证：`smartdev run report <id>` 命令新增，支持 `--changed-files`（写 agent-output/changed-files.txt）/ `--auto-changed-files`（git diff 推断）/ `--tests <cmd>`（写 test-report.txt）/ `--status`（更新 code-agent-result.md Status）；`handoff doc` 扩展消费 `agent-output/code-agent-result.md`（若存在）加入 "Agent Output" 节；CLI Snapshot 同步，命令数 23 → 24。测试基线：1417 passed, 1 skipped。
 
 Step 6A 验证：`smartdev run new <id>` 新增强制创建 `agent-output/` 和 `review/` 子目录；`agent-output/code-agent-result.template.md` 遵循 §14 固定结构（Status / Implemented / Changed Files / Tests / Open Questions）；`review/commit-readiness.template.md` 遵循 §15 固定结构（Decision / Required Fixes / Gates / Documentation Status / Suggested Commits）；`--force` 覆盖时模板随 run 目录一起重建。测试基线：1400 passed, 1 skipped。
 
