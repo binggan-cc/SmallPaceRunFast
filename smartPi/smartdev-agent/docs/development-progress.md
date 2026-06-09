@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-09
-> 当前阶段：Phase 11B Step 1 完成 — change.budget Guard Skill（1496 tests）
+> 当前阶段：Phase 11B Step 2 完成 — dev.guard Guard Skill（1584 tests）
 
 ---
 
@@ -669,6 +669,8 @@ Git Governance 核心设计原则：
 Step 0 验证：`docs/phase-11b-design.md` 已创建，明确 Guard Skills v0 定位、5 个确定性 Guard、Step 1–7 实施路线、统一输出结构、与 `scope_gate` / `git.diff.explain` / `doc.map` 的边界，以及“不接外部扫描器、不调用模型”的硬约束。测试基线：未运行（纯设计文档）。
 
 Step 1 验证：`change.budget` Guard Skill 已实现；新增 `smartdev/core/guard_budget.py` 规则引擎、`smartdev/skills/change_budget/skill.py` + `skill.yaml`、`tests/test_guard_budget.py`，并在 `smartdev/skills/__init__.py` 注册。规则覆盖 file_count / line_count / schema_change / per_file_limit；支持显式输入运行，无 git 依赖，R0 只读。测试基线：1496 passed, 1 skipped。
+
+Step 2 验证：`dev.guard` Guard Skill 已实现；新增 `smartdev/core/guard_dev.py` 规则引擎、`smartdev/skills/dev_guard/skill.py` + `skill.yaml`、`tests/test_guard_dev.py`，并在 `smartdev/skills/__init__.py` 注册。规则覆盖 mass_refactor / protected_path_hit / unrelated_change / test_deletion / config_in_code / forbidden_file_modification / large_commit；支持显式输入运行，无 git 依赖，R0 只读。测试基线：1584 passed, 1 skipped。
 
 | Skill | 说明 |
 |-------|------|

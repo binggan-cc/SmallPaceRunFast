@@ -4,6 +4,21 @@
 
 ## [Unreleased] — Phase 11B: Guard Skills v0（设计中）
 
+### Added — Phase 11B Step 2: dev.guard Guard Skill
+
+- **`smartdev/core/guard_dev.py`**（新增）：`dev.guard` 规则引擎
+  - `DevGuardViolation` / `DevGuardResult` 数据模型
+  - `check_dev_guard()` 核心函数，覆盖 mass_refactor / protected_path_hit / unrelated_change / test_deletion / config_in_code / forbidden_file_modification / large_commit 七类确定性规则
+  - 支持显式输入运行，无 git 依赖，不调用模型，不接外部扫描器
+- **`smartdev/skills/dev_guard/skill.py` + `skill.yaml`**（新增）：`dev.guard` R0 只读 Skill
+  - 消费 `changed_files` / `protected_paths` / `denied_paths` / `forbidden_paths` / `task_description` / `diff_content` / `max_files_per_commit`
+  - 输出结构化 `passed` / `checks` / `violations` / `summary`
+- **`smartdev/skills/__init__.py`**：注册 `dev.guard` Skill
+- **`tests/test_guard_dev.py`**（新增）：88 tests
+  - 覆盖路径匹配、模块识别、关键词提取、文件类型分类、7 条规则、Skill 集成、序列化和确定性
+
+测试基线：**1584 passed, 1 skipped**
+
 ### Added — Phase 11B Step 1: change.budget Guard Skill
 
 - **`smartdev/core/guard_budget.py`**（新增）：`change.budget` 规则引擎

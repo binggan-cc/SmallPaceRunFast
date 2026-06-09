@@ -39,5 +39,6 @@ from smartdev.skills.doc_update_plan import skill as _doc_update_plan_skill  # n
 from smartdev.skills.doc_patch_propose import skill as _doc_patch_propose_skill  # noqa: F401
 # Phase 11B — Guard Skills
 from smartdev.skills.change_budget import skill as _change_budget_skill  # noqa: F401
+from smartdev.skills.dev_guard import skill as _dev_guard_skill  # noqa: F401
 
 __all__ = ["Skill"]

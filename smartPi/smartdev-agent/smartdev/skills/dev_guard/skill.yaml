@@ -1,0 +1,39 @@
+# SmartDev Skill: dev.guard
+# AI 编程规则守卫 — 确定性规则引擎，R0 只读
+
+id: dev.guard
+name: AI 编程规则守卫
+capability: guard
+risk: R0
+mode: read_only
+
+description: >
+  检查本轮任务是否违反 AI 编程硬规则：大规模重构、protected path 命中、
+  无关改动、测试删除、配置文件混入、禁止文件修改、单 commit 过大。
+  确定性规则引擎，不调用模型，不接外部扫描器。
+
+inputs:
+  required:
+    - changed_files   # 变更文件列表（list[str]）
+  optional:
+    - protected_paths         # 受保护路径 glob 模式（list[str]）
+    - denied_paths            # 禁止修改路径 glob 模式（list[str]）
+    - forbidden_paths         # 额外禁止路径（如 CHANGELOG 历史）
+    - task_description        # 任务描述（用于 unrelated_change 检测）
+    - diff_content            # diff 内容（用于 test_deletion 精确检测）
+    - max_files_per_commit    # 单 commit 最大文件数（默认 12）
+
+outputs:
+  - passed       # 是否通过（无 error 级别违规）
+  - checks       # 各项检查结果（mass_refactor / protected_path_hit / ...）
+  - violations   # 违规列表
+  - summary      # 人类可读摘要
+
+preconditions:
+  - none（无需 git，纯显式输入）
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
