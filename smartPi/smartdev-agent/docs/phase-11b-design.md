@@ -472,15 +472,15 @@ smartPi/smartdev-agent/
 ## 6. 实施路线
 
 ```
-Step 0  设计文档 phase-11b-design.md（本文档）                        ← 当前
+Step 0  设计文档 phase-11b-design.md（本文档）                        ✅ 完成
 
-Step 1  change.budget（R0，优先级最高）
+Step 1  change.budget（R0，优先级最高）                               ✅ 完成
         - smartdev/core/guard_budget.py（规则引擎）
         - smartdev/skills/change_budget/skill.py + skill.yaml
         - 消费 scope.json 的 max_files，扩展 max_lines / schema_change / per_file_limit
-        - tests/test_guard_budget.py（预计 12-16 tests）
+        - tests/test_guard_budget.py（60 tests）
 
-Step 2  dev.guard（R0）
+Step 2  dev.guard（R0）                                                ← 下一步
         - smartdev/core/guard_dev.py（规则引擎）
         - smartdev/skills/dev_guard/skill.py + skill.yaml
         - 7 条 AI 编程硬规则检查

@@ -1,0 +1,38 @@
+# SmartDev Skill: change.budget
+# 变更预算检查 — 确定性规则引擎，R0 只读
+
+id: change.budget
+name: 变更预算检查
+capability: guard
+risk: R0
+mode: read_only
+
+description: >
+  检查单次变更是否超出预算上限：文件数、行数、schema 变更、单文件大小。
+  确定性规则引擎，不调用模型，不接外部扫描器。
+  消费 scope.json 的 max_files，扩展 max_lines / allow_schema_change / per_file_limit。
+
+inputs:
+  required:
+    - changed_files   # 变更文件列表（list[str]）
+  optional:
+    - max_files              # 文件数上限（默认 10）
+    - max_lines              # 行数上限（None=不限制）
+    - allow_schema_change    # 是否允许数据模型变更（默认 false）
+    - per_file_limit         # 单文件变更行数上限（默认 200）
+    - line_counts            # 每个文件的行数 {path: lines}
+
+outputs:
+  - passed       # 是否通过（无 error 级别违规）
+  - checks       # 各项检查结果（file_count / line_count / schema_change / per_file_limit）
+  - violations   # 违规列表
+  - summary      # 人类可读摘要
+
+preconditions:
+  - none（无需 git，纯显式输入）
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic

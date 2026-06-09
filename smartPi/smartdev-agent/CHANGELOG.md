@@ -4,6 +4,21 @@
 
 ## [Unreleased] — Phase 11B: Guard Skills v0（设计中）
 
+### Added — Phase 11B Step 1: change.budget Guard Skill
+
+- **`smartdev/core/guard_budget.py`**（新增）：`change.budget` 规则引擎
+  - `BudgetViolation` / `BudgetResult` 数据模型
+  - `check_budget()` 核心函数，覆盖 file_count / line_count / schema_change / per_file_limit 四类确定性规则
+  - 支持显式输入运行，无 git 依赖，不调用模型，不接外部扫描器
+- **`smartdev/skills/change_budget/skill.py` + `skill.yaml`**（新增）：`change.budget` R0 只读 Skill
+  - 消费 `changed_files` / `max_files` / `max_lines` / `allow_schema_change` / `per_file_limit` / `line_counts`
+  - 输出结构化 `passed` / `checks` / `violations` / `summary`
+- **`smartdev/skills/__init__.py`**：注册 `change.budget` Skill
+- **`tests/test_guard_budget.py`**（新增）：60 tests
+  - 覆盖 schema 文件检测、文件数/行数/单文件预算、schema 变更允许/拒绝、Skill 集成、序列化和确定性
+
+测试基线：**1496 passed, 1 skipped**
+
 ### Added — Phase 11B Step 0: Guard Skills v0 执行前设计
 
 - **`docs/phase-11b-design.md`**（新增）：Phase 11B Guard Skills v0 执行前设计
