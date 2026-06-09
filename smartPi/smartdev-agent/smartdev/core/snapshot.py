@@ -617,6 +617,12 @@ def _build_cli_parser():
     run_hc_p.add_argument("--changed-files", nargs="*", default=[])
     run_hc_p.add_argument("--target", default="")
 
+    run_hd_p = run_sub.add_parser("handoff-doc", help="生成 doc-steward-pack.md（R1）",
+                                    description="生成 doc-steward-pack.md 给 Doc Steward 使用（R1，只写 .smartdev/runs/）")
+    run_hd_p.add_argument("run_id")
+    run_hd_p.add_argument("--project", "-p", default=".")
+    run_hd_p.add_argument("--run-tests", action="store_true")
+
     # index
     idx_p = subparsers.add_parser("index", help="建立项目代码索引",
                                    description="建立项目代码索引（文件 + 工件）")

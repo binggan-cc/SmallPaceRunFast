@@ -289,3 +289,45 @@ class TestCLIRunHandoffCode:
         assert result.returncode == 0
         content = (tmp_path / ".smartdev" / "runs" / "hc-2" / "handoff" / "code-agent-pack.md").read_text("utf-8")
         assert "Scope Gate" in content
+
+
+class TestCLIRunHandoffDoc:
+    """Phase 11D Step 4: smartdev run handoff-doc CLI 集成测试"""
+
+    def _setup_run(self, tmp_path: Path, run_id: str = "hd-test"):
+        """创建 run artifact 用于 handoff-doc 测试。"""
+        from smartdev.core.run_artifact import ScopeConfig
+        scope = ScopeConfig(allowed_paths=["smartdev/", "tests/"])
+        run_dir = tmp_path / ".smartdev" / "runs" / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "scope.json").write_text(scope.to_json(), encoding="utf-8")
+        (run_dir / "task-card.md").write_text(
+            "# test\n\n## 目标\n\n测试\n\n## 验收标准\n\n验收\n", encoding="utf-8",
+        )
+        # 最小项目骨架
+        (tmp_path / "CLAUDE.md").write_text(
+            "# CLAUDE\n\n## 当前阶段\n\nPhase 11D\n\n测试基线：1344 passed\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "smartdev").mkdir(exist_ok=True)
+        (tmp_path / "smartdev" / "__init__.py").write_text("")
+        (tmp_path / "README.md").write_text("# Test\n")
+
+    def test_generates_pack(self, tmp_path: Path):
+        """成功生成 doc-steward-pack.md"""
+        self._setup_run(tmp_path, "hd-1")
+        result = _run_cli(
+            "run", "handoff-doc", "hd-1", "--project", str(tmp_path),
+        )
+        assert result.returncode == 0
+        assert "Doc Steward Pack" in result.stdout
+        pack_path = tmp_path / ".smartdev" / "runs" / "hd-1" / "handoff" / "doc-steward-pack.md"
+        assert pack_path.exists()
+
+    def test_missing_run_dir(self, tmp_path: Path):
+        """run_id 不存在 → 报错"""
+        result = _run_cli(
+            "run", "handoff-doc", "no-such-run", "--project", str(tmp_path),
+        )
+        assert result.returncode == 1
+        assert "不存在" in result.stderr

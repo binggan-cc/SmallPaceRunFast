@@ -4,6 +4,29 @@
 
 ## [Unreleased] — Phase 11D: Collaboration Handoff v0（进行中）
 
+### Added — Phase 11D Step 4: handoff doc
+
+- **`smartdev/core/handoff_doc.py`**：新增 Doc Steward Handoff Pack 生成能力
+  - 读取 `.smartdev/runs/<run_id>/task-card.md` 和 `scope.json`
+  - 生成 `.smartdev/runs/<run_id>/handoff/doc-steward-pack.md`
+  - pack 聚合 Change Manifest / Diff Summary / Test Report / Capability Snapshots / Doc Map / Phase Status / Doc Consistency / Update Focus
+  - 所有数据源可选，git 不可用、无索引或 Skill 异常时优雅降级
+  - Doc Steward 输出规范固定为 docs_required / issues / update_plan / patch_propose_only
+- **`smartdev/cli.py`**：新增 `smartdev run handoff-doc <run_id>` CLI 子命令
+  - 支持 `--run-tests`
+  - 只写 `.smartdev/runs/<run_id>/handoff/doc-steward-pack.md`
+- **`smartdev/core/snapshot.py`**：CLI Snapshot 同步 `smartdev run handoff-doc`
+  - `smartdev snapshot cli` 命令数 20 → 21
+- **`tests/test_handoff_doc.py` / `tests/test_cli.py` / `tests/test_snapshot.py`**：新增 Step 4 覆盖
+  - pack 生成、错误路径、字符预算、只写 run artifact、数据源优雅降级、CLI 和 snapshot 同步
+- **修复验证**：
+  - Diff Summary 使用 `GitDiff.insertions` / `GitDiff.deletions`
+  - Doc Map 正确处理 `mentions: dict[str, list[str]]`
+
+测试基线：**1361 passed, 1 skipped**
+
+---
+
 ### Added — Phase 11D Step 3: handoff code
 
 - **`smartdev/core/handoff_code.py`**：新增 Code Agent Handoff Pack 生成能力
