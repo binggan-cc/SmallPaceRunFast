@@ -4,6 +4,27 @@
 
 ## [Unreleased] — Phase 11D: Collaboration Handoff v0（进行中）
 
+### Added — Phase 11D Step 2: Scope Gate
+
+- **`smartdev/core/scope_gate.py`**：新增 Scope Gate 只读检查能力
+  - 读取 `.smartdev/runs/<run_id>/scope.json`
+  - 对 `changed_files` 执行 max_files / denied_paths / protected_paths / outside_scope 四类检查
+  - 输出 `passed` / `violations` / `warnings` / `summary` / `error` / `scope_config` 结构化结果
+  - 支持 fnmatch glob、目录前缀和文件名匹配
+- **`smartdev/cli.py`**：新增 `smartdev run scope-check <run_id>` CLI 子命令
+  - 支持 `--changed-files` 和 `--json`
+  - Scope Gate 通过返回 0；命中 error violation 或配置加载错误返回 1
+- **`smartdev/core/snapshot.py`**：CLI Snapshot 同步 `smartdev run scope-check`
+  - `smartdev snapshot cli` 命令数 18 → 19
+- **`tests/test_scope_gate.py` / `tests/test_cli.py` / `tests/test_snapshot.py`**：新增 Step 2 覆盖
+  - Scope Gate 正常通过、max_files、denied_paths、protected_paths、outside_scope、scope.json 缺失/格式错误
+  - CLI 人类可读输出 / JSON 输出
+  - CLI Snapshot 包含 `smartdev run scope-check`
+
+测试基线：**1301 passed, 1 skipped**
+
+---
+
 ### Added — Phase 11D Step 1: Run Artifact 目录约定
 
 - **`smartdev/core/run_artifact.py`**：新增 Run Artifact 创建能力

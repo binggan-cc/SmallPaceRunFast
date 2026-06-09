@@ -179,3 +179,61 @@ class TestCLIRunNew:
         (tmp_path / "main.py").write_text("pass\n")
         result = _run_cli("run", "--project", str(tmp_path), "--task", "测试")
         assert result.returncode == 0
+
+
+class TestCLIRunScopeCheck:
+    """Phase 11D Step 2: smartdev run scope-check CLI 集成测试"""
+
+    def _setup_run(self, tmp_path: Path, run_id: str = "sc-test", **scope_kwargs):
+        """创建 run artifact 用于 scope-check 测试。"""
+        import json as _json
+        from smartdev.core.run_artifact import ScopeConfig
+        scope = ScopeConfig(**scope_kwargs) if scope_kwargs else ScopeConfig()
+        run_dir = tmp_path / ".smartdev" / "runs" / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "scope.json").write_text(scope.to_json(), encoding="utf-8")
+
+    def test_passed_output(self, tmp_path: Path):
+        """全部在范围内 → passed"""
+        self._setup_run(tmp_path, "pass-sc", allowed_paths=["src/"])
+        result = _run_cli(
+            "run", "scope-check", "pass-sc",
+            "--project", str(tmp_path),
+            "--changed-files", "src/a.py", "src/b.py",
+        )
+        assert result.returncode == 0
+        assert "通过" in result.stdout
+
+    def test_violation_non_zero_exit(self, tmp_path: Path):
+        """有 violation → 退出码 1"""
+        self._setup_run(tmp_path, "fail-sc", max_files=1)
+        result = _run_cli(
+            "run", "scope-check", "fail-sc",
+            "--project", str(tmp_path),
+            "--changed-files", "src/a.py", "src/b.py",
+        )
+        assert result.returncode == 1
+        assert "未通过" in result.stdout or "超过上限" in result.stdout
+
+    def test_json_output(self, tmp_path: Path):
+        """--json 输出可解析 JSON"""
+        import json as _json
+        self._setup_run(tmp_path, "json-sc", max_files=3)
+        result = _run_cli(
+            "run", "scope-check", "json-sc",
+            "--project", str(tmp_path),
+            "--changed-files", "src/a.py", "src/b.py",
+            "--json",
+        )
+        assert result.returncode == 0
+        data = _json.loads(result.stdout)
+        assert data["passed"] is True
+
+    def test_missing_scope_json(self, tmp_path: Path):
+        """scope.json 不存在 → 报错"""
+        result = _run_cli(
+            "run", "scope-check", "no-such-run",
+            "--project", str(tmp_path),
+        )
+        assert result.returncode == 1
+        assert "不存在" in result.stdout or "不存在" in result.stderr

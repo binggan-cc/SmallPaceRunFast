@@ -603,6 +603,13 @@ def _build_cli_parser():
     run_new_p.add_argument("--max-files", type=int)
     run_new_p.add_argument("--protected-paths", nargs="*")
 
+    run_sc_p = run_sub.add_parser("scope-check", help="Scope Gate 检查（R0 只读）",
+                                    description="Scope Gate 检查：对比 changed_files vs scope.json（R0 只读）")
+    run_sc_p.add_argument("run_id")
+    run_sc_p.add_argument("--project", "-p", default=".")
+    run_sc_p.add_argument("--changed-files", nargs="*", default=[])
+    run_sc_p.add_argument("--json", action="store_true")
+
     # index
     idx_p = subparsers.add_parser("index", help="建立项目代码索引",
                                    description="建立项目代码索引（文件 + 工件）")

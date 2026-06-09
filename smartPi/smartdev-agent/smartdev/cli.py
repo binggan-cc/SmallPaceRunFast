@@ -299,6 +299,60 @@ def _cmd_run_new(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_run_scope_check(args: argparse.Namespace) -> int:
+    """执行 Scope Gate 检查（Phase 11D Step 2，R0 只读）
+
+    读取 .smartdev/runs/<run_id>/scope.json，对比 changed_files 列表，
+    输出结构化的 passed / violations / summary。
+
+    四条规则（全部独立执行，一条失败不阻断其他）：
+    1. max_files       — 变更文件数是否超限
+    2. denied_paths    — 是否命中禁止路径
+    3. protected_paths — 是否命中受保护路径
+    4. allowed_paths   — 是否存在 scope 外文件
+    """
+    from smartdev.core.scope_gate import check_scope
+
+    project_path = Path(args.project).resolve()
+    if not project_path.exists():
+        print(f"错误: 项目路径不存在: {project_path}", file=sys.stderr)
+        return 1
+
+    run_id: str = args.run_id
+    changed_files: list[str] = getattr(args, "changed_files", []) or []
+
+    result = check_scope(project_path, run_id, changed_files)
+
+    # 输出 JSON（方便程序消费）
+    if getattr(args, "json", False):
+        print(result.to_json())
+        return 0 if result.passed else 1
+
+    # 人类可读输出
+    print(result.summary)
+    print()
+
+    if result.error:
+        return 1
+
+    if result.violations:
+        print(f"违规详情 ({len(result.violations)} 条):")
+        for v in result.violations:
+            icon = "❌" if v.severity == "error" else "⚠"
+            print(f"  {icon} [{v.rule}] {v.file}")
+            print(f"     {v.message}")
+        print()
+
+    if result.scope_config:
+        print(f"Scope 配置:")
+        print(f"  max_files:       {result.scope_config.get('max_files')}")
+        print(f"  allowed_paths:   {', '.join(result.scope_config.get('allowed_paths', []))}")
+        print(f"  denied_paths:    {', '.join(result.scope_config.get('denied_paths', []))}")
+        print(f"  protected_paths: {', '.join(result.scope_config.get('protected_paths', []))}")
+
+    return 0 if result.passed else 1
+
+
 def _cmd_index(args: argparse.Namespace) -> int:
     """建立项目索引"""
     from smartdev.context.project_index import ProjectIndex
@@ -871,6 +925,29 @@ def main() -> None:
         help="受保护路径（变更 → 触发 R3/拒绝）",
     )
     run_new_parser.set_defaults(func=_cmd_run_new)
+
+    # run scope-check <run_id>（Phase 11D Step 2）
+    run_scope_check_parser = run_subparsers.add_parser(
+        "scope-check",
+        help="Scope Gate 检查：对比 changed_files vs scope.json（R0 只读）",
+    )
+    run_scope_check_parser.add_argument(
+        "run_id",
+        help="要检查的 run_id（.smartdev/runs/<run_id>/scope.json）",
+    )
+    run_scope_check_parser.add_argument(
+        "--project", "-p", default=".",
+        help="项目根目录路径（默认当前目录）",
+    )
+    run_scope_check_parser.add_argument(
+        "--changed-files", nargs="*", default=[],
+        help="变更文件列表（空格分隔的相对路径）",
+    )
+    run_scope_check_parser.add_argument(
+        "--json", action="store_true",
+        help="以 JSON 格式输出结果",
+    )
+    run_scope_check_parser.set_defaults(func=_cmd_run_scope_check)
 
     # index 命令（Phase 6-MVP 新增）
     index_parser = subparsers.add_parser("index", help="建立项目代码索引（文件 + 工件）")

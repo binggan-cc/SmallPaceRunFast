@@ -350,6 +350,15 @@ class TestBuildCliSnapshot:
         assert "--project" in run_cmd.args
         assert "--task" in run_cmd.args
 
+    def test_scope_check_present(self):
+        """Phase 11D Step 2: smartdev run scope-check 出现在 CLI 快照中"""
+        snap = build_cli_snapshot()
+        sc = next((c for c in snap.commands if c.command == "smartdev run scope-check"), None)
+        assert sc is not None, "smartdev run scope-check 应出现在 CLI 快照中"
+        assert "run_id" in sc.args
+        assert "--changed-files" in sc.args
+        assert "--json" in sc.args
+
     def test_to_json_roundtrip(self):
         snap = build_cli_snapshot()
         restored = CliSnapshot.from_dict(json.loads(snap.to_json()))

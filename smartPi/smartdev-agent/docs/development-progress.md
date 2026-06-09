@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-09
-> 当前阶段：Phase 11D Step 1 完成 — Run Artifact 目录约定（18 CLI 命令，1263 tests）→ 进入 Phase 11D Step 2
+> 当前阶段：Phase 11D Step 2 完成 — Scope Gate（19 CLI 命令，1301 tests）→ 进入 Phase 11D Step 3
 
 ---
 
@@ -558,8 +558,8 @@ Go 提取能力（Step 2）：
 |------|--------|------|
 | Step 0 | 设计文档 phase-11d-design.md | ✅ 完成 |
 | Step 1 | Run Artifact 目录约定 + `smartdev run new` | ✅ 完成 |
-| Step 2 | Scope Gate（11D 唯一新增核心）| 🔲 下一步 |
-| Step 3 | handoff code（≤8k）| 🔲 待开始 |
+| Step 2 | Scope Gate（11D 唯一新增核心）| ✅ 完成 |
+| Step 3 | handoff code（≤8k）| 🔲 下一步 |
 | Step 4 | handoff doc（≤6k，依赖 11C）| 🔲 待开始 |
 | Step 5 | handoff review（≤10k）| 🔲 待开始 |
 | Step 6 | MCP 暴露只读 handoff 工具 | 🔲 待开始 |
@@ -568,6 +568,8 @@ Go 提取能力（Step 2）：
 设计文档：[phase-11d-design.md](phase-11d-design.md)
 
 Step 1 验证：`smartdev run new <id>` 可创建 `.smartdev/runs/<id>/task-card.md` 和 `scope.json`；重复 run_id 默认报错，`--force` 显式覆盖；CLI Snapshot 已同步 `smartdev run new`，CLI 命令数 17 → 18。测试基线：1263 passed, 1 skipped。
+
+Step 2 验证：`smartdev run scope-check <id> --changed-files ...` 可读取 `scope.json` 并检查 max_files / denied_paths / protected_paths / outside_scope；CLI Snapshot 已同步 `smartdev run scope-check`，CLI 命令数 18 → 19。测试基线：1301 passed, 1 skipped。
 
 **当前协作模式：** DeepSeek = Code Agent；Claude/Codex = Doc Steward；SmartDev = Handoff Pack + Gates；Human = Apply / Commit / Release。
 
