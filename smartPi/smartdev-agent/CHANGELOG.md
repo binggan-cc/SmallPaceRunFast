@@ -4,6 +4,21 @@
 
 ## [Unreleased] — Phase 11D: Collaboration Handoff v0（进行中）
 
+### Added — Phase 11D Step 6 设计：Agent Output & Review Artifact Protocol
+
+- **`docs/phase-11d-design.md`**：重大更新——固定输出回流协议
+  - §4 Run Artifact 目录约定：扩展加入 `agent-output/` 和 `review/` 两层
+    - `handoff/`（输入层）/ `agent-output/`（执行层）/ `review/`（审查层）三层职责划分
+    - 每个目录明确"谁写 / 谁读 / 何时"
+  - §7 协作流程：重写流程 A，Human 全程不复制聊天内容
+    - Doc Steward 生成 code-agent-pack → Code Agent 写回 agent-output/ → Doc Steward 审查写 review/ → Human 读 commit-readiness.md 决策
+  - §8 实施路线：Step 6 重定义为 Agent Output & Review Artifact Protocol，MCP 工具暴露后移为 Step 7
+  - §13 验收标准：分 Step 1–5（已完成）/ Step 6（当前）/ Step 7（后续）三段
+  - 新增 §14 Code Agent 输出协议：`code-agent-result.md` / `changed-files.txt` / `test-report.txt` 固定结构
+  - 新增 §15 Doc Steward 输出协议：`commit-readiness.md` 固定结构，Human 唯一决策文件
+
+测试基线：**1394 passed, 1 skipped**（纯文档，无代码变更）
+
 ### Added — Phase 11D Step 5: handoff review
 
 - **`smartdev/core/handoff_review.py`**：新增 Reviewer Handoff Pack 生成能力

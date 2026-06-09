@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-09
-> 当前阶段：Phase 11D Role Activation 完成 — run context + Role Preamble（23 CLI 命令，1394 tests）→ 进入 Phase 11D Step 6
+> 当前阶段：Phase 11D Step 6 进行中 — Agent Output & Review Artifact Protocol（23 CLI 命令，1394 tests）
 
 ---
 
@@ -561,8 +561,9 @@ Go 提取能力（Step 2）：
 | Step 2 | Scope Gate（11D 唯一新增核心）| ✅ 完成 |
 | Step 3 | handoff code（≤8k）| ✅ 完成 |
 | Step 4 | handoff doc（≤6k，依赖 11C）| ✅ 完成 |
-| Step 5 | handoff review（≤10k）| ✅ 完成 |
-| Step 6 | MCP 暴露只读 handoff 工具 | 🔲 下一步 |
+| Step 5 | handoff review（≤10k）+ Role Activation Preamble + run context | ✅ 完成 |
+| Step 6 | Agent Output & Review Artifact Protocol | 🔲 进行中 |
+| Step 7 | MCP 暴露只读 handoff 工具 | 🔲 待开始 |
 
 边界：11C 生产事实，11D 组装事实给角色消费。先有事实层，再有协作层。
 设计文档：[phase-11d-design.md](phase-11d-design.md)
@@ -578,6 +579,8 @@ Step 4 验证：`smartdev run handoff-doc <id>` 可生成 `.smartdev/runs/<id>/h
 Step 5 验证：`smartdev run handoff-review <id>` 可生成 `.smartdev/runs/<id>/handoff/reviewer-pack.md`；pack 聚合 Risk + Impact、Changed Files、Test Report、Dependency Changes、Security Checklist 和 Git Diff Explain；支持 `--changed-files` / `--target` / `--run-tests`；CLI Snapshot 已同步 `smartdev run handoff-review`，CLI 命令数 21 → 22。测试基线：1375 passed, 1 skipped。
 
 Role Activation 验证：三个 handoff pack（code-agent / doc-steward / reviewer）均在文件头加入角色激活前言（Role Activation Preamble），包含协作架构图、角色职责、第一步指引、输出格式和禁止项；`smartdev run context <id> --role` 可打印对应 pack 到 stdout；`--info` 模式打印元信息；CLI Snapshot 已同步 `smartdev run context`，CLI 命令数 22 → 23。测试基线：1394 passed, 1 skipped。
+
+Step 6 设计：`phase-11d-design.md` 完成重大更新——固定输出回流协议。§4 Run Artifact 扩展加入 `agent-output/`（Code Agent 写回）和 `review/`（Doc Steward 写回）两层，三层职责划分（handoff=输入层 / agent-output=执行层 / review=审查层）；§7 协作流程重写，Human 全程不复制聊天内容，只看 `review/commit-readiness.md` 做决策；§14 新增 Code Agent 输出协议；§15 新增 Doc Steward 输出协议；§8 Step 6 重定义，MCP 工具暴露后移为 Step 7。测试基线：1394 passed, 1 skipped（纯文档）。
 
 **当前协作模式：** DeepSeek = Code Agent；Claude/Codex = Doc Steward；SmartDev = Handoff Pack + Gates；Human = Apply / Commit / Release。
 
