@@ -94,6 +94,69 @@ TASK_CARD_TEMPLATE = """# {run_id}
 - protected_paths: {protected_paths}
 """
 
+# code-agent-result.template.md（§14.2 固定结构）
+CODE_AGENT_RESULT_TEMPLATE = """# Code Agent Result — {run_id}
+
+> 生成时间：{created_at}
+> 写入者：Code Agent
+> 消费方：Doc Steward / Human
+
+## Status
+<!-- completed / blocked / partial -->
+
+## Implemented
+<!-- 简要说明实现了什么（每项一行） -->
+
+## Changed Files
+| 文件 | 操作 | 原因 |
+|------|------|------|
+| | | |
+
+## Tests
+Command:
+```bash
+# pytest 命令
+```
+Result:
+
+## Open Questions
+<!-- 如果没有，写"无" -->
+"""
+
+# commit-readiness.template.md（§15.2 固定结构）
+COMMIT_READINESS_TEMPLATE = """# Commit Readiness — {run_id}
+
+> 写入者：Doc Steward
+> 消费方：Human（唯一决策输入）
+
+## Decision
+<!-- ready_for_human_commit / needs_fix / blocked -->
+
+## Required Fixes
+<!-- needs_fix 时填写，否则写"无" -->
+
+## Gates
+| Gate | 状态 | 说明 |
+|------|------|------|
+| Scope Gate | | |
+| Test Gate  | | |
+| Doc Gate   | | |
+
+## Documentation Status
+- CHANGELOG.md:
+- README.md:
+- development-progress.md:
+
+## Suggested Commits
+<!-- Conventional Commit 格式建议，可用 git.commit.plan 生成 -->
+```text
+# 示例：
+# feat(scope): subject
+# test(scope): subject
+# docs(scope): subject
+```
+"""
+
 
 # ── 数据模型 ──────────────────────────────────────────────────
 
@@ -225,5 +288,21 @@ def create_run_artifact(
         protected_paths=", ".join(scope.protected_paths),
     )
     task_card_path.write_text(task_card_content, encoding="utf-8")
+
+    # 8. 创建 agent-output/ 子目录 + 模板（§14）
+    agent_output_dir = run_dir / "agent-output"
+    agent_output_dir.mkdir(parents=True, exist_ok=True)
+    (agent_output_dir / "code-agent-result.template.md").write_text(
+        CODE_AGENT_RESULT_TEMPLATE.format(run_id=run_id, created_at=created_at),
+        encoding="utf-8",
+    )
+
+    # 9. 创建 review/ 子目录 + 模板（§15）
+    review_dir = run_dir / "review"
+    review_dir.mkdir(parents=True, exist_ok=True)
+    (review_dir / "commit-readiness.template.md").write_text(
+        COMMIT_READINESS_TEMPLATE.format(run_id=run_id),
+        encoding="utf-8",
+    )
 
     return run_dir, None

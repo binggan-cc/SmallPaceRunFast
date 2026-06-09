@@ -19,6 +19,17 @@
 
 测试基线：**1394 passed, 1 skipped**（纯文档，无代码变更）
 
+### Added — Phase 11D Step 6A: agent-output/ review/ 目录协议落地
+
+- **`smartdev/core/run_artifact.py`**：`create_run_artifact()` 新增强制创建 `agent-output/` 和 `review/` 子目录
+  - `agent-output/code-agent-result.template.md` — 遵循 §14 固定结构（Status / Implemented / Changed Files / Tests / Open Questions）
+  - `review/commit-readiness.template.md` — 遵循 §15 固定结构（Decision / Required Fixes / Gates / Documentation Status / Suggested Commits）
+  - `--force` 覆盖时模板随 run 目录一起重建
+- **`tests/test_run_artifact.py`**：新增 `TestAgentOutputAndReviewDirectories`（6 tests）
+  - agent-output/ review/ 目录存在、模板内容完整性（Code Agent Result + Commit Readiness 固定节）、run_id 注入、force 覆盖后重建
+
+测试基线：**1400 passed, 1 skipped**
+
 ### Added — Phase 11D Step 5: handoff review
 
 - **`smartdev/core/handoff_review.py`**：新增 Reviewer Handoff Pack 生成能力

@@ -360,7 +360,10 @@ class TestCreateRunArtifactEdgeCases:
         run_dir, err = create_run_artifact(tmp_project, "clean-dir")
         assert err is None
         files = sorted(f.name for f in run_dir.iterdir())
-        assert files == ["scope.json", "task-card.md"]
+        assert "scope.json" in files
+        assert "task-card.md" in files
+        assert "agent-output" in files
+        assert "review" in files
 
     def test_nested_run_id_creates_nested_dirs(self, tmp_project):
         """嵌套 run_id（含点号）不创建嵌套目录。"""
@@ -388,3 +391,70 @@ class TestCreateRunArtifactEdgeCases:
         assert "更新API文档" in content_b
         assert "修复登录页面" not in content_b
         assert "更新API文档" not in content_a
+
+
+class TestAgentOutputAndReviewDirectories:
+    """Phase 11D Step 6: agent-output/ 和 review/ 子目录 + 模板文件"""
+
+    def test_agent_output_dir_exists(self, tmp_project):
+        run_dir, err = create_run_artifact(tmp_project, "ao-1")
+        assert err is None
+        ao_dir = run_dir / "agent-output"
+        assert ao_dir.exists()
+        assert ao_dir.is_dir()
+
+    def test_review_dir_exists(self, tmp_project):
+        run_dir, err = create_run_artifact(tmp_project, "ao-2")
+        assert err is None
+        review_dir = run_dir / "review"
+        assert review_dir.exists()
+        assert review_dir.is_dir()
+
+    def test_code_agent_result_template_exists(self, tmp_project):
+        run_dir, err = create_run_artifact(tmp_project, "ao-3")
+        assert err is None
+        tmpl = run_dir / "agent-output" / "code-agent-result.template.md"
+        assert tmpl.exists()
+        content = tmpl.read_text(encoding="utf-8")
+        assert "Code Agent Result" in content
+        assert "## Status" in content
+        assert "## Implemented" in content
+        assert "## Changed Files" in content
+        assert "## Tests" in content
+        assert "## Open Questions" in content
+
+    def test_commit_readiness_template_exists(self, tmp_project):
+        run_dir, err = create_run_artifact(tmp_project, "ao-4")
+        assert err is None
+        tmpl = run_dir / "review" / "commit-readiness.template.md"
+        assert tmpl.exists()
+        content = tmpl.read_text(encoding="utf-8")
+        assert "Commit Readiness" in content
+        assert "## Decision" in content
+        assert "## Required Fixes" in content
+        assert "## Gates" in content
+        assert "## Documentation Status" in content
+        assert "## Suggested Commits" in content
+
+    def test_templates_contain_run_id(self, tmp_project):
+        run_dir, err = create_run_artifact(tmp_project, "ao-5")
+        assert err is None
+        ca = (run_dir / "agent-output" / "code-agent-result.template.md").read_text("utf-8")
+        cr = (run_dir / "review" / "commit-readiness.template.md").read_text("utf-8")
+        assert "ao-5" in ca
+        assert "ao-5" in cr
+
+    def test_force_recreates_dirs(self, tmp_project):
+        """--force 覆盖时也重新创建 agent-output/ 和 review/。"""
+        run_dir1, err1 = create_run_artifact(tmp_project, "ao-6")
+        assert err1 is None
+        # 写入标记文件
+        (run_dir1 / "agent-output" / "old.txt").write_text("old")
+        # force 覆盖
+        run_dir2, err2 = create_run_artifact(tmp_project, "ao-6", force=True)
+        assert err2 is None
+        # 旧标记应被删除
+        assert not (run_dir2 / "agent-output" / "old.txt").exists()
+        # 新模板应存在
+        assert (run_dir2 / "agent-output" / "code-agent-result.template.md").exists()
+        assert (run_dir2 / "review" / "commit-readiness.template.md").exists()
