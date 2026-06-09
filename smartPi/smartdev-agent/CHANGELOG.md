@@ -2,7 +2,20 @@
 
 本文档记录 SmartDev Agent 的重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)。
 
-## [Unreleased] — Phase 11D: Collaboration Handoff v0（进行中）
+## [Unreleased] — Phase 11B: Guard Skills v0（设计中）
+
+### Added — Phase 11B Step 0: Guard Skills v0 执行前设计
+
+- **`docs/phase-11b-design.md`**（新增）：Phase 11B Guard Skills v0 执行前设计
+  - 定位：把 AI 编程限制在“人能理解、能判断、能验收、能回滚”的节奏里
+  - 范围：`change.budget` / `dev.guard` / `dependency.guard` / `security.review` / `diff.explain`
+  - 明确第一版只做确定性 checklist，不接外部扫描器，不调用模型
+  - 定义 7 步实施路线：change.budget → dev.guard → dependency.guard → security.review → diff.explain → GuardRunner → MCP Guard 工具
+  - 明确与 `scope_gate`、`git.diff.explain`、`doc.map`、Phase 11D handoff 的边界
+
+测试基线：未运行（纯设计文档，无代码变更）
+
+## [Unreleased] — Phase 11D: Collaboration Handoff v0（完成）
 
 ### Added — Phase 11D Step 7: MCP 暴露 handoff pack 工具
 

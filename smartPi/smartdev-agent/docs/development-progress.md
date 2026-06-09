@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-09
-> 当前阶段：Phase 11D Step 7 完成 — MCP 暴露 handoff pack 工具（24 MCP 工具，1436 tests）
+> 当前阶段：Phase 11B Step 0 完成 — Guard Skills v0 执行前设计（纯文档）
 
 ---
 
@@ -66,8 +66,8 @@ Phase 10  MCP Server v0（能力分发）               ✅ 完成
 Phase 11  Human-Controlled AI Coding Layer
     ├── 11A: Git Governance v0（版本治理层 L5）     ✅ 完成
     ├── 11C: Documentation Governance v0           ✅ 完成
-    ├── 11D: Collaboration Handoff v0              ← 当前阶段
-    └── 11B: Guard Skills（安全防护层 L5）
+    ├── 11D: Collaboration Handoff v0              ✅ 完成
+    └── 11B: Guard Skills（安全防护层 L5）          ← 当前阶段
     ↓
 Phase 12  Model Collaboration Layer（横向 L7）
     ├── 12A: Policy 配置层（不调用真实 API）
@@ -663,6 +663,10 @@ Git Governance 核心设计原则：
 - 支持 `.smartdev/git-policy.yaml` 配置保护分支 / commit 规范 / 危险操作禁止项
 
 **Phase 11B：Guard Skills（安全防护层 L5）**
+
+设计文档：[phase-11b-design.md](phase-11b-design.md)
+
+Step 0 验证：`docs/phase-11b-design.md` 已创建，明确 Guard Skills v0 定位、5 个确定性 Guard、Step 1–7 实施路线、统一输出结构、与 `scope_gate` / `git.diff.explain` / `doc.map` 的边界，以及“不接外部扫描器、不调用模型”的硬约束。测试基线：未运行（纯设计文档）。
 
 | Skill | 说明 |
 |-------|------|
