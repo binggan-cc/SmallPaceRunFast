@@ -206,14 +206,19 @@ smartdev-agent/
 │   │                  #   node_bridge, tree_sitter_provider, tsconfig_resolver,
 │   │                  #   impact_analyzer, project_map, graph_validator）
 │   ├── detectors/     # 检测器（tech_stack, docs_status, entrypoints）
-│   ├── skills/        # 12 个 Skill（repo.scan / code.search / code.impact /
-│   │                  #   code.patch / code.apply / code.rollback 等）
-│   ├── mcp/           # MCP Server（Phase 10，待实现）
+│   ├── skills/        # 22 个 Skill（repo.scan / code.search / code.impact /
+│   │                  #   code.patch / code.apply / code.rollback /
+│   │                  #   doc.map / doc.consistency / doc.update.plan / doc.generate /
+│   │                  #   doc.patch.propose / git.status / git.diff.explain /
+│   │                  #   git.commit.plan / git.commit.message / git.release.plan /
+│   │                  #   git.merge.check / task.plan / architecture.map /
+│   │                  #   risk.check / qa.checklist / token.audit）
+│   ├── mcp/           # MCP Server v0（Phase 10 ✅，21 工具，stdio transport）
 │   ├── adapters/      # 项目适配器（JSON）
 │   ├── models.py      # 核心数据模型
-│   └── cli.py         # CLI 入口
-├── tests/             # 测试（540 passed）
-├── docs/              # 开发进度 + Phase 设计文档（phase-6.3 / 7 / 8 / 9 / 10）
+│   └── cli.py         # CLI 入口（17 条命令）
+├── tests/             # 测试（1208 passed, 1 skipped）
+├── docs/              # Phase 设计文档 + 开发进度
 ├── pyproject.toml     # 项目配置（core 零依赖，mcp optional）
 └── CHANGELOG.md       # 变更记录
 ```
@@ -222,35 +227,34 @@ smartdev-agent/
 
 ## 当前阶段
 
-Phase 10 完成 — MCP Server v0（14 工具，637 tests）
+Phase 11C 完成 — Documentation Governance v0（21 MCP 工具，1208 tests）
 
-SmartDev 的 MCP Server v0 已全部完成。14 个工具通过 stdio transport 暴露给外部 Agent（Claude / Kiro / Cursor）。
-Kiro mcp.json 已配置（`~/.kiro/settings/mcp.json`）。
+SmartDev 的文档治理层 v0 已全部完成。doc.consistency（5 条规则）、doc.update.plan、doc.patch.propose 上线。MCP Server 21 个工具通过 stdio transport 暴露给外部 Agent（Claude / Kiro / Cursor / Codex）。
 
-已完成（Phase 1–10）：
+已完成：
 - ✅ Phase 1-5：12 Skill + Workflow + Adapter
 - ✅ Phase 6-MVP / 6.2 / 6.3 / 7：多语言语义索引（Python/JS-TS/Go）
 - ✅ Phase 8：Context Layer ↔ Skill 接入（risk / architecture / plan 消费图谱）
 - ✅ Phase 9：Safe Patch（propose / apply / rollback + 备份 / hash校验 / R3确认）
-- ✅ Phase 10：MCP Server v0（14 工具：READ×11 + CACHE_WRITE×1 + PATCH_PROPOSE×1）
+- ✅ Phase 10：MCP Server v0（21 工具：READ×18 + CACHE_WRITE×1 + PATCH_PROPOSE×1）
+- ✅ Phase 11A：Git Governance v0（git.status / diff.explain / commit.plan / release.plan / merge.check）
+- ✅ Phase 11C：Documentation Governance v0（doc.map / doc.consistency / doc.update.plan / doc.patch.propose）
 
-**测试基线：637 passed, 1 skipped**
+**测试基线：1208 passed, 1 skipped**
 
 进行中：
 
-### Phase 11 — Human-Controlled AI Coding Layer（下一步）
-- 设计文档：待写（phase-11-design.md）
-- 11A: Git Governance v0（git.status / diff.explain / commit.plan / release.plan）
-- 11B: Guard Skills（change.budget / dev.guard / dependency.guard / security.review）
+### Phase 11D — Collaboration Handoff v0（设计完成，待实现）
+- run manifest（提案登记、diff 追踪、状态快照）
+- skill/cli/mcp snapshot（自动化生成能力快照，用于人类审阅）
+
+### Phase 11B — Guard Skills（待开始）
+- change.budget / dev.guard / dependency.guard / security.review
 
 ### 后续规划
-- Phase 12：Model Collaboration Layer（12A Policy + 12B Router）
+- Phase 12：Model Collaboration Layer（model registry + task router）
 - Phase 13：Call Graph（函数级引用分析）
-- Phase 14：FileWatcher（增量同步）
-
-### Phase 6.3B/C（后续可选）
-- TypeScript Compiler API 增强
-- Vue SFC / Svelte script 块抽取
+- Phase 14：FileWatcher（增量同步 + .smartdev/index 自动刷新）
 
 ---
 
