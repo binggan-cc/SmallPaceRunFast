@@ -4,6 +4,23 @@
 
 ## [Unreleased] — Phase 11D: Collaboration Handoff v0（进行中）
 
+### Added — Phase 11D Step 7: MCP 暴露 handoff pack 工具
+
+- **`smartdev/mcp/tools.py`**：新增 3 个 MCP handoff 工具 handler
+  - `smartdev_handoff_code`：生成 `.smartdev/runs/<run_id>/handoff/code-agent-pack.md`
+  - `smartdev_handoff_doc`：生成 `.smartdev/runs/<run_id>/handoff/doc-steward-pack.md`
+  - `smartdev_handoff_review`：生成 `.smartdev/runs/<run_id>/handoff/reviewer-pack.md`
+  - 三个 handler 均复用已有 core handoff 生成器，不复制 pack 组装逻辑，不调用模型
+  - 成功 payload 固定包含 `run_id` / `output_path` / `char_count` / `sections` / `skipped` / `note`
+  - 缺失 `run_id` 返回 `INVALID_ARGUMENT`，生成失败返回 `GENERATION_FAILED`
+- **`smartdev/mcp/server.py`**：注册 3 个 MCP Tool schema + handler 路由
+  - 工具权限标记为 `CACHE_WRITE`，说明只写 `.smartdev/runs/<run_id>/handoff/`，不修改源码
+- **MCP 工具清单**：`smartdev_version` / `smartdev_list_tools` / MCP `tools/list` 工具数 21 → 24
+- **`tests/test_mcp_handoff_tools.py`**（新增）：覆盖注册、权限、成功 payload、缺失参数、run 不存在和只写 run artifact
+- **MCP 相关测试**：同步所有工具总数断言 21 → 24
+
+测试基线：**1436 passed, 1 skipped**
+
 ### Added — Phase 11D Step 6B: smartdev run report + handoff doc 消费 agent-output
 
 - **`smartdev/core/run_report.py`**（新增）：`write_run_report()` — Code Agent 报告写入核心

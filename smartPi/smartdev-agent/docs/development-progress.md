@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-09
-> 当前阶段：Phase 11D Step 6B 完成 — smartdev run report + handoff doc 消费 agent-output（24 CLI 命令，1417 tests）
+> 当前阶段：Phase 11D Step 7 完成 — MCP 暴露 handoff pack 工具（24 MCP 工具，1436 tests）
 
 ---
 
@@ -563,7 +563,7 @@ Go 提取能力（Step 2）：
 | Step 4 | handoff doc（≤6k，依赖 11C）| ✅ 完成 |
 | Step 5 | handoff review（≤10k）+ Role Activation Preamble + run context | ✅ 完成 |
 | Step 6 | Agent Output & Review Artifact Protocol | ✅ 完成（6A + 6B）|
-| Step 7 | MCP 暴露只读 handoff 工具 | 🔲 下一步 |
+| Step 7 | MCP 暴露 handoff pack 工具（21→24）| ✅ 完成 |
 
 边界：11C 生产事实，11D 组装事实给角色消费。先有事实层，再有协作层。
 设计文档：[phase-11d-design.md](phase-11d-design.md)
@@ -585,6 +585,8 @@ Step 6 设计：`phase-11d-design.md` 完成重大更新——固定输出回流
 Step 6A 验证：`smartdev run new` 在创建 run artifact 时额外创建 `agent-output/` 和 `review/` 子目录，分别放入 `code-agent-result.template.md`（§14）和 `commit-readiness.template.md`（§15）模板文件；test_run_artifact.py 新增 `TestAgentOutputAndReviewDirectories`（6 tests）。CLI 命令数不变（23）。测试基线：1400 passed, 1 skipped。
 
 Step 6B 验证：`smartdev run report <id>` 命令新增，支持 `--changed-files`（写 agent-output/changed-files.txt）/ `--auto-changed-files`（git diff 推断）/ `--tests <cmd>`（写 test-report.txt）/ `--status`（更新 code-agent-result.md Status）；`handoff doc` 扩展消费 `agent-output/code-agent-result.md`（若存在）加入 "Agent Output" 节；CLI Snapshot 同步，命令数 23 → 24。测试基线：1417 passed, 1 skipped。
+
+Step 7 验证：MCP Server 暴露 `smartdev_handoff_code` / `smartdev_handoff_doc` / `smartdev_handoff_review` 三个 handoff pack 工具；三个工具复用已有 core handoff 生成器，只写 `.smartdev/runs/<run_id>/handoff/`，不调用模型、不修改源码；成功 payload 固定包含 `run_id` / `output_path` / `char_count` / `sections` / `skipped` / `note`；MCP 工具清单 21 → 24。测试基线：1436 passed, 1 skipped。
 
 Step 6A 验证：`smartdev run new <id>` 新增强制创建 `agent-output/` 和 `review/` 子目录；`agent-output/code-agent-result.template.md` 遵循 §14 固定结构（Status / Implemented / Changed Files / Tests / Open Questions）；`review/commit-readiness.template.md` 遵循 §15 固定结构（Decision / Required Fixes / Gates / Documentation Status / Suggested Commits）；`--force` 覆盖时模板随 run 目录一起重建。测试基线：1400 passed, 1 skipped。
 

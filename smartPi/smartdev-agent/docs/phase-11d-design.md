@@ -1,6 +1,6 @@
 # Phase 11D — Collaboration Handoff v0 执行前设计
 
-> 状态：Step 1–5 已完成，Step 6 进行中
+> 状态：Step 1–7 已完成
 > 前置：Phase 11C Documentation Governance v0（必须先产出事实层）
 > 定位：多模型协作交接层——把 SmartDev 的工程事实裁剪成角色化上下文包，并把模型输出回流到 run artifact
 
@@ -292,16 +292,16 @@ Step 5  handoff review + Role Activation + run context          ✅ 完成
         - smartdev run context <run_id> --role <role>（打印 pack 到 stdout）
         - --info 模式：元信息 + 建议生成命令
 
-Step 6  Agent Output & Review Artifact Protocol                  ← 当前
+Step 6  Agent Output & Review Artifact Protocol                  ✅ 完成
         - 固定 agent-output/ 目录文件协议（Code Agent 输出规范）
         - 固定 review/ 目录文件协议（Doc Steward 输出规范）
         - doc-steward-pack 扩展消费 agent-output/（可选）
         - 可选：smartdev run report / smartdev run review 命令骨架
 
-Step 7  MCP 暴露只读 handoff 工具                               🔲 后续
+Step 7  MCP 暴露 handoff pack 工具                              ✅ 完成
         - smartdev_handoff_code / smartdev_handoff_doc / smartdev_handoff_review
-        - smartdev_run_read / smartdev_run_write（agent-output / review 读写）
-        - 只读 + 写 .smartdev/runs/<run_id>/，不改源码
+        - 只写 .smartdev/runs/<run_id>/handoff/，不改源码
+        - 不包含 smartdev_run_read / smartdev_run_write（后续单独任务）
 ```
 
 ---
@@ -396,10 +396,10 @@ Phase 12：Model Collaboration Router
 12. `commit-readiness.md` 有固定可解析结构，Human 看一眼能做决策
 13. 模式 A（手动文件交接）流程可端到端走通，Human 全程不需要复制聊天内容
 
-### Step 7 验收标准（后续）
+### Step 7 验收标准（已完成）
 
-14. MCP 工具 smartdev_handoff_code / doc / review 可正常调用
-15. 全量测试无回归
+14. ✅ MCP 工具 smartdev_handoff_code / doc / review 可正常调用
+15. ✅ 全量测试无回归（1436 passed, 1 skipped）
 
 ---
 
