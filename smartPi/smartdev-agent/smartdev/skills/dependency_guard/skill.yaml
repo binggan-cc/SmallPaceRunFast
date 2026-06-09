@@ -1,0 +1,44 @@
+# SmartDev Skill: dependency.guard
+# 依赖变更审查 — 确定性规则引擎，R0 只读
+
+id: dependency.guard
+name: 依赖变更审查
+capability: guard
+risk: R0
+mode: read_only
+
+description: >
+  在 AI 产出 patch / diff 之后、人 apply 或 commit 之前，检查依赖 manifest
+  是否发生变化，并输出可人工审查的结构化报告：
+  - 是否新增/删除/修改依赖版本
+  - 是否新增/删除 manifest 文件
+  - manifest 变更时对应 lock 文件是否同步
+  - 根据语言生态输出建议命令（不调用外部工具）
+  支持 pyproject.toml、package.json、go.mod、requirements.txt。
+
+inputs:
+  required:
+    - changed_files   # 变更文件列表（list[str]）
+  optional:
+    - diff_content         # 完整的 unified diff 文本（str | None）
+    - manifest_before      # 变更前的 manifest 内容（dict[str, str] | None）
+    - manifest_after       # 变更后的 manifest 内容（dict[str, str] | None）
+    - lock_files_changed   # 明确变更的 lock 文件列表（list[str] | None）
+
+outputs:
+  - passed           # 是否通过（无 error 级别违规）
+  - manifests_found  # 检测到的 manifest 文件路径列表
+  - changes          # 依赖变更列表（added/removed/version_changed）
+  - violations       # 违规列表（manifest_removed 为 error）
+  - warnings          # 额外警告（如建议运行的工具）
+  - suggestions      # 外部工具建议命令
+  - summary          # 人类可读摘要
+
+preconditions:
+  - none（无需 git，纯显式输入）
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic

@@ -19,6 +19,26 @@
 
 测试基线：**1584 passed, 1 skipped**
 
+### Added — Phase 11B Step 3: dependency.guard Guard Skill
+
+- **`smartdev/core/guard_dependency.py`**（新增）：`dependency.guard` 规则引擎
+  - `DependencyChange` / `DependencyViolation` / `DependencyResult` 数据模型
+  - `check_dependency_guard()` 核心函数，覆盖 dependency_added / dependency_removed / dependency_version_changed / manifest_added / manifest_removed / lock_not_updated 六类确定性规则
+  - 支持显式输入运行（changed_files / diff_content / manifest_before / manifest_after / lock_files_changed），无 git 依赖
+  - 零外部依赖，R0 只读，不下载依赖，不调用外部扫描器
+  - 4 种 manifest 解析器：`_parse_pyproject_toml`（tomllib 优先 + 行解析降级）、`_parse_package_json`（标准库 json）、`_parse_go_mod`（行解析 require 单行和块）、`_parse_requirements_txt`（行解析常见格式）
+  - diff 分析：支持 before/after 精确对比 + unified diff 内容推断
+  - lock 文件同步检查：pyproject.toml → poetry.lock/uv.lock/requirements.lock；package.json → package-lock.json/pnpm-lock.yaml/yarn.lock；go.mod → go.sum；requirements.txt → requirements.lock
+  - 外部工具建议（只输出，不执行）：pip-audit / npm audit / govulncheck / semgrep
+- **`smartdev/skills/dependency_guard/__init__.py` + `skill.py` + `skill.yaml`**（新增）：`dependency.guard` R0 只读 Skill
+  - 调用 core 规则引擎，不复制规则逻辑
+  - SkillResult.data 直接消费 core result
+- **`smartdev/skills/__init__.py`**：注册 `dependency.guard` Skill
+- **`tests/test_guard_dependency.py`**（新增）：96 tests
+  - 覆盖 manifest 识别、4 种格式解析、diff 分析、lock 同步、建议命令、Skill 集成、确定性和边界情况
+
+测试基线：**1680 passed, 1 skipped**
+
 ### Added — Phase 11B Step 1: change.budget Guard Skill
 
 - **`smartdev/core/guard_budget.py`**（新增）：`change.budget` 规则引擎
