@@ -240,6 +240,65 @@ def _cmd_run(args: argparse.Namespace) -> int:
     return 0 if result.success else 1
 
 
+def _cmd_run_new(args: argparse.Namespace) -> int:
+    """创建新的 run artifact 目录（Phase 11D Step 1）
+
+    在 .smartdev/runs/<run_id>/ 下创建：
+    - task-card.md（任务卡片）
+    - scope.json（修改范围约束）
+
+    Phase 11D Step 2 Scope Gate 将消费 scope.json；
+    Step 3-5 handoff 将读取本目录作为事实源。
+    """
+    import json as _json
+
+    from smartdev.core.run_artifact import (
+        ScopeConfig,
+        create_run_artifact,
+    )
+
+    project_path = Path(args.project).resolve()
+    if not project_path.exists():
+        print(f"错误: 项目路径不存在: {project_path}", file=sys.stderr)
+        return 1
+
+    run_id: str = args.run_id
+    task: str = getattr(args, "task", "") or ""
+    force: bool = getattr(args, "force", False)
+
+    # 构建 ScopeConfig（命令行参数覆盖默认值）
+    scope_kwargs = {}
+    if getattr(args, "allowed_paths", None):
+        scope_kwargs["allowed_paths"] = args.allowed_paths
+    if getattr(args, "denied_paths", None):
+        scope_kwargs["denied_paths"] = args.denied_paths
+    if getattr(args, "max_files", None) is not None:
+        scope_kwargs["max_files"] = args.max_files
+    if getattr(args, "protected_paths", None):
+        scope_kwargs["protected_paths"] = args.protected_paths
+
+    scope = ScopeConfig(**scope_kwargs) if scope_kwargs else None
+
+    # 创建 run artifact
+    run_dir, err = create_run_artifact(
+        project_path, run_id, task=task, scope=scope, force=force,
+    )
+
+    if err:
+        print(f"错误: {err}", file=sys.stderr)
+        return 1
+
+    print(f"✅ Run artifact 已创建: {run_dir}")
+    print(f"   task-card.md   — 任务卡片（目标/范围/验收/约束）")
+    print(f"   scope.json     — 修改范围约束（allowed/denied/protected/max_files）")
+    print()
+    print(f"下一步:")
+    print(f"  1. 编辑 {run_dir / 'task-card.md'} 填写任务详情")
+    print(f"  2. 调整 {run_dir / 'scope.json'} 确认修改边界")
+    print(f"  3. Code Agent 可基于此目录开始实现")
+    return 0
+
+
 def _cmd_index(args: argparse.Namespace) -> int:
     """建立项目索引"""
     from smartdev.context.project_index import ProjectIndex
@@ -765,12 +824,53 @@ def main() -> None:
     diagnose_parser.add_argument("--project", "-p", required=True, help="项目根目录路径")
     diagnose_parser.set_defaults(func=_cmd_diagnose)
 
-    # run 命令
-    run_parser = subparsers.add_parser("run", help="执行完整工作流（扫描→分析→规划→清单）")
-    run_parser.add_argument("--project", "-p", required=True, help="项目根目录路径")
+    # run 命令组（Phase 5 workflow + Phase 11D run artifact）
+    run_parser = subparsers.add_parser("run", help="执行工作流 / 管理运行产物")
+    run_parser.add_argument("--project", "-p", default=".", help="项目根目录路径（默认当前目录）")
     run_parser.add_argument("--task", "-t", default="", help="任务描述（可选）")
     run_parser.add_argument("--target", default="", help="变更目标（文件/模块/符号），驱动影响分析（需先建索引）")
     run_parser.set_defaults(func=_cmd_run)
+
+    run_subparsers = run_parser.add_subparsers(dest="run_command", help="run 子命令")
+
+    # run new <id>（Phase 11D Step 1）
+    run_new_parser = run_subparsers.add_parser(
+        "new",
+        help="创建新的 run artifact 目录（.smartdev/runs/<id>/）",
+    )
+    run_new_parser.add_argument(
+        "run_id",
+        help="任务唯一标识（字母/数字/短横/下划线/点，最长 64 字符）",
+    )
+    run_new_parser.add_argument(
+        "--project", "-p", default=".",
+        help="项目根目录路径（默认当前目录）",
+    )
+    run_new_parser.add_argument(
+        "--task", "-t", default="",
+        help="任务描述（写入 task-card.md）",
+    )
+    run_new_parser.add_argument(
+        "--force", "-f", action="store_true",
+        help="覆盖已存在的 run 目录",
+    )
+    run_new_parser.add_argument(
+        "--allowed-paths", nargs="*",
+        help="允许修改的路径（空格分隔，覆盖默认值）",
+    )
+    run_new_parser.add_argument(
+        "--denied-paths", nargs="*",
+        help="禁止修改的路径（空格分隔，覆盖默认值）",
+    )
+    run_new_parser.add_argument(
+        "--max-files", type=int,
+        help="单次变更最大文件数（默认 10）",
+    )
+    run_new_parser.add_argument(
+        "--protected-paths", nargs="*",
+        help="受保护路径（变更 → 触发 R3/拒绝）",
+    )
+    run_new_parser.set_defaults(func=_cmd_run_new)
 
     # index 命令（Phase 6-MVP 新增）
     index_parser = subparsers.add_parser("index", help="建立项目代码索引（文件 + 工件）")

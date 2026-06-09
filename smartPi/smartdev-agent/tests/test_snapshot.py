@@ -332,6 +332,24 @@ class TestBuildCliSnapshot:
         snap = build_cli_snapshot()
         assert snap.command_count == len(snap.commands)
 
+    def test_run_new_present(self):
+        """Phase 11D Step 1: smartdev run new 出现在 CLI 快照中"""
+        snap = build_cli_snapshot()
+        run_new = next((c for c in snap.commands if c.command == "smartdev run new"), None)
+        assert run_new is not None, "smartdev run new 应出现在 CLI 快照中"
+        assert "run_id" in run_new.args
+        assert "--force" in run_new.args
+        assert "--max-files" in run_new.args
+        assert "--allowed-paths" in run_new.args
+
+    def test_run_workflow_still_present(self):
+        """Phase 11D Step 1: smartdev run（workflow 模式）仍然存在"""
+        snap = build_cli_snapshot()
+        run_cmd = next((c for c in snap.commands if c.command == "smartdev run"), None)
+        assert run_cmd is not None, "smartdev run（workflow 模式）应仍然存在"
+        assert "--project" in run_cmd.args
+        assert "--task" in run_cmd.args
+
     def test_to_json_roundtrip(self):
         snap = build_cli_snapshot()
         restored = CliSnapshot.from_dict(json.loads(snap.to_json()))

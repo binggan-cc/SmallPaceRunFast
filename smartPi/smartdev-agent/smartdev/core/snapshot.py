@@ -370,8 +370,36 @@ def _extract_argparse_args(parser_or_subparser) -> list[str]:
     return args
 
 
+def _parser_has_own_args(sub_parser) -> bool:
+    """检查 parser 是否有非 subparser 的有效参数（即自身是一个有效命令）。
+
+    例如 `smartdev run` 有 --project/--task/--target 的同时还有 new 子命令，
+    此时 run 自身（workflow 模式）也应作为一个独立命令出现。
+    """
+    for a in sub_parser._actions:
+        if hasattr(a, "_name_parser_map"):
+            continue  # 跳过子命令 action
+        if a.dest in ("help", "==SUPPRESS=="):
+            continue  # 跳过 help action
+        # option_strings 非空 → 是一个可选参数
+        if a.option_strings:
+            return True
+        # 没有 option_strings → positional 参数
+        # subparsers action 必有 _name_parser_map，上面已过滤
+        # 其他 positional（如 run_id）→ 视为有效参数
+        if not hasattr(a, "_name_parser_map"):
+            return True
+    return False
+
+
 def _walk_subparsers(parser, prefix: str, commands: list[CliCommandEntry]) -> None:
-    """递归遍历 argparse subparsers，收集所有叶子命令。"""
+    """递归遍历 argparse subparsers，收集所有叶子命令。
+
+    规则：
+    1. 无子命令 → 直接作为叶子命令
+    2. 有子命令 + 无自身参数 → 只递归进入子命令（如 git/manifest/snapshot）
+    3. 有子命令 + 有自身参数 → 递归进入子命令 + 也输出自身（如 run workflow）
+    """
     for action in parser._actions:
         if not hasattr(action, "_name_parser_map"):
             continue
@@ -394,6 +422,15 @@ def _walk_subparsers(parser, prefix: str, commands: list[CliCommandEntry]) -> No
             # 检查是否还有子命令
             has_sub = any(hasattr(a, "_name_parser_map") for a in sub_parser._actions)
             if has_sub:
+                # 情况 3：父命令有自身参数 → 也作为独立命令输出
+                if _parser_has_own_args(sub_parser):
+                    args = _extract_argparse_args(sub_parser)
+                    commands.append(CliCommandEntry(
+                        command=full_command,
+                        description=desc_str.strip(),
+                        args=args,
+                    ))
+                # 递归进入子命令
                 _walk_subparsers(sub_parser, full_command, commands)
             else:
                 args = _extract_argparse_args(sub_parser)
@@ -547,12 +584,24 @@ def _build_cli_parser():
                                     description="诊断项目：加载适配器 + 扫描项目")
     diag_p.add_argument("--project", "-p", required=True)
 
-    # run
-    run_p = subparsers.add_parser("run", help="执行完整工作流",
-                                   description="执行完整工作流（扫描→分析→规划→清单）")
-    run_p.add_argument("--project", "-p", required=True)
+    # run（Phase 5 workflow + Phase 11D run new）
+    run_p = subparsers.add_parser("run", help="执行工作流 / 管理运行产物",
+                                   description="执行工作流 / 管理运行产物")
+    run_p.add_argument("--project", "-p", default=".")
     run_p.add_argument("--task", "-t", default="")
     run_p.add_argument("--target", default="")
+    run_sub = run_p.add_subparsers(dest="run_command")
+
+    run_new_p = run_sub.add_parser("new", help="创建新的 run artifact 目录",
+                                    description="创建新的 run artifact 目录（.smartdev/runs/<id>/）")
+    run_new_p.add_argument("run_id")
+    run_new_p.add_argument("--project", "-p", default=".")
+    run_new_p.add_argument("--task", "-t", default="")
+    run_new_p.add_argument("--force", "-f", action="store_true")
+    run_new_p.add_argument("--allowed-paths", nargs="*")
+    run_new_p.add_argument("--denied-paths", nargs="*")
+    run_new_p.add_argument("--max-files", type=int)
+    run_new_p.add_argument("--protected-paths", nargs="*")
 
     # index
     idx_p = subparsers.add_parser("index", help="建立项目代码索引",

@@ -40,7 +40,7 @@ pip install -e .
 
 ---
 
-## CLI 命令（17 条）
+## CLI 命令（18 条）
 
 | 命令 | 说明 |
 |------|------|
@@ -49,6 +49,7 @@ pip install -e .
 | `smartdev list` | 列出可用 Skill |
 | `smartdev diagnose --project` | 项目诊断 |
 | `smartdev run --project --task --target` | 运行指定 Skill |
+| `smartdev run new <id> --project` | 创建 Run Artifact 目录 |
 | `smartdev index --project --force` | 构建语义索引 |
 | `smartdev search --project <query> --limit` | FTS5 代码搜索 |
 | `smartdev impact --project <target> --depth` | 影响分析 |
@@ -113,11 +114,11 @@ smartdev mcp --project .
 
 ## 当前状态
 
-- **Phase**：11C 完成（Documentation Governance v0），11D 设计完成待实现
-- **测试**：1208 passed，1 skipped
+- **Phase**：11D Step 1 完成（Run Artifact 目录约定），Step 2 Scope Gate 待实现
+- **测试**：1263 passed，1 skipped
 - **MCP 工具**：21 个（READ×18 + CACHE_WRITE×1 + PATCH_PROPOSE×1）
 - **Skill**：22 个
-- **CLI 命令**：17 条
+- **CLI 命令**：18 条
 
 ---
 

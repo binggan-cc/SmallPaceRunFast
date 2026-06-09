@@ -2,7 +2,30 @@
 
 本文档记录 SmartDev Agent 的重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)。
 
-## [Unreleased] — Phase 11C: Documentation Governance v0（进行中）
+## [Unreleased] — Phase 11D: Collaboration Handoff v0（进行中）
+
+### Added — Phase 11D Step 1: Run Artifact 目录约定
+
+- **`smartdev/core/run_artifact.py`**：新增 Run Artifact 创建能力
+  - 创建 `.smartdev/runs/<run_id>/task-card.md` 和 `scope.json`
+  - `scope.json` 预留 `allowed_paths` / `denied_paths` / `max_files` / `protected_paths`，供 Step 2 Scope Gate 消费
+  - run_id 格式校验；重复 run_id 默认报错，`force=True` 显式覆盖
+- **`smartdev/cli.py`**：新增 `smartdev run new <id>` CLI 子命令
+  - 支持 `--task` / `--force` / `--allowed-paths` / `--denied-paths` / `--max-files` / `--protected-paths`
+  - 保留原 `smartdev run --project --task --target` workflow 模式
+- **`smartdev/core/snapshot.py`**：CLI Snapshot 同步 `smartdev run new`
+  - `smartdev snapshot cli` 命令数 17 → 18
+  - 支持有自身参数且有子命令的 parser 同时输出父命令与子命令
+- **`tests/test_run_artifact.py` / `tests/test_cli.py` / `tests/test_snapshot.py`**：新增 Step 1 覆盖
+  - Run Artifact 创建、重复 run_id、非法 run_id、scope 默认值
+  - `smartdev run new` CLI 集成
+  - CLI Snapshot 包含 `smartdev run` 和 `smartdev run new`
+
+测试基线：**1263 passed, 1 skipped**
+
+---
+
+## [Unreleased] — Phase 11C: Documentation Governance v0（完成）
 
 ### Fixed — doc.consistency Rule 3 误报修复
 

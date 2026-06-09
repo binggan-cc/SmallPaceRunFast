@@ -102,3 +102,80 @@ class TestCLI:
         result = _run_cli()
         assert result.returncode == 1
         assert "usage:" in result.stdout.lower() or "usage:" in result.stderr.lower()
+
+
+class TestCLIRunNew:
+    """Phase 11D Step 1: smartdev run new <id> CLI 集成测试"""
+
+    def _run_new(self, run_id: str, project: str, *extra_args: str):
+        """辅助：运行 smartdev run new"""
+        return _run_cli("run", "new", run_id, "--project", project, *extra_args)
+
+    def test_creates_run_directory(self, tmp_path: Path):
+        """创建 run artifact 目录"""
+        result = self._run_new("test-task", str(tmp_path))
+        assert result.returncode == 0
+        assert "Run artifact 已创建" in result.stdout
+        run_dir = tmp_path / ".smartdev" / "runs" / "test-task"
+        assert run_dir.exists()
+        assert (run_dir / "task-card.md").exists()
+        assert (run_dir / "scope.json").exists()
+
+    def test_with_task_description(self, tmp_path: Path):
+        """--task 参数写入 task-card.md"""
+        result = self._run_new("task-with-desc", str(tmp_path), "--task", "修复登录页Bug")
+        assert result.returncode == 0
+        content = (tmp_path / ".smartdev" / "runs" / "task-with-desc" / "task-card.md").read_text("utf-8")
+        assert "修复登录页Bug" in content
+
+    def test_duplicate_fails(self, tmp_path: Path):
+        """重复 run_id 默认报错"""
+        self._run_new("dup-task", str(tmp_path))
+        result = self._run_new("dup-task", str(tmp_path))
+        assert result.returncode == 1
+        assert "已存在" in result.stderr
+
+    def test_force_overwrites(self, tmp_path: Path):
+        """--force 覆盖已存在的 run 目录"""
+        self._run_new("force-task", str(tmp_path), "--task", "旧任务")
+        result = self._run_new("force-task", str(tmp_path), "--force", "--task", "新任务")
+        assert result.returncode == 0
+        content = (tmp_path / ".smartdev" / "runs" / "force-task" / "task-card.md").read_text("utf-8")
+        assert "新任务" in content
+
+    def test_invalid_run_id(self, tmp_path: Path):
+        """非法 run_id 返回错误"""
+        result = self._run_new("", str(tmp_path))
+        assert result.returncode == 1
+        assert "不能为空" in result.stderr
+
+        result = self._run_new("bad/name", str(tmp_path))
+        assert result.returncode == 1
+        assert "格式无效" in result.stderr
+
+    def test_invalid_project_path(self):
+        """不存在的项目路径返回错误"""
+        result = self._run_new("test", "/nonexistent/path")
+        assert result.returncode == 1
+        assert "不存在" in result.stderr
+
+    def test_custom_scope_params(self, tmp_path: Path):
+        """--allowed-paths / --max-files 等参数生效"""
+        import json
+        result = self._run_new(
+            "custom-scope", str(tmp_path),
+            "--allowed-paths", "src/", "lib/",
+            "--max-files", "3",
+            "--force",
+        )
+        assert result.returncode == 0
+        scope_path = tmp_path / ".smartdev" / "runs" / "custom-scope" / "scope.json"
+        data = json.loads(scope_path.read_text("utf-8"))
+        assert data["allowed_paths"] == ["src/", "lib/"]
+        assert data["max_files"] == 3
+
+    def test_workflow_still_works(self, tmp_path: Path):
+        """确保原有 workflow 路径不受影响"""
+        (tmp_path / "main.py").write_text("pass\n")
+        result = _run_cli("run", "--project", str(tmp_path), "--task", "测试")
+        assert result.returncode == 0

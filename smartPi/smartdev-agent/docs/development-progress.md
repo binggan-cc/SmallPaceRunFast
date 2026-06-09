@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
-> 最后更新：2026-06-07
-> 当前阶段：Phase 10 完成 — MCP Server v0（14 工具，637 tests）→ 进入 Phase 11 设计
+> 最后更新：2026-06-09
+> 当前阶段：Phase 11D Step 1 完成 — Run Artifact 目录约定（18 CLI 命令，1263 tests）→ 进入 Phase 11D Step 2
 
 ---
 
@@ -27,10 +27,11 @@ L3  语义层      code.index / code.search / code.impact / project.map / graph.
                多语言 Provider：Python(1.0) / JS-TS(0.95) / Go(0.98)
 L3a Skill接入   risk.check ← impact / architecture.map ← index / task.plan ← impact
 L4  执行层      code.patch(propose) → code.apply → code.rollback
-L5  版本治理层  git.status / git.diff.explain / git.commit.plan / git.release.plan（Phase 11A）
+L5  版本治理层  git.status / git.diff.explain / git.commit.plan / git.release.plan / git.merge.check（Phase 11A ✅）
+               manifest / snapshot / doc.map / doc.consistency / doc.update.plan / doc.patch.propose（Phase 11C ✅）
                dev.guard / dependency.guard / security.review / change.budget（Phase 11B）
 L6  外部接入层  MCP Server → Claude / Kiro / Cursor / Codex（Phase 10 ✅）
-L7  模型协作层  model registry / task router / output contract / risk policy（Phase 12，横向）
+L7  模型协作层  handoff pack / scope gate（Phase 11D）→ model registry / task router / output contract / risk policy（Phase 12，横向）
 ```
 
 完整 AI 编程闭环（各层覆盖范围）：
@@ -62,8 +63,10 @@ AI 编程真正的风险是人失去理解权、判断权和验收权。SmartDev
 ```
 Phase 10  MCP Server v0（能力分发）               ✅ 完成
     ↓
-Phase 11  Human-Controlled AI Coding Layer        ← 下一阶段
-    ├── 11A: Git Governance v0（版本治理层 L5）
+Phase 11  Human-Controlled AI Coding Layer
+    ├── 11A: Git Governance v0（版本治理层 L5）     ✅ 完成
+    ├── 11C: Documentation Governance v0           ✅ 完成
+    ├── 11D: Collaboration Handoff v0              ← 当前阶段
     └── 11B: Guard Skills（安全防护层 L5）
     ↓
 Phase 12  Model Collaboration Layer（横向 L7）
@@ -528,7 +531,7 @@ Go 提取能力（Step 2）：
 
 **Phase 11A（Git Governance v0）完成。** 7 步全部交付，906 tests，MCP 工具 14 → 19。
 
-### Phase 11C：Documentation Governance v0（设计确认）
+### Phase 11C：Documentation Governance v0（完成）
 
 目标：SmartDev 提供文档一致性检查工具链，高阶模型担任 Doc Steward 角色。
 
@@ -542,32 +545,33 @@ Go 提取能力（Step 2）：
 | Step 5 | doc.update.plan Skill | ✅ 完成 | 43 | 1145 |
 | Step 6 | doc.patch.propose（不落盘）| ✅ 完成 | 40 | 1185 |
 | Step 7 | MCP 暴露只读工具（19→21）| ✅ 完成 | 23 | 1208 |
-| Step 3 | doc.map Skill（R0 只读）| 🔲 待开始 |
-| Step 4 | doc.consistency Skill（5 条规则）| 🔲 待开始 |
-| Step 5 | doc.update.plan Skill | 🔲 待开始 |
-| Step 6 | doc.patch.propose（不落盘）| 🔲 待开始 |
-| Step 7 | MCP 暴露只读工具 | 🔲 待开始 |
 
 设计文档：[phase-11c-design.md](phase-11c-design.md)
 
-### Phase 11D：Collaboration Handoff v0（设计确认，暂不实现）
+端到端验证：doc.consistency → doc.update.plan → 手动 code-agent-pack → Code Agent 起草 → 人工审阅 → apply。Rule 3 误报修复后，项目自检从 53 个 issue 降至 10 个，high 从 42 降至 0。测试基线：1210 passed, 1 skipped。
+
+### Phase 11D：Collaboration Handoff v0（进行中）
 
 目标：基于 SmartDev run artifacts，把工程事实裁剪成角色化上下文包（code-agent / doc-steward / reviewer），让多模型协作不靠共享聊天记忆。
 
 | Step | 交付物 | 状态 |
 |------|--------|------|
 | Step 0 | 设计文档 phase-11d-design.md | ✅ 完成 |
-| Step 1 | Run Artifact 目录约定 | 🔲 暂不实现 |
-| Step 2 | Scope Gate（11D 唯一新增核心）| 🔲 暂不实现 |
-| Step 3 | handoff code（≤8k）| 🔲 暂不实现 |
-| Step 4 | handoff doc（≤6k，依赖 11C）| 🔲 暂不实现 |
-| Step 5 | handoff review（≤10k）| 🔲 暂不实现 |
-| Step 6 | MCP 暴露只读 handoff 工具 | 🔲 暂不实现 |
+| Step 1 | Run Artifact 目录约定 + `smartdev run new` | ✅ 完成 |
+| Step 2 | Scope Gate（11D 唯一新增核心）| 🔲 下一步 |
+| Step 3 | handoff code（≤8k）| 🔲 待开始 |
+| Step 4 | handoff doc（≤6k，依赖 11C）| 🔲 待开始 |
+| Step 5 | handoff review（≤10k）| 🔲 待开始 |
+| Step 6 | MCP 暴露只读 handoff 工具 | 🔲 待开始 |
 
 边界：11C 生产事实，11D 组装事实给角色消费。先有事实层，再有协作层。
 设计文档：[phase-11d-design.md](phase-11d-design.md)
 
-**Phase 11 整体路线（已调整）：** 11A ✅ → 11C → 11D → 11B → Phase 12
+Step 1 验证：`smartdev run new <id>` 可创建 `.smartdev/runs/<id>/task-card.md` 和 `scope.json`；重复 run_id 默认报错，`--force` 显式覆盖；CLI Snapshot 已同步 `smartdev run new`，CLI 命令数 17 → 18。测试基线：1263 passed, 1 skipped。
+
+**当前协作模式：** DeepSeek = Code Agent；Claude/Codex = Doc Steward；SmartDev = Handoff Pack + Gates；Human = Apply / Commit / Release。
+
+**Phase 11 整体路线（已调整）：** 11A ✅ → 11C ✅ → 11D → 11B → Phase 12
 （原计划 11A→11B→11C，因当前已在实际使用双模型协作，Doc Steward 需求更急，故 11C/11D 提前，Guard Skills 稍后）
 
 设计文档：[phase-11-design.md](phase-11-design.md)
