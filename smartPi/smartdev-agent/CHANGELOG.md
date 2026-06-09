@@ -4,6 +4,26 @@
 
 ## [Unreleased] — Phase 11D: Collaboration Handoff v0（进行中）
 
+### Added — Phase 11D Step 5: handoff review
+
+- **`smartdev/core/handoff_review.py`**：新增 Reviewer Handoff Pack 生成能力
+  - 生成 `.smartdev/runs/<run_id>/handoff/reviewer-pack.md`
+  - pack 聚合 Risk + Impact / Changed Files / Test Report / Dependency Changes / Security Checklist / Git Diff Explain
+  - 支持显式 `changed_files`，未提供时从 git diff 推断
+  - 依赖变更识别覆盖 `pyproject.toml` / `package.json` / lockfile / `go.mod` / `Cargo.toml` 等常见清单
+  - 安全清单基于路径信号提示认证、token、secret、password、命令执行、路径处理等重点审查项
+- **`smartdev/cli.py`**：新增 `smartdev run handoff-review <run_id>` CLI 子命令
+  - 支持 `--changed-files` / `--target` / `--run-tests`
+  - 只写 `.smartdev/runs/<run_id>/handoff/reviewer-pack.md`
+- **`smartdev/core/snapshot.py`**：CLI Snapshot 同步 `smartdev run handoff-review`
+  - `smartdev snapshot cli` 命令数 21 → 22
+- **`tests/test_handoff_review.py` / `tests/test_cli.py` / `tests/test_snapshot.py`**：新增 Step 5 覆盖
+  - pack 生成、错误路径、字符预算、只写 run artifact、依赖/安全清单、CLI 和 snapshot 同步
+
+测试基线：**1375 passed, 1 skipped**
+
+---
+
 ### Added — Phase 11D Step 4: handoff doc
 
 - **`smartdev/core/handoff_doc.py`**：新增 Doc Steward Handoff Pack 生成能力

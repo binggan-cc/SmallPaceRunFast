@@ -40,7 +40,7 @@ pip install -e .
 
 ---
 
-## CLI 命令（21 条）
+## CLI 命令（22 条）
 
 | 命令 | 说明 |
 |------|------|
@@ -53,6 +53,7 @@ pip install -e .
 | `smartdev run scope-check <id> --changed-files` | 执行 Scope Gate 检查 |
 | `smartdev run handoff-code <id>` | 生成 Code Agent Handoff Pack |
 | `smartdev run handoff-doc <id>` | 生成 Doc Steward Handoff Pack |
+| `smartdev run handoff-review <id>` | 生成 Reviewer Handoff Pack |
 | `smartdev index --project --force` | 构建语义索引 |
 | `smartdev search --project <query> --limit` | FTS5 代码搜索 |
 | `smartdev impact --project <target> --depth` | 影响分析 |
@@ -117,11 +118,11 @@ smartdev mcp --project .
 
 ## 当前状态
 
-- **Phase**：11D Step 4 完成（handoff doc），Step 5 handoff review 待实现
-- **测试**：1361 passed，1 skipped
+- **Phase**：11D Step 5 完成（handoff review），Step 6 MCP handoff tools 待实现
+- **测试**：1375 passed，1 skipped
 - **MCP 工具**：21 个（READ×18 + CACHE_WRITE×1 + PATCH_PROPOSE×1）
 - **Skill**：22 个
-- **CLI 命令**：21 条
+- **CLI 命令**：22 条
 
 ---
 

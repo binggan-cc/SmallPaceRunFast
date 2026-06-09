@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-09
-> 当前阶段：Phase 11D Step 4 完成 — handoff doc（21 CLI 命令，1361 tests）→ 进入 Phase 11D Step 5
+> 当前阶段：Phase 11D Step 5 完成 — handoff review（22 CLI 命令，1375 tests）→ 进入 Phase 11D Step 6
 
 ---
 
@@ -561,8 +561,8 @@ Go 提取能力（Step 2）：
 | Step 2 | Scope Gate（11D 唯一新增核心）| ✅ 完成 |
 | Step 3 | handoff code（≤8k）| ✅ 完成 |
 | Step 4 | handoff doc（≤6k，依赖 11C）| ✅ 完成 |
-| Step 5 | handoff review（≤10k）| 🔲 下一步 |
-| Step 6 | MCP 暴露只读 handoff 工具 | 🔲 待开始 |
+| Step 5 | handoff review（≤10k）| ✅ 完成 |
+| Step 6 | MCP 暴露只读 handoff 工具 | 🔲 下一步 |
 
 边界：11C 生产事实，11D 组装事实给角色消费。先有事实层，再有协作层。
 设计文档：[phase-11d-design.md](phase-11d-design.md)
@@ -574,6 +574,8 @@ Step 2 验证：`smartdev run scope-check <id> --changed-files ...` 可读取 `s
 Step 3 验证：`smartdev run handoff-code <id>` 可生成 `.smartdev/runs/<id>/handoff/code-agent-pack.md`；pack 包含任务、scope、Scope Gate 摘要、相关文件、existing patterns、验收标准和禁止项；`changed_files` 优先进入相关文件列表；CLI Snapshot 已同步 `smartdev run handoff-code`，CLI 命令数 19 → 20。测试基线：1344 passed, 1 skipped。
 
 Step 4 验证：`smartdev run handoff-doc <id>` 可生成 `.smartdev/runs/<id>/handoff/doc-steward-pack.md`；pack 聚合 Change Manifest、Diff Summary、Capability Snapshots、Doc Map、Phase Status、Doc Consistency 和 Update Focus；真实项目验证中 Diff Summary 与 Doc Map 均进入 pack；CLI Snapshot 已同步 `smartdev run handoff-doc`，CLI 命令数 20 → 21。测试基线：1361 passed, 1 skipped。
+
+Step 5 验证：`smartdev run handoff-review <id>` 可生成 `.smartdev/runs/<id>/handoff/reviewer-pack.md`；pack 聚合 Risk + Impact、Changed Files、Test Report、Dependency Changes、Security Checklist 和 Git Diff Explain；支持 `--changed-files` / `--target` / `--run-tests`；CLI Snapshot 已同步 `smartdev run handoff-review`，CLI 命令数 21 → 22。测试基线：1375 passed, 1 skipped。
 
 **当前协作模式：** DeepSeek = Code Agent；Claude/Codex = Doc Steward；SmartDev = Handoff Pack + Gates；Human = Apply / Commit / Release。
 

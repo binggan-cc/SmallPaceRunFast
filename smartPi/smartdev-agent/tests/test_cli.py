@@ -331,3 +331,42 @@ class TestCLIRunHandoffDoc:
         )
         assert result.returncode == 1
         assert "不存在" in result.stderr
+
+
+class TestCLIRunHandoffReview:
+    """Phase 11D Step 5: smartdev run handoff-review CLI 集成测试"""
+
+    def _setup_run(self, tmp_path: Path, run_id: str = "hr-test"):
+        """创建 run artifact 用于 handoff-review 测试。"""
+        from smartdev.core.run_artifact import ScopeConfig
+        scope = ScopeConfig(allowed_paths=["smartdev/", "tests/"])
+        run_dir = tmp_path / ".smartdev" / "runs" / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "scope.json").write_text(scope.to_json(), encoding="utf-8")
+        (run_dir / "task-card.md").write_text(
+            "# test\n\n## 目标\n\n测试\n\n## 验收标准\n\n验收\n", encoding="utf-8",
+        )
+        (tmp_path / "smartdev").mkdir(exist_ok=True)
+        (tmp_path / "smartdev" / "__init__.py").write_text("")
+
+    def test_generates_pack(self, tmp_path: Path):
+        """成功生成 reviewer-pack.md"""
+        self._setup_run(tmp_path, "hr-1")
+        result = _run_cli(
+            "run", "handoff-review", "hr-1", "--project", str(tmp_path),
+            "--changed-files", "smartdev/core/auth.py", "pyproject.toml",
+        )
+        assert result.returncode == 0
+        assert "Reviewer Pack" in result.stdout
+        pack_path = tmp_path / ".smartdev" / "runs" / "hr-1" / "handoff" / "reviewer-pack.md"
+        assert pack_path.exists()
+        content = pack_path.read_text("utf-8")
+        assert "Security Checklist" in content
+
+    def test_missing_run_dir(self, tmp_path: Path):
+        """run_id 不存在 → 报错"""
+        result = _run_cli(
+            "run", "handoff-review", "no-such-run", "--project", str(tmp_path),
+        )
+        assert result.returncode == 1
+        assert "不存在" in result.stderr

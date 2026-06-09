@@ -434,6 +434,47 @@ def _cmd_run_handoff_doc(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_run_handoff_review(args: argparse.Namespace) -> int:
+    """生成 reviewer-pack.md（Phase 11D Step 5，R1）
+
+    聚合 risk / impact / diff / dependency / security / test 事实，
+    组装生成 reviewer-pack.md 给 Reviewer 使用。
+
+    输出路径：.smartdev/runs/<run_id>/handoff/reviewer-pack.md
+    """
+    from smartdev.core.handoff_review import generate_reviewer_pack
+
+    project_path = Path(args.project).resolve()
+    if not project_path.exists():
+        print(f"错误: 项目路径不存在: {project_path}", file=sys.stderr)
+        return 1
+
+    result = generate_reviewer_pack(
+        project_path,
+        args.run_id,
+        changed_files=getattr(args, "changed_files", []),
+        target=getattr(args, "target", ""),
+        run_test_report=getattr(args, "run_tests", False),
+    )
+
+    if result.error:
+        print(f"错误: {result.error}", file=sys.stderr)
+        return 1
+
+    print(f"✅ Reviewer Pack 已生成: {result.output_path}")
+    print(f"   字符数: {result.char_count}")
+    print(f"   节数:   {len(result.sections)}")
+    for s in result.sections:
+        print(f"     - {s}")
+    if result.skipped:
+        print(f"   跳过:   {len(result.skipped)} 个数据源")
+        for s in result.skipped[:5]:
+            print(f"     - {s[:80]}")
+    print()
+    print("将此文件提供给 Reviewer 作为风险 / 架构 / 安全审查上下文。")
+    return 0
+
+
 def _cmd_index(args: argparse.Namespace) -> int:
     """建立项目索引"""
     from smartdev.context.project_index import ProjectIndex
@@ -1071,6 +1112,33 @@ def main() -> None:
         help="运行 pytest 收集测试结果（可能较慢）",
     )
     run_handoff_doc_parser.set_defaults(func=_cmd_run_handoff_doc)
+
+    # run handoff-review <run_id>（Phase 11D Step 5）
+    run_handoff_review_parser = run_subparsers.add_parser(
+        "handoff-review",
+        help="生成 reviewer-pack.md 给 Reviewer 使用（R1）",
+    )
+    run_handoff_review_parser.add_argument(
+        "run_id",
+        help="任务唯一标识（.smartdev/runs/<run_id>/）",
+    )
+    run_handoff_review_parser.add_argument(
+        "--project", "-p", default=".",
+        help="项目根目录路径（默认当前目录）",
+    )
+    run_handoff_review_parser.add_argument(
+        "--changed-files", nargs="*", default=[],
+        help="变更文件列表（可选，不提供时从 git diff 推断）",
+    )
+    run_handoff_review_parser.add_argument(
+        "--target", default="",
+        help="变更目标（可选，用于 impact 分析，需先建索引）",
+    )
+    run_handoff_review_parser.add_argument(
+        "--run-tests", action="store_true",
+        help="运行 pytest 收集测试结果（可能较慢）",
+    )
+    run_handoff_review_parser.set_defaults(func=_cmd_run_handoff_review)
 
     # index 命令（Phase 6-MVP 新增）
     index_parser = subparsers.add_parser("index", help="建立项目代码索引（文件 + 工件）")

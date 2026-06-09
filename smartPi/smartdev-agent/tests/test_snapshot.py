@@ -376,6 +376,16 @@ class TestBuildCliSnapshot:
         assert "run_id" in hd.args
         assert "--run-tests" in hd.args
 
+    def test_handoff_review_present(self):
+        """Phase 11D Step 5: smartdev run handoff-review 出现在 CLI 快照中"""
+        snap = build_cli_snapshot()
+        hr = next((c for c in snap.commands if c.command == "smartdev run handoff-review"), None)
+        assert hr is not None, "smartdev run handoff-review 应出现在 CLI 快照中"
+        assert "run_id" in hr.args
+        assert "--changed-files" in hr.args
+        assert "--target" in hr.args
+        assert "--run-tests" in hr.args
+
     def test_to_json_roundtrip(self):
         snap = build_cli_snapshot()
         restored = CliSnapshot.from_dict(json.loads(snap.to_json()))

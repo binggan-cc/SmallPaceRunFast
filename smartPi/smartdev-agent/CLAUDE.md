@@ -227,8 +227,8 @@ smartdev-agent/
 │   ├── mcp/           # MCP Server v0（Phase 10 ✅，21 工具，stdio transport）
 │   ├── adapters/      # 项目适配器（JSON）
 │   ├── models.py      # 核心数据模型
-│   └── cli.py         # CLI 入口（21 条命令）
-├── tests/             # 测试（1361 passed, 1 skipped）
+│   └── cli.py         # CLI 入口（22 条命令）
+├── tests/             # 测试（1375 passed, 1 skipped）
 ├── docs/              # Phase 设计文档 + 开发进度
 ├── pyproject.toml     # 项目配置（core 零依赖，mcp optional）
 └── CHANGELOG.md       # 变更记录
@@ -238,7 +238,7 @@ smartdev-agent/
 
 ## 当前阶段
 
-Phase 11D Step 4 完成 — handoff doc（21 MCP 工具，1361 tests）
+Phase 11D Step 5 完成 — handoff review（21 MCP 工具，1375 tests）
 
 SmartDev 的文档治理层 v0 已全部完成。doc.consistency（5 条规则）、doc.update.plan、doc.patch.propose 上线。MCP Server 21 个工具通过 stdio transport 暴露给外部 Agent（Claude / Kiro / Cursor / Codex）。
 
@@ -256,13 +256,14 @@ Phase 11C 端到端验证已完成：doc.consistency → doc.update.plan → cod
 - ✅ Phase 11D Step 2：Scope Gate（smartdev run scope-check / scope.json 边界检查）
 - ✅ Phase 11D Step 3：handoff code（smartdev run handoff-code / code-agent-pack.md）
 - ✅ Phase 11D Step 4：handoff doc（smartdev run handoff-doc / doc-steward-pack.md）
+- ✅ Phase 11D Step 5：handoff review（smartdev run handoff-review / reviewer-pack.md）
 
-**测试基线：1361 passed, 1 skipped**
+**测试基线：1375 passed, 1 skipped**
 
 进行中：
 
-### Phase 11D — Collaboration Handoff v0（Step 4 完成，Step 5 待实现）
-- Step 5：handoff review（下一步默认从这里开始）
+### Phase 11D — Collaboration Handoff v0（Step 5 完成，Step 6 待实现）
+- Step 6：MCP 暴露只读 handoff 工具（下一步默认从这里开始）
 - 11C 生产事实，11D 只组装事实为角色化 context pack
 - Code Agent pack 给 DeepSeek；Doc Steward pack 给 Claude/Codex；SmartDev 负责 Handoff Pack + Gates
 

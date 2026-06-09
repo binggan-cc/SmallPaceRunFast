@@ -623,6 +623,14 @@ def _build_cli_parser():
     run_hd_p.add_argument("--project", "-p", default=".")
     run_hd_p.add_argument("--run-tests", action="store_true")
 
+    run_hr_p = run_sub.add_parser("handoff-review", help="生成 reviewer-pack.md（R1）",
+                                    description="生成 reviewer-pack.md 给 Reviewer 使用（R1，只写 .smartdev/runs/）")
+    run_hr_p.add_argument("run_id")
+    run_hr_p.add_argument("--project", "-p", default=".")
+    run_hr_p.add_argument("--changed-files", nargs="*", default=[])
+    run_hr_p.add_argument("--target", default="")
+    run_hr_p.add_argument("--run-tests", action="store_true")
+
     # index
     idx_p = subparsers.add_parser("index", help="建立项目代码索引",
                                    description="建立项目代码索引（文件 + 工件）")
