@@ -649,6 +649,37 @@ def _analyze_diff_for_manifest_changes(
     return changes
 
 
+def _extract_manifest_statuses(diff_content: str) -> tuple[set[str], set[str]]:
+    """从 unified diff 中提取新增/删除的 manifest 文件。
+
+    Returns:
+        (added_manifests, removed_manifests)
+    """
+    added: set[str] = set()
+    removed: set[str] = set()
+    file_blocks = re.split(r'^diff --git ', diff_content, flags=re.MULTILINE)
+
+    for block in file_blocks:
+        if not block.strip():
+            continue
+        block = "diff --git " + block if not block.startswith("diff --git ") else block
+
+        old_match = re.search(r'^--- (?:a/(.+)|/dev/null)$', block, re.MULTILINE)
+        new_match = re.search(r'^\+\+\+ (?:b/(.+)|/dev/null)$', block, re.MULTILINE)
+        if not old_match or not new_match:
+            continue
+
+        old_path = old_match.group(1)
+        new_path = new_match.group(1)
+
+        if old_path is None and new_path and _is_manifest_file(new_path):
+            added.add(new_path)
+        elif new_path is None and old_path and _is_manifest_file(old_path):
+            removed.add(old_path)
+
+    return added, removed
+
+
 def _extract_manifest_diffs(diff_content: str) -> list[DependencyChange]:
     """从 unified diff 中提取 manifest 文件的依赖变更。
 
@@ -664,11 +695,15 @@ def _extract_manifest_diffs(diff_content: str) -> list[DependencyChange]:
         # 重新补回 diff --git 前缀
         block = "diff --git " + block if not block.startswith("diff --git ") else block
 
-        # 提取文件路径
-        file_match = re.search(r'^\+\+\+ b/(.+)$', block, re.MULTILINE)
-        if not file_match:
+        # 提取文件路径。删除文件时 +++ 为 /dev/null，需要回退到 --- a/<path>。
+        new_match = re.search(r'^\+\+\+ b/(.+)$', block, re.MULTILINE)
+        old_match = re.search(r'^--- a/(.+)$', block, re.MULTILINE)
+        if new_match:
+            file_path = new_match.group(1).strip()
+        elif old_match and re.search(r'^\+\+\+ /dev/null$', block, re.MULTILINE):
+            file_path = old_match.group(1).strip()
+        else:
             continue
-        file_path = file_match.group(1).strip()
         if not _is_manifest_file(file_path):
             continue
 
@@ -949,6 +984,13 @@ def check_dependency_guard(
         )
 
     # ── 步骤 2: 检测 manifest 新增 / 删除 ────────────────────────
+    status_added_from_diff: set[str] = set()
+    status_removed_from_diff: set[str] = set()
+    if diff_content:
+        status_added_from_diff, status_removed_from_diff = _extract_manifest_statuses(
+            diff_content
+        )
+
     if manifest_before is not None and manifest_after is not None:
         before_manifests = {p for p in manifest_before if _is_manifest_file(p)}
         after_manifests = {p for p in manifest_after if _is_manifest_file(p)}
@@ -966,6 +1008,32 @@ def check_dependency_guard(
         # 删除的 manifest — error
         removed_manifests = before_manifests - after_manifests
         for mf in sorted(removed_manifests):
+            violations.append(DependencyViolation(
+                rule="manifest_removed",
+                severity="error",
+                message=(
+                    f"删除依赖 manifest 文件: '{mf}'。"
+                    f"删除 manifest 可能导致项目不可构建，请确认"
+                ),
+                detail={"manifest": mf},
+            ))
+
+    # 补充 unified diff 中的 /dev/null 状态；当没有 before/after 时尤其重要。
+    existing_statuses = {
+        (v.rule, v.detail.get("manifest"))
+        for v in violations
+        if v.rule in ("manifest_added", "manifest_removed")
+    }
+    for mf in sorted(status_added_from_diff):
+        if ("manifest_added", mf) not in existing_statuses:
+            violations.append(DependencyViolation(
+                rule="manifest_added",
+                severity="info",
+                message=f"新增依赖 manifest 文件: '{mf}'",
+                detail={"manifest": mf},
+            ))
+    for mf in sorted(status_removed_from_diff):
+        if ("manifest_removed", mf) not in existing_statuses:
             violations.append(DependencyViolation(
                 rule="manifest_removed",
                 severity="error",

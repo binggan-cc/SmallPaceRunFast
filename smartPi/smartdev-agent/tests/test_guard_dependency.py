@@ -752,6 +752,60 @@ class TestDiffContentAnalysis:
         changes = _analyze_diff_for_manifest_changes(diff)
         assert len(changes) == 0
 
+    def test_diff_removed_manifest_detects_removed_dependencies(self):
+        """从 diff 删除 manifest 时检测删除的依赖。"""
+        diff = """diff --git a/pyproject.toml b/pyproject.toml
+deleted file mode 100644
+--- a/pyproject.toml
++++ /dev/null
+@@ -1,4 +0,0 @@
+-[project]
+-dependencies = [
+-    "fastapi==0.104.0",
+-]
+"""
+        changes = _analyze_diff_for_manifest_changes(diff)
+        removed = [c for c in changes if c.change_type == "removed"]
+        assert any(c.name == "fastapi" for c in removed)
+
+    def test_diff_removed_manifest_is_error(self):
+        """仅提供 diff_content 时，删除 manifest 也必须触发 error。"""
+        diff = """diff --git a/pyproject.toml b/pyproject.toml
+deleted file mode 100644
+--- a/pyproject.toml
++++ /dev/null
+@@ -1,3 +0,0 @@
+-[project]
+-dependencies = ["fastapi==0.104.0"]
+"""
+        result = check_dependency_guard(
+            changed_files=["pyproject.toml"],
+            diff_content=diff,
+        )
+        violations = [v for v in result.violations if v.rule == "manifest_removed"]
+        assert len(violations) == 1
+        assert violations[0].severity == "error"
+        assert result.passed is False
+
+    def test_diff_added_manifest_is_info(self):
+        """仅提供 diff_content 时，新增 manifest 触发 info。"""
+        diff = """diff --git a/package.json b/package.json
+new file mode 100644
+--- /dev/null
++++ b/package.json
+@@ -0,0 +1,5 @@
++{
++  "dependencies": {"lodash": "^4.17.21"}
++}
+"""
+        result = check_dependency_guard(
+            changed_files=["package.json"],
+            diff_content=diff,
+        )
+        violations = [v for v in result.violations if v.rule == "manifest_added"]
+        assert len(violations) == 1
+        assert violations[0].severity == "info"
+
 
 # ── package.json manifest_before/after 对比测试 ────────────────
 

@@ -34,10 +34,10 @@
   - 调用 core 规则引擎，不复制规则逻辑
   - SkillResult.data 直接消费 core result
 - **`smartdev/skills/__init__.py`**：注册 `dependency.guard` Skill
-- **`tests/test_guard_dependency.py`**（新增）：96 tests
+- **`tests/test_guard_dependency.py`**（新增）：99 tests
   - 覆盖 manifest 识别、4 种格式解析、diff 分析、lock 同步、建议命令、Skill 集成、确定性和边界情况
 
-测试基线：**1680 passed, 1 skipped**
+测试基线：**1683 passed, 1 skipped**
 
 ### Added — Phase 11B Step 1: change.budget Guard Skill
 
