@@ -304,14 +304,18 @@ class TestRule2:
 
 class TestRule3:
     def test_dont_do_in_design_but_mentioned_elsewhere(self, tmp_path: Path):
-        """设计文档声明 ❌ 不做 auto apply，但 README 里提了 auto apply。"""
-        _write(tmp_path / "docs" / "phase-11-design.md",
-               "## 不做的事\n❌ 不做 auto apply patch\n❌ 不做 auto commit\n")
+        """最新设计文档声明 ❌ 不做某特异能力，但 README 里提了。
+
+        注意：Rule 3 只检查 phase-11c/11d-design.md（最新设计文档），
+        且只检查 README.md（面向用户承诺文档），关键词需为特异性词（非停用词）。
+        """
+        _write(tmp_path / "docs" / "phase-11c-design.md",
+               "## 不做的事\n❌ 不做 facial recognition biometric\n")
         _write(tmp_path / "README.md",
-               "# SmartDev\n\nSupports auto apply patch feature.\n")
+               "# SmartDev\n\nSupports facial recognition biometric scanning.\n")
         doc_map = _minimal_doc_map([
             {
-                "path": "docs/phase-11-design.md",
+                "path": "docs/phase-11c-design.md",
                 "headings": ["## 不做的事"],
                 "mentions": {},
                 "last_modified": "2026-01-01T00:00:00Z",
@@ -329,6 +333,38 @@ class TestRule3:
         overpromise = [i for i in issues if i.type == "capability_overpromise"]
         assert len(overpromise) > 0
 
+    def test_generic_stopwords_not_triggered(self, tmp_path: Path):
+        """❌ 声明只含通用术语（apply/patch）时不触发（避免误报）。"""
+        _write(tmp_path / "docs" / "phase-11c-design.md",
+               "❌ 不自动 apply 文档 patch\n")
+        _write(tmp_path / "README.md",
+               "Use code.apply to apply a patch.\n")
+        doc_map = _minimal_doc_map([
+            {"path": "docs/phase-11c-design.md", "headings": [], "mentions": {},
+             "last_modified": "2026-01-01T00:00:00Z", "size_bytes": 100},
+            {"path": "README.md", "headings": [], "mentions": {},
+             "last_modified": "2026-01-01T00:00:00Z", "size_bytes": 100},
+        ])
+        issues = _rule3_capability_overpromise(doc_map, tmp_path)
+        # apply/patch 都是停用词，过滤后特异性关键词 < 2，不触发
+        assert len(issues) == 0
+
+    def test_changelog_not_checked(self, tmp_path: Path):
+        """CHANGELOG.md 不在 Rule 3 检查范围内（历史记录，非用户承诺）。"""
+        _write(tmp_path / "docs" / "phase-11c-design.md",
+               "❌ 不做 facial recognition biometric\n")
+        _write(tmp_path / "CHANGELOG.md",
+               "## [Unreleased]\nAdded facial recognition biometric support.\n")
+        doc_map = _minimal_doc_map([
+            {"path": "docs/phase-11c-design.md", "headings": [], "mentions": {},
+             "last_modified": "2026-01-01T00:00:00Z", "size_bytes": 100},
+            {"path": "CHANGELOG.md", "headings": [], "mentions": {},
+             "last_modified": "2026-01-01T00:00:00Z", "size_bytes": 100},
+        ])
+        issues = _rule3_capability_overpromise(doc_map, tmp_path)
+        # CHANGELOG 被豁免，不触发
+        assert len(issues) == 0
+
     def test_no_design_doc_no_issue(self, tmp_path: Path):
         """没有 design doc — 规则 3 不触发。"""
         doc_map = _minimal_doc_map([{
@@ -343,10 +379,10 @@ class TestRule3:
 
     def test_no_dont_do_in_design_no_issue(self, tmp_path: Path):
         """design doc 没有 ❌ 声明 — 不触发。"""
-        _write(tmp_path / "docs" / "phase-11-design.md",
+        _write(tmp_path / "docs" / "phase-11c-design.md",
                "## Goals\nBuild a great tool.\n")
         doc_map = _minimal_doc_map([{
-            "path": "docs/phase-11-design.md",
+            "path": "docs/phase-11c-design.md",
             "headings": [],
             "mentions": {},
             "last_modified": "2026-01-01T00:00:00Z",
@@ -357,12 +393,12 @@ class TestRule3:
 
     def test_issue_severity_is_high(self, tmp_path: Path):
         """规则 3 触发的 issue severity 必须是 high。"""
-        _write(tmp_path / "docs" / "phase-11-design.md",
-               "❌ 不做 auto_commit feature\n")
+        _write(tmp_path / "docs" / "phase-11c-design.md",
+               "❌ 不做 facial recognition biometric\n")
         _write(tmp_path / "README.md",
-               "auto_commit feature is supported.\n")
+               "facial recognition biometric is supported.\n")
         doc_map = _minimal_doc_map([
-            {"path": "docs/phase-11-design.md", "headings": [], "mentions": {},
+            {"path": "docs/phase-11c-design.md", "headings": [], "mentions": {},
              "last_modified": "2026-01-01T00:00:00Z", "size_bytes": 100},
             {"path": "README.md", "headings": [], "mentions": {},
              "last_modified": "2026-01-01T00:00:00Z", "size_bytes": 100},

@@ -107,6 +107,25 @@ _PHASE_RE = re.compile(r"\bPhase\s+(\d+[A-Za-z]?)\b")
 # Changelog section 版本正则
 _CHANGELOG_VER_RE = re.compile(r"^##\s+\[([^\]]+)\]", re.MULTILINE)
 
+# Rule 3 通用术语停用词表
+# 这些词在 SmartDev 文档里高频出现（描述 Skill/工具/架构时必然用到），
+# 单独命中不构成"过度承诺"信号。只有过滤掉这些词后，
+# 剩余的特异性关键词（如 rebase / force-push / multi-agent / Dashboard / watcher）
+# 命中才说明文档真的承诺了设计排除的能力。
+_RULE3_STOPWORDS = {
+    # 项目高频术语
+    "apply", "patch", "patches", "agent", "agents", "model", "models",
+    "phase", "git", "mcp", "skill", "skills", "code", "doc", "docs",
+    "tool", "tools", "server", "file", "files", "run", "runs", "test",
+    "tests", "project", "command", "commands", "json", "api", "data",
+    "smartdev", "steward", "handoff", "pack", "commit", "merge", "push",
+    "diff", "llm", "router", "scope", "gate", "node", "tree", "sitter",
+    "vite", "webpack", "alias", "transport", "stdio", "guard",
+    # 英文虚词
+    "the", "and", "for", "with", "not", "into", "from", "this", "that",
+    "auto", "automatic", "automatically", "self",
+}
+
 
 def _get_doc(doc_map_data: dict, path_hint: str) -> dict | None:
     """从 doc_map.docs 列表中按路径后缀匹配找到文档条目。"""
@@ -288,14 +307,52 @@ def _rule3_capability_overpromise(
     doc_map_data: dict,
     project_path: Path,
 ) -> list[ConsistencyIssue]:
-    """规则 3：能力边界一致性（设计文档 ❌ 声明 vs 其他文档的描述）。"""
+    """规则 3：能力边界一致性（设计文档 ❌ 声明 vs 面向用户文档的描述）。
+
+    只检查"面向用户承诺"的文档（README / CLAUDE.md），
+    跳过历史记录文档（CHANGELOG / progress / 其他 design.md）。
+    只使用最新 Phase 的设计文档（11c/11d）作为参考，
+    避免旧 Phase 的"范围内不做"被误判为永久不做。
+    """
     issues: list[ConsistencyIssue] = []
 
-    # 找所有 phase-xx-design.md 文件
+    # 只从最新设计文档里提取 ❌ 声明
+    # 原则：只有"当前 Phase 设计文档"的 ❌ 才代表真实边界约束
+    # 旧 Phase 的"不做"可能已被后续 Phase 实现
+    _LATEST_DESIGN_PATTERNS = ("phase-11c-design", "phase-11d-design")
     design_docs = [
         doc for doc in doc_map_data.get("docs", [])
-        if "design" in doc.get("path", "").lower() and doc.get("path", "").endswith(".md")
+        if any(p in doc.get("path", "").lower() for p in _LATEST_DESIGN_PATTERNS)
+        and doc.get("path", "").endswith(".md")
     ]
+
+    if not design_docs:
+        # 降级：找所有 design.md，但只取最新的（按文件名倒序取最后 2 个）
+        all_design = sorted(
+            [d for d in doc_map_data.get("docs", [])
+             if "design" in d.get("path", "").lower() and d.get("path", "").endswith(".md")],
+            key=lambda d: d.get("path", ""),
+        )
+        design_docs = all_design[-2:] if all_design else []
+
+    # 只检查面向用户的承诺文档（README.md）
+    # CLAUDE.md 是项目规则文档（内部工程约定），提到 apply/patch/Agent 是描述规则而非承诺
+    # README.md 是面向外部用户的能力介绍，才需要检查是否过度承诺
+    _USER_FACING_PATTERNS = ("README.md",)
+    # 明确豁免的历史/规划文档
+    _OVERPROMISE_EXEMPT_PATTERNS = (
+        "-design.md",            # 所有设计文档（历史决策记录）
+        "CHANGELOG",             # 变更日志（追加记录，不是能力承诺）
+        "development-progress",  # 进度记录
+        "progress.md",
+        "chat.md",
+        "references.md",
+        "next-phase",            # 未来规划文档，提到未来功能是正常的
+        "methodology",
+        "software-delivery",
+        "visual-",
+        "prompt-knowledge",
+    )
 
     for design_doc in design_docs:
         design_path = design_doc.get("path", "")
@@ -308,20 +365,26 @@ def _rule3_capability_overpromise(
         if not dont_do_items:
             continue
 
-        # 检查其他文档是否"承诺"了这些不做的事
+        # 只检查面向用户的承诺文档
         other_docs = [
             d for d in doc_map_data.get("docs", [])
             if d.get("path") != design_path
-            and not d.get("path", "").endswith("-design.md")
+            and any(uf in d.get("path", "") for uf in _USER_FACING_PATTERNS)
+            and not any(p in d.get("path", "") for p in _OVERPROMISE_EXEMPT_PATTERNS)
         ]
 
         for item in dont_do_items:
             item_clean = item.strip()
             if not item_clean or len(item_clean) < 5:
                 continue
-            # 提取核心关键词（去掉标点和括号）
-            keywords = re.findall(r"[a-zA-Z][a-zA-Z_.]{2,}", item_clean)
-            if not keywords:
+            # 提取核心关键词（去掉标点和括号），过滤通用停用词
+            raw_keywords = re.findall(r"[a-zA-Z][a-zA-Z_.-]{2,}", item_clean)
+            keywords = [
+                kw for kw in raw_keywords
+                if kw.lower() not in _RULE3_STOPWORDS
+            ]
+            # 过滤后至少要有 2 个特异性关键词，否则该声明太通用，跳过
+            if len(keywords) < 2:
                 continue
 
             for other_doc in other_docs:
@@ -329,10 +392,8 @@ def _rule3_capability_overpromise(
                 other_text = _read_file_safe(project_path, other_path)
                 if not other_text:
                     continue
-                # 检查关键词是否出现在其他文档里（简单启发式）
-                # 只有核心词出现才触发，避免误报
                 matches = [kw for kw in keywords if re.search(rf"\b{re.escape(kw)}\b", other_text)]
-                if len(matches) >= 2:  # 至少 2 个关键词命中才触发
+                if len(matches) >= 2:  # 至少 2 个特异性关键词命中才触发
                     issues.append(ConsistencyIssue(
                         rule="rule3",
                         type="capability_overpromise",
