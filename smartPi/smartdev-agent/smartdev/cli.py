@@ -353,6 +353,46 @@ def _cmd_run_scope_check(args: argparse.Namespace) -> int:
     return 0 if result.passed else 1
 
 
+def _cmd_run_handoff_code(args: argparse.Namespace) -> int:
+    """生成 code-agent-pack.md（Phase 11D Step 3，R1）
+
+    读取 .smartdev/runs/<run_id>/ 下的 task-card.md + scope.json，
+    可选消费 Scope Gate 结果 + 项目 index impact 分析，
+    组装生成 code-agent-pack.md 给 Code Agent 使用。
+
+    输出路径：.smartdev/runs/<run_id>/handoff/code-agent-pack.md
+    """
+    from smartdev.core.handoff_code import generate_code_agent_pack
+
+    project_path = Path(args.project).resolve()
+    if not project_path.exists():
+        print(f"错误: 项目路径不存在: {project_path}", file=sys.stderr)
+        return 1
+
+    run_id: str = args.run_id
+    changed_files: list[str] = getattr(args, "changed_files", []) or []
+    target: str = getattr(args, "target", "") or ""
+
+    result = generate_code_agent_pack(
+        project_path, run_id,
+        changed_files=changed_files if changed_files else None,
+        target=target,
+    )
+
+    if result.error:
+        print(f"错误: {result.error}", file=sys.stderr)
+        return 1
+
+    print(f"✅ Code Agent Pack 已生成: {result.output_path}")
+    print(f"   字符数: {result.char_count}")
+    print(f"   节数:   {len(result.sections)}")
+    for s in result.sections:
+        print(f"     - {s}")
+    print()
+    print(f"将此文件提供给 Code Agent（DeepSeek / coding model）作为实现上下文。")
+    return 0
+
+
 def _cmd_index(args: argparse.Namespace) -> int:
     """建立项目索引"""
     from smartdev.context.project_index import ProjectIndex
@@ -948,6 +988,29 @@ def main() -> None:
         help="以 JSON 格式输出结果",
     )
     run_scope_check_parser.set_defaults(func=_cmd_run_scope_check)
+
+    # run handoff-code <run_id>（Phase 11D Step 3）
+    run_handoff_code_parser = run_subparsers.add_parser(
+        "handoff-code",
+        help="生成 code-agent-pack.md 给 Code Agent 使用（R1）",
+    )
+    run_handoff_code_parser.add_argument(
+        "run_id",
+        help="任务唯一标识（.smartdev/runs/<run_id>/）",
+    )
+    run_handoff_code_parser.add_argument(
+        "--project", "-p", default=".",
+        help="项目根目录路径（默认当前目录）",
+    )
+    run_handoff_code_parser.add_argument(
+        "--changed-files", nargs="*", default=[],
+        help="变更文件列表（可选，用于 Scope Gate 检查）",
+    )
+    run_handoff_code_parser.add_argument(
+        "--target", default="",
+        help="变更目标（可选，用于 impact 分析，需先建索引）",
+    )
+    run_handoff_code_parser.set_defaults(func=_cmd_run_handoff_code)
 
     # index 命令（Phase 6-MVP 新增）
     index_parser = subparsers.add_parser("index", help="建立项目代码索引（文件 + 工件）")

@@ -359,6 +359,15 @@ class TestBuildCliSnapshot:
         assert "--changed-files" in sc.args
         assert "--json" in sc.args
 
+    def test_handoff_code_present(self):
+        """Phase 11D Step 3: smartdev run handoff-code 出现在 CLI 快照中"""
+        snap = build_cli_snapshot()
+        hc = next((c for c in snap.commands if c.command == "smartdev run handoff-code"), None)
+        assert hc is not None, "smartdev run handoff-code 应出现在 CLI 快照中"
+        assert "run_id" in hc.args
+        assert "--changed-files" in hc.args
+        assert "--target" in hc.args
+
     def test_to_json_roundtrip(self):
         snap = build_cli_snapshot()
         restored = CliSnapshot.from_dict(json.loads(snap.to_json()))

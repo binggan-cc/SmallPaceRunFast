@@ -237,3 +237,55 @@ class TestCLIRunScopeCheck:
         )
         assert result.returncode == 1
         assert "不存在" in result.stdout or "不存在" in result.stderr
+
+
+class TestCLIRunHandoffCode:
+    """Phase 11D Step 3: smartdev run handoff-code CLI 集成测试"""
+
+    def _setup_run(self, tmp_path: Path, run_id: str = "hc-test", **scope_kwargs):
+        """创建 run artifact 用于 handoff-code 测试。"""
+        from smartdev.core.run_artifact import ScopeConfig
+        scope = ScopeConfig(
+            allowed_paths=["smartdev/", "tests/"],
+            **scope_kwargs,
+        )
+        run_dir = tmp_path / ".smartdev" / "runs" / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "scope.json").write_text(scope.to_json(), encoding="utf-8")
+        (run_dir / "task-card.md").write_text(
+            "# test\n\n## 目标\n\n测试任务目标\n\n## 验收标准\n\n验收通过\n",
+            encoding="utf-8",
+        )
+        # 创建示例源码文件
+        (tmp_path / "smartdev" / "core").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core" / "example.py").write_text("# example\n")
+
+    def test_generates_pack(self, tmp_path: Path):
+        """成功生成 code-agent-pack.md"""
+        self._setup_run(tmp_path, "hc-1")
+        result = _run_cli(
+            "run", "handoff-code", "hc-1", "--project", str(tmp_path),
+        )
+        assert result.returncode == 0
+        assert "Code Agent Pack" in result.stdout
+        pack_path = tmp_path / ".smartdev" / "runs" / "hc-1" / "handoff" / "code-agent-pack.md"
+        assert pack_path.exists()
+
+    def test_missing_run_dir(self, tmp_path: Path):
+        """run_id 不存在 → 报错"""
+        result = _run_cli(
+            "run", "handoff-code", "no-such-run", "--project", str(tmp_path),
+        )
+        assert result.returncode == 1
+        assert "不存在" in result.stderr
+
+    def test_with_changed_files(self, tmp_path: Path):
+        """--changed-files 触发 Scope Gate"""
+        self._setup_run(tmp_path, "hc-2", max_files=3)
+        result = _run_cli(
+            "run", "handoff-code", "hc-2", "--project", str(tmp_path),
+            "--changed-files", "smartdev/a.py", "smartdev/b.py",
+        )
+        assert result.returncode == 0
+        content = (tmp_path / ".smartdev" / "runs" / "hc-2" / "handoff" / "code-agent-pack.md").read_text("utf-8")
+        assert "Scope Gate" in content

@@ -4,6 +4,26 @@
 
 ## [Unreleased] — Phase 11D: Collaboration Handoff v0（进行中）
 
+### Added — Phase 11D Step 3: handoff code
+
+- **`smartdev/core/handoff_code.py`**：新增 Code Agent Handoff Pack 生成能力
+  - 读取 `.smartdev/runs/<run_id>/task-card.md` 和 `scope.json`
+  - 生成 `.smartdev/runs/<run_id>/handoff/code-agent-pack.md`
+  - pack 包含当前任务、修改范围、Scope Gate 结果、相关文件和代码片段、existing patterns、验收标准、禁止项、Code Agent 输出规范
+  - 支持 `changed_files` 优先进入相关文件列表，避免把低相关文件排在实现上下文前面
+  - 支持可选 Scope Gate 摘要和 impact 分析摘要，不调用任何模型
+- **`smartdev/cli.py`**：新增 `smartdev run handoff-code <run_id>` CLI 子命令
+  - 支持 `--changed-files` 和 `--target`
+  - 只写 `.smartdev/runs/<run_id>/handoff/code-agent-pack.md`
+- **`smartdev/core/snapshot.py`**：CLI Snapshot 同步 `smartdev run handoff-code`
+  - `smartdev snapshot cli` 命令数 19 → 20
+- **`tests/test_handoff_code.py` / `tests/test_cli.py` / `tests/test_snapshot.py`**：新增 Step 3 覆盖
+  - pack 生成、错误路径、Scope Gate 集成、字符预算、只写 run artifact、changed_files 相关文件优先、CLI 和 snapshot 同步
+
+测试基线：**1344 passed, 1 skipped**
+
+---
+
 ### Added — Phase 11D Step 2: Scope Gate
 
 - **`smartdev/core/scope_gate.py`**：新增 Scope Gate 只读检查能力
