@@ -22,6 +22,25 @@
 
 测试基线：**1375 passed, 1 skipped**
 
+### Added — Role Activation Preamble + smartdev run context
+
+- **`smartdev/core/handoff_code.py`**：Code Agent Pack 新增角色激活前言
+  - 明确协作架构（DeepSeek=Code Agent, Codex=Doc Steward, SmartDev=Handoff+Gates, Human=Apply/Commit/Release）
+  - 包含角色职责、第一件事指引、输出格式和禁止项
+- **`smartdev/core/handoff_doc.py`**：Doc Steward Pack 新增角色激活前言（对称设计）
+- **`smartdev/core/handoff_review.py`**：Reviewer Pack 新增角色激活前言（对称设计）
+- **`smartdev/cli.py`**：新增 `smartdev run context <run_id> --role` CLI 子命令（R0 只读）
+  - 支持 `--role doc-steward|code-agent|reviewer`
+  - 默认打印对应 pack 到 stdout（可管道/复制给目标模型）
+  - `--info` 模式打印元信息（路径/是否存在/字符数/建议生成命令）
+  - pack 不存在时给出明确错误和建议的 `handoff-*` 命令
+- **`smartdev/core/snapshot.py`**：CLI Snapshot 同步 `smartdev run context`
+  - `smartdev snapshot cli` 命令数 22 → 23
+- **`tests/test_run_context.py` / `tests/test_cli.py` / `tests/test_snapshot.py`**：新增覆盖
+  - pack 读取、`--info` 模式、三种角色、缺失 pack 提示、preamble 内容验证、CLI 和 snapshot 同步
+
+测试基线：**1394 passed, 1 skipped**
+
 ---
 
 ### Added — Phase 11D Step 4: handoff doc

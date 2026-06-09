@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-09
-> 当前阶段：Phase 11D Step 5 完成 — handoff review（22 CLI 命令，1375 tests）→ 进入 Phase 11D Step 6
+> 当前阶段：Phase 11D Role Activation 完成 — run context + Role Preamble（23 CLI 命令，1394 tests）→ 进入 Phase 11D Step 6
 
 ---
 
@@ -576,6 +576,8 @@ Step 3 验证：`smartdev run handoff-code <id>` 可生成 `.smartdev/runs/<id>/
 Step 4 验证：`smartdev run handoff-doc <id>` 可生成 `.smartdev/runs/<id>/handoff/doc-steward-pack.md`；pack 聚合 Change Manifest、Diff Summary、Capability Snapshots、Doc Map、Phase Status、Doc Consistency 和 Update Focus；真实项目验证中 Diff Summary 与 Doc Map 均进入 pack；CLI Snapshot 已同步 `smartdev run handoff-doc`，CLI 命令数 20 → 21。测试基线：1361 passed, 1 skipped。
 
 Step 5 验证：`smartdev run handoff-review <id>` 可生成 `.smartdev/runs/<id>/handoff/reviewer-pack.md`；pack 聚合 Risk + Impact、Changed Files、Test Report、Dependency Changes、Security Checklist 和 Git Diff Explain；支持 `--changed-files` / `--target` / `--run-tests`；CLI Snapshot 已同步 `smartdev run handoff-review`，CLI 命令数 21 → 22。测试基线：1375 passed, 1 skipped。
+
+Role Activation 验证：三个 handoff pack（code-agent / doc-steward / reviewer）均在文件头加入角色激活前言（Role Activation Preamble），包含协作架构图、角色职责、第一步指引、输出格式和禁止项；`smartdev run context <id> --role` 可打印对应 pack 到 stdout；`--info` 模式打印元信息；CLI Snapshot 已同步 `smartdev run context`，CLI 命令数 22 → 23。测试基线：1394 passed, 1 skipped。
 
 **当前协作模式：** DeepSeek = Code Agent；Claude/Codex = Doc Steward；SmartDev = Handoff Pack + Gates；Human = Apply / Commit / Release。
 

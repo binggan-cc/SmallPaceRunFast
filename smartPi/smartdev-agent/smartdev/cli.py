@@ -434,6 +434,68 @@ def _cmd_run_handoff_doc(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_run_context(args: argparse.Namespace) -> int:
+    """打印指定角色的 handoff pack 到 stdout（R0 只读）
+
+    用途：让主控 Human/Agent 一次拿到对应角色的激活包内容，
+    直接复制/管道给目标模型，无需手工查找文件路径。
+
+    示例：
+        smartdev run context my-task --role doc-steward
+        smartdev run context my-task --role code-agent | pbcopy
+        smartdev run context my-task --role reviewer --info
+    """
+    project_path = Path(args.project).resolve()
+    run_id: str = args.run_id
+    role: str = getattr(args, "role", "doc-steward")
+
+    _ROLE_FILES = {
+        "doc-steward": "doc-steward-pack.md",
+        "code-agent": "code-agent-pack.md",
+        "reviewer": "reviewer-pack.md",
+    }
+
+    _ROLE_GENERATORS = {
+        "doc-steward": f"smartdev run handoff-doc {run_id}",
+        "code-agent": f"smartdev run handoff-code {run_id}",
+        "reviewer": f"smartdev run handoff-review {run_id}",
+    }
+
+    if role not in _ROLE_FILES:
+        valid = ", ".join(_ROLE_FILES)
+        print(f"错误: 未知角色 '{role}'，有效值：{valid}", file=sys.stderr)
+        return 1
+
+    pack_path = project_path / ".smartdev" / "runs" / run_id / "handoff" / _ROLE_FILES[role]
+
+    # --info 模式：只打印元信息
+    if getattr(args, "info", False):
+        exists = pack_path.exists()
+        print(f"role:       {role}")
+        print(f"run_id:     {run_id}")
+        print(f"pack_file:  {pack_path}")
+        print(f"exists:     {exists}")
+        if exists:
+            content = pack_path.read_text(encoding="utf-8")
+            print(f"char_count: {len(content)}")
+            print(f"lines:      {len(content.splitlines())}")
+        else:
+            print(f"suggested:  {_ROLE_GENERATORS[role]}")
+        return 0 if exists else 1
+
+    # 默认模式：打印全文
+    if not pack_path.exists():
+        print(
+            f"错误: Pack 文件不存在: {pack_path}\n"
+            f"请先运行: {_ROLE_GENERATORS[role]}",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(pack_path.read_text(encoding="utf-8"))
+    return 0
+
+
 def _cmd_run_handoff_review(args: argparse.Namespace) -> int:
     """生成 reviewer-pack.md（Phase 11D Step 5，R1）
 
@@ -1139,6 +1201,31 @@ def main() -> None:
         help="运行 pytest 收集测试结果（可能较慢）",
     )
     run_handoff_review_parser.set_defaults(func=_cmd_run_handoff_review)
+
+    # run context <run_id> --role（Phase 11D — 角色激活包，R0 只读）
+    run_context_parser = run_subparsers.add_parser(
+        "context",
+        help="打印角色 handoff pack 到 stdout（可管道/复制给目标模型）",
+    )
+    run_context_parser.add_argument(
+        "run_id",
+        help="任务唯一标识（.smartdev/runs/<run_id>/）",
+    )
+    run_context_parser.add_argument(
+        "--role", "-r",
+        default="doc-steward",
+        choices=["doc-steward", "code-agent", "reviewer"],
+        help="目标角色（默认 doc-steward）",
+    )
+    run_context_parser.add_argument(
+        "--project", "-p", default=".",
+        help="项目根目录路径（默认当前目录）",
+    )
+    run_context_parser.add_argument(
+        "--info", action="store_true",
+        help="只打印元信息（路径/是否存在/建议命令）",
+    )
+    run_context_parser.set_defaults(func=_cmd_run_context)
 
     # index 命令（Phase 6-MVP 新增）
     index_parser = subparsers.add_parser("index", help="建立项目代码索引（文件 + 工件）")

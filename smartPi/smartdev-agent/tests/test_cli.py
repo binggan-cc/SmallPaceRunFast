@@ -370,3 +370,84 @@ class TestCLIRunHandoffReview:
         )
         assert result.returncode == 1
         assert "不存在" in result.stderr
+
+
+class TestCLIRunContext:
+    """smartdev run context CLI 集成测试"""
+
+    def _setup_with_packs(self, tmp_path: Path, run_id: str = "ctx-cli"):
+        """创建 run artifact 并预生成三个 pack。"""
+        from smartdev.core.run_artifact import ScopeConfig
+        scope = ScopeConfig(allowed_paths=["smartdev/", "tests/"])
+        run_dir = tmp_path / ".smartdev" / "runs" / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "scope.json").write_text(scope.to_json(), encoding="utf-8")
+        (run_dir / "task-card.md").write_text(
+            "# test\n\n## 目标\n\n测试\n\n## 验收标准\n\n验收\n", encoding="utf-8",
+        )
+        (tmp_path / "CLAUDE.md").write_text("# CLAUDE\n\n## 当前阶段\n\nPhase 11D\n", encoding="utf-8")
+        (tmp_path / "smartdev").mkdir(exist_ok=True)
+        (tmp_path / "smartdev" / "__init__.py").write_text("")
+
+        from smartdev.core.handoff_code import generate_code_agent_pack
+        from smartdev.core.handoff_doc import generate_doc_steward_pack
+        from smartdev.core.handoff_review import generate_reviewer_pack
+        generate_code_agent_pack(tmp_path, run_id)
+        generate_doc_steward_pack(tmp_path, run_id)
+        generate_reviewer_pack(tmp_path, run_id)
+
+    def test_context_code_agent(self, tmp_path: Path):
+        """--role code-agent 打印 code-agent-pack.md"""
+        self._setup_with_packs(tmp_path, "cc1")
+        result = _run_cli(
+            "run", "context", "cc1", "--project", str(tmp_path), "--role", "code-agent",
+        )
+        assert result.returncode == 0
+        assert "Code Agent" in result.stdout
+
+    def test_context_doc_steward(self, tmp_path: Path):
+        """--role doc-steward 打印 doc-steward-pack.md"""
+        self._setup_with_packs(tmp_path, "cc2")
+        result = _run_cli(
+            "run", "context", "cc2", "--project", str(tmp_path), "--role", "doc-steward",
+        )
+        assert result.returncode == 0
+        assert "Doc Steward" in result.stdout
+
+    def test_context_reviewer(self, tmp_path: Path):
+        """--role reviewer 打印 reviewer-pack.md"""
+        self._setup_with_packs(tmp_path, "cc3")
+        result = _run_cli(
+            "run", "context", "cc3", "--project", str(tmp_path), "--role", "reviewer",
+        )
+        assert result.returncode == 0
+        assert "Reviewer" in result.stdout
+
+    def test_context_info_mode(self, tmp_path: Path):
+        """--info 打印元信息"""
+        self._setup_with_packs(tmp_path, "cc4")
+        result = _run_cli(
+            "run", "context", "cc4", "--project", str(tmp_path), "--role", "doc-steward", "--info",
+        )
+        assert result.returncode == 0
+        assert "exists:" in result.stdout
+        assert "char_count:" in result.stdout
+
+    def test_context_missing_pack(self, tmp_path: Path):
+        """pack 不存在时给出建议命令"""
+        result = _run_cli(
+            "run", "context", "no-pack", "--project", str(tmp_path), "--role", "code-agent",
+        )
+        assert result.returncode == 1
+        assert "不存在" in result.stderr
+        assert "handoff-code" in result.stderr
+
+    def test_context_info_missing_pack(self, tmp_path: Path):
+        """--info + 不存在 pack → 打印建议并返回 1"""
+        result = _run_cli(
+            "run", "context", "no-pack", "--project", str(tmp_path),
+            "--role", "reviewer", "--info",
+        )
+        assert result.returncode == 1
+        assert "exists:" in result.stdout
+        assert "handoff-review" in result.stdout

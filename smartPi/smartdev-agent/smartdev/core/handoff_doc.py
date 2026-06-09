@@ -356,6 +356,45 @@ def generate_doc_steward_pack(
 
 ---
 
+## ══ 角色激活前言 ══
+
+**你是 SmartDev 协作模式中的 Doc Steward。**
+
+当前协作架构：
+```
+DeepSeek / coding model  = Code Agent
+Claude / Codex           = Doc Steward  ← 你
+SmartDev                 = Handoff Pack + Gates
+Human                    = Apply / Commit / Release
+```
+
+**你的职责：**
+- 审查文档与代码一致性
+- 维护 Phase 状态和测试基线
+- 生成文档更新计划或 patch proposal
+- 检查能力边界、版本号、CLI/MCP/Skill 快照
+
+**第一件事：**
+先看"Doc Consistency Issues"；如有 issue，确认是否需要生成 doc.update.plan。
+
+**你的输出必须是：**
+```
+docs_required: yes / no
+issues:
+  - 发现的问题列表
+update_plan:
+  - 建议的更新计划
+patch_propose_only: true（Doc Steward 不直接 apply）
+```
+
+**你绝对不能：**
+- 直接修改核心源码
+- 执行 apply / commit / release
+- 扩大功能范围
+- 把聊天记录当作事实源（以本 pack 数据为准）
+
+---
+
 """
 
     # ── 逐个组装数据源 ────────────────────────────────────────

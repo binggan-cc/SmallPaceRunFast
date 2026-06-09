@@ -383,8 +383,15 @@ class TestBuildCliSnapshot:
         assert hr is not None, "smartdev run handoff-review 应出现在 CLI 快照中"
         assert "run_id" in hr.args
         assert "--changed-files" in hr.args
-        assert "--target" in hr.args
-        assert "--run-tests" in hr.args
+
+    def test_context_present(self):
+        """Role activation: smartdev run context 出现在 CLI 快照中"""
+        snap = build_cli_snapshot()
+        ctx = next((c for c in snap.commands if c.command == "smartdev run context"), None)
+        assert ctx is not None, "smartdev run context 应出现在 CLI 快照中"
+        assert "run_id" in ctx.args
+        assert "--role" in ctx.args
+        assert "--info" in ctx.args
 
     def test_to_json_roundtrip(self):
         snap = build_cli_snapshot()

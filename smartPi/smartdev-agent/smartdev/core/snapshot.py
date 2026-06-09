@@ -631,6 +631,13 @@ def _build_cli_parser():
     run_hr_p.add_argument("--target", default="")
     run_hr_p.add_argument("--run-tests", action="store_true")
 
+    run_ctx_p = run_sub.add_parser("context", help="打印角色 handoff pack 到 stdout（R0 只读）",
+                                     description="打印角色 handoff pack 到 stdout（R0 只读，可管道/复制给目标模型）")
+    run_ctx_p.add_argument("run_id")
+    run_ctx_p.add_argument("--role", "-r", default="doc-steward")
+    run_ctx_p.add_argument("--project", "-p", default=".")
+    run_ctx_p.add_argument("--info", action="store_true")
+
     # index
     idx_p = subparsers.add_parser("index", help="建立项目代码索引",
                                    description="建立项目代码索引（文件 + 工件）")
