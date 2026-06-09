@@ -4,6 +4,26 @@
 
 ## [Unreleased] — Phase 11C: Documentation Governance v0（进行中）
 
+### Fixed — doc.consistency Rule 3 误报修复
+
+- **`smartdev/skills/doc_consistency/skill.py`**：Rule 3（capability_overpromise）误报大幅降低
+  - 端到端测试发现 Rule 3 在真实项目上产生 42 个 high 误报（CHANGELOG/progress 的历史记录被误判为过度承诺）
+  - 修复 1：只用最新设计文档（phase-11c/11d-design）作为 ❌ 声明来源，避免旧 Phase"范围内不做"被当作永久约束（如 git commit 在 Phase 10 不做、Phase 11A 已实现）
+  - 修复 2：只检查面向用户的承诺文档（README.md），跳过 CLAUDE.md（内部规则）/ CHANGELOG / progress / 其他 design.md 等历史文档
+  - 修复 3：新增 `_RULE3_STOPWORDS` 通用术语停用词表（apply/patch/agent/git/mcp/auto 等），过滤后要求 ≥2 个特异性关键词命中才触发
+  - 效果：项目自检 issue 从 53 → 10，high 从 42 → 0，保留全部真实 low issue（README 缺命令 / CLAUDE Phase 状态 / 测试基线过时）
+- **`tests/test_doc_consistency.py`**：更新 Rule 3 测试匹配新行为
+  - 设计文档改用 phase-11c-design.md（最新文档）
+  - 关键词改用特异性词（facial recognition biometric）避免被停用词过滤
+  - 新增 `test_generic_stopwords_not_triggered`（apply/patch 不触发）
+  - 新增 `test_changelog_not_checked`（CHANGELOG 被豁免）
+
+测试基线：**1210 passed, 1 skipped**
+
+---
+
+## [Unreleased] — Phase 11C: Documentation Governance v0（Step 1-7 完成）
+
 ### Added — Phase 11C Step 7: MCP 暴露只读 Doc Governance 工具
 
 - **`smartdev/mcp/tools.py`**：新增两个 handler
