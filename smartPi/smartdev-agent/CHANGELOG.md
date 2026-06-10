@@ -22,6 +22,19 @@ Phase 11 Closeout 事实：
 - MCP 工具：**30 个**（READ×24 + CACHE_WRITE×5 + PATCH_PROPOSE×1）
 - SmartDev 为 standalone 工程协作工具（本地 CLI · run artifact / handoff · GuardRunner · Doc Governance · MCP 工具 · Git 治理建议）。Phase 12 Model Router 为可选后续增强，非完整性前提。
 
+### Changed — Phase 11 Closeout Step 2: 收口 MCP 工具数量事实源
+
+- **`smartdev/mcp/tools.py`**（修改）：新增 `_TOOL_REGISTRY` 集中注册表 + `get_available_tools()`，`handle_version` 和 `handle_list_tools` 均从此派生，消除两份清单漂移风险
+- **MCP 测试文件 8 个**（修改）：移除散落硬编码 `30`，改为 `len(get_available_tools())` 动态获取
+  - `tests/test_mcp_server.py`：`test_list_tools_total_count` / `test_version`
+  - `tests/test_mcp_doc_tools.py`：`test_total_tool_count_matches_registry` / `test_list_tools_total_count_matches_registry`（原名 `_30`）
+  - `tests/test_mcp_handoff_tools.py`：`test_total_tool_count_matches_registry`（原名 `_30`）
+  - `tests/test_mcp_integration.py`：`test_tools_list_returns_14` / `test_version`（原名 `test_tools_list_count`）
+  - `tests/test_mcp_git_tools.py`：`test_total_tool_count_matches_registry`（原名 `_is_21`）
+  - `tests/test_mcp_readonly_tools.py`：`test_list_tools_total_count_updated`
+  - `tests/test_mcp_skill_tools.py`：`test_list_tools_total_count_step3`
+  - `tests/test_mcp_patch_propose.py`：`test_list_tools_total_count_step4`
+
 ### Added — Phase 11B Step 7: MCP 暴露只读 Guard 工具
 
 - **`smartdev/mcp/tools.py`**（修改）：新增 6 个 MCP Guard handler

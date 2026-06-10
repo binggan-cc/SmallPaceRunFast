@@ -21,6 +21,7 @@ import pytest
 
 from smartdev.core.run_artifact import ScopeConfig, create_run_artifact
 from smartdev.mcp.tools import (
+    get_available_tools,
     handle_handoff_code,
     handle_handoff_doc,
     handle_handoff_review,
@@ -59,10 +60,10 @@ class TestHandoffToolRegistration:
             assert tool in names, f"{tool} missing from version list"
 
     @pytest.mark.asyncio
-    async def test_total_tool_count_30(self, tmp_path: Path):
+    async def test_total_tool_count_matches_registry(self, tmp_path: Path):
         result = await handle_version({}, tmp_path)
         data = _parse(result)
-        assert len(data["data"]["tools"]) == 30
+        assert len(data["data"]["tools"]) == len(get_available_tools())
 
     @pytest.mark.asyncio
     async def test_handoff_tools_in_list_tools(self, tmp_path: Path):

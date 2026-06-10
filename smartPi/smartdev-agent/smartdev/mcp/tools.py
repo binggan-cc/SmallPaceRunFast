@@ -35,6 +35,90 @@ from mcp.types import TextContent
 from smartdev import __version__
 from smartdev.mcp import formatter
 
+# ── 集中工具注册表（MCP 工具数量的单一事实源）────────────────────
+
+# 每个条目包含所有字段，handle_version / handle_list_tools 各自提取所需子集。
+# 新增 MCP 工具时，只需在此列表追加一条记录即可。
+_TOOL_REGISTRY: list[dict] = [
+    # Step 1: 基础工具
+    {"name": "smartdev_ping",            "permission": "READ",          "status": "available",
+     "description": "Health check. Confirms MCP Server is running."},
+    {"name": "smartdev_version",          "permission": "READ",          "status": "available",
+     "description": "Returns version and full tool capability list."},
+    {"name": "smartdev_list_tools",       "permission": "READ",          "status": "available",
+     "description": "Lists all available tools with permissions."},
+    # Step 2: 只读 Context 工具
+    {"name": "smartdev_code_search",      "permission": "READ",          "status": "available",
+     "description": "Full-text search over indexed files and artifacts. Requires index."},
+    {"name": "smartdev_code_impact",      "permission": "READ",          "status": "available",
+     "description": "Analyze change impact via import reverse lookup. Requires index."},
+    {"name": "smartdev_project_map",      "permission": "READ",          "status": "available",
+     "description": "Export project structure map (modules, hotspots, external deps). Requires index."},
+    {"name": "smartdev_graph_validate",   "permission": "READ",          "status": "available",
+     "description": "Validate graph health (orphans, duplicates, hotspots, unresolved). Requires index."},
+    # Step 3–4: Skill 工具 + code_index / patch_propose
+    {"name": "smartdev_repo_scan",        "permission": "READ",          "status": "available",
+     "description": "Scan project: tech stack, entry points, docs status, directory tree."},
+    {"name": "smartdev_risk_check",       "permission": "READ",          "status": "available",
+     "description": "Check task risk level. With index: impact-enhanced. Without: keyword fallback."},
+    {"name": "smartdev_architecture_map", "permission": "READ",          "status": "available",
+     "description": "Architecture dependency graph. With index: multi-language. Without: Python AST."},
+    {"name": "smartdev_task_plan",        "permission": "READ",          "status": "available",
+     "description": "Generate three-tier task plan. With index: annotates affected files."},
+    {"name": "smartdev_qa_checklist",     "permission": "READ",          "status": "available",
+     "description": "Generate structured acceptance checklist for a task."},
+    {"name": "smartdev_code_index",       "permission": "CACHE_WRITE",   "status": "available",
+     "description": "Build project semantic index. Writes only to .smartdev/, never modifies source files."},
+    {"name": "smartdev_patch_propose",    "permission": "PATCH_PROPOSE", "status": "available",
+     "description": "Generate find-replace patch proposal (diff + patch_id). Does NOT modify source files."},
+    # Phase 11A Step 7: 只读 Git 工具
+    {"name": "smartdev_git_status",       "permission": "READ",          "status": "available",
+     "description": "Query git status: branch, dirty files, staged/unstaged/untracked, recent commits."},
+    {"name": "smartdev_git_diff_explain", "permission": "READ",          "status": "available",
+     "description": "Deterministic structured diff explanation: line counts, signals, commit split suggestion."},
+    {"name": "smartdev_git_commit_plan",  "permission": "READ",          "status": "available",
+     "description": "Generate Conventional Commit split suggestions from current diff. Does not execute commit."},
+    {"name": "smartdev_git_release_plan", "permission": "READ",          "status": "available",
+     "description": "Suggest semver bump and release checklist from commits + CHANGELOG."},
+    {"name": "smartdev_git_merge_check",  "permission": "READ",          "status": "available",
+     "description": "Pre-merge readiness check: blockers and warnings before merging a branch."},
+    # Phase 11C Step 7: 只读 Doc Governance 工具
+    {"name": "smartdev_doc_consistency",  "permission": "READ",          "status": "available",
+     "description": "Check documentation consistency against code using 5 deterministic rules. Returns issues list."},
+    {"name": "smartdev_doc_update_plan",  "permission": "READ",          "status": "available",
+     "description": "Generate structured doc update plan from consistency issues: what to change, why, what not to touch."},
+    # Phase 11D Step 7: Handoff Pack 工具 (CACHE_WRITE: 只写 .smartdev/runs/)
+    {"name": "smartdev_handoff_code",     "permission": "CACHE_WRITE",   "status": "available",
+     "description": "Generate code-agent-pack.md and write to .smartdev/runs/<run_id>/handoff/."},
+    {"name": "smartdev_handoff_doc",      "permission": "CACHE_WRITE",   "status": "available",
+     "description": "Generate doc-steward-pack.md and write to .smartdev/runs/<run_id>/handoff/."},
+    {"name": "smartdev_handoff_review",   "permission": "CACHE_WRITE",   "status": "available",
+     "description": "Generate reviewer-pack.md and write to .smartdev/runs/<run_id>/handoff/."},
+    # Phase 11B Step 7: 只读 Guard 工具
+    {"name": "smartdev_guard_run",        "permission": "READ",          "status": "available",
+     "description": "Run all 5 Guard Skills and return an aggregate report with per-guard status."},
+    {"name": "smartdev_change_budget",    "permission": "READ",          "status": "available",
+     "description": "Change budget check: file count, line count, schema change, per-file limits."},
+    {"name": "smartdev_dev_guard",        "permission": "READ",          "status": "available",
+     "description": "AI coding rules guard: mass refactor, protected paths, unrelated changes, etc."},
+    {"name": "smartdev_dependency_guard",  "permission": "READ",          "status": "available",
+     "description": "Dependency manifest review: added/removed/version-changed dependencies, lock sync."},
+    {"name": "smartdev_security_review",  "permission": "READ",          "status": "available",
+     "description": "Security review: input validation, path traversal, command injection, secrets, etc."},
+    {"name": "smartdev_diff_explain",     "permission": "READ",          "status": "available",
+     "description": "Patch-level diff explanation: logical grouping, test coverage, dependency match, review order."},
+]
+
+
+def get_available_tools() -> list[dict]:
+    """返回当前 MCP 工具注册表（单一事实源）。
+
+    测试和 handle_version / handle_list_tools 都通过此函数获取工具清单，
+    避免散落硬编码的工具数量。
+    """
+    return _TOOL_REGISTRY
+
+
 # ── 辅助：检查索引是否存在 ─────────────────────────────────────────
 
 
@@ -68,43 +152,7 @@ async def handle_ping(arguments: dict, project_path: Path) -> list[TextContent]:
 
 async def handle_version(arguments: dict, project_path: Path) -> list[TextContent]:
     """返回版本信息和当前已注册的工具能力清单"""
-    tools = [
-        {"name": "smartdev_ping",            "permission": "READ",          "status": "available"},
-        {"name": "smartdev_version",          "permission": "READ",          "status": "available"},
-        {"name": "smartdev_list_tools",       "permission": "READ",          "status": "available"},
-        {"name": "smartdev_code_search",      "permission": "READ",          "status": "available"},
-        {"name": "smartdev_code_impact",      "permission": "READ",          "status": "available"},
-        {"name": "smartdev_project_map",      "permission": "READ",          "status": "available"},
-        {"name": "smartdev_graph_validate",   "permission": "READ",          "status": "available"},
-        {"name": "smartdev_repo_scan",        "permission": "READ",          "status": "available"},
-        {"name": "smartdev_risk_check",       "permission": "READ",          "status": "available"},
-        {"name": "smartdev_architecture_map", "permission": "READ",          "status": "available"},
-        {"name": "smartdev_task_plan",        "permission": "READ",          "status": "available"},
-        {"name": "smartdev_qa_checklist",     "permission": "READ",          "status": "available"},
-        # Step 4（已实现）
-        {"name": "smartdev_code_index",       "permission": "CACHE_WRITE",   "status": "available"},
-        {"name": "smartdev_patch_propose",    "permission": "PATCH_PROPOSE", "status": "available"},
-        # Phase 11A Step 7: 只读 Git 工具
-        {"name": "smartdev_git_status",       "permission": "READ",          "status": "available"},
-        {"name": "smartdev_git_diff_explain", "permission": "READ",          "status": "available"},
-        {"name": "smartdev_git_commit_plan",  "permission": "READ",          "status": "available"},
-        {"name": "smartdev_git_release_plan", "permission": "READ",          "status": "available"},
-        {"name": "smartdev_git_merge_check",  "permission": "READ",          "status": "available"},
-        # Phase 11C Step 7: 只读 Doc Governance 工具
-        {"name": "smartdev_doc_consistency",  "permission": "READ",          "status": "available"},
-        {"name": "smartdev_doc_update_plan",  "permission": "READ",          "status": "available"},
-        # Phase 11D Step 7: Handoff Pack 工具 (CACHE_WRITE: 只写 .smartdev/runs/)
-        {"name": "smartdev_handoff_code",     "permission": "CACHE_WRITE",   "status": "available"},
-        {"name": "smartdev_handoff_doc",      "permission": "CACHE_WRITE",   "status": "available"},
-        {"name": "smartdev_handoff_review",   "permission": "CACHE_WRITE",   "status": "available"},
-        # Phase 11B Step 7: 只读 Guard 工具
-        {"name": "smartdev_guard_run",        "permission": "READ",          "status": "available"},
-        {"name": "smartdev_change_budget",    "permission": "READ",          "status": "available"},
-        {"name": "smartdev_dev_guard",        "permission": "READ",          "status": "available"},
-        {"name": "smartdev_dependency_guard",  "permission": "READ",          "status": "available"},
-        {"name": "smartdev_security_review",  "permission": "READ",          "status": "available"},
-        {"name": "smartdev_diff_explain",     "permission": "READ",          "status": "available"},
-    ]
+    tools = [{k: t[k] for k in ("name", "permission", "status")} for t in _TOOL_REGISTRY]
     return [TextContent(
         type="text",
         text=formatter.ok("smartdev_version", {
@@ -118,162 +166,7 @@ async def handle_version(arguments: dict, project_path: Path) -> list[TextConten
 
 async def handle_list_tools(arguments: dict, project_path: Path) -> list[TextContent]:
     """列出当前可用工具，附带权限和说明"""
-    available = [
-        {
-            "name": "smartdev_ping",
-            "permission": "READ",
-            "description": "Health check. Confirms MCP Server is running.",
-        },
-        {
-            "name": "smartdev_version",
-            "permission": "READ",
-            "description": "Returns version and full tool capability list.",
-        },
-        {
-            "name": "smartdev_list_tools",
-            "permission": "READ",
-            "description": "Lists all available tools with permissions.",
-        },
-        {
-            "name": "smartdev_code_search",
-            "permission": "READ",
-            "description": "Full-text search over indexed files and artifacts. Requires index.",
-        },
-        {
-            "name": "smartdev_code_impact",
-            "permission": "READ",
-            "description": "Analyze change impact via import reverse lookup. Requires index.",
-        },
-        {
-            "name": "smartdev_project_map",
-            "permission": "READ",
-            "description": "Export project structure map (modules, hotspots, external deps). Requires index.",
-        },
-        {
-            "name": "smartdev_graph_validate",
-            "permission": "READ",
-            "description": "Validate graph health (orphans, duplicates, hotspots, unresolved). Requires index.",
-        },
-        {
-            "name": "smartdev_repo_scan",
-            "permission": "READ",
-            "description": "Scan project: tech stack, entry points, docs status, directory tree.",
-        },
-        {
-            "name": "smartdev_risk_check",
-            "permission": "READ",
-            "description": "Check task risk level. With index: impact-enhanced. Without: keyword fallback.",
-        },
-        {
-            "name": "smartdev_architecture_map",
-            "permission": "READ",
-            "description": "Architecture dependency graph. With index: multi-language. Without: Python AST.",
-        },
-        {
-            "name": "smartdev_task_plan",
-            "permission": "READ",
-            "description": "Generate three-tier task plan. With index: annotates affected files.",
-        },
-        {
-            "name": "smartdev_qa_checklist",
-            "permission": "READ",
-            "description": "Generate structured acceptance checklist for a task.",
-        },
-        {
-            "name": "smartdev_code_index",
-            "permission": "CACHE_WRITE",
-            "description": "Build project semantic index. Writes only to .smartdev/, never modifies source files.",
-        },
-        {
-            "name": "smartdev_patch_propose",
-            "permission": "PATCH_PROPOSE",
-            "description": "Generate find-replace patch proposal (diff + patch_id). Does NOT modify source files.",
-        },
-        # Phase 11A Step 7: 只读 Git 工具
-        {
-            "name": "smartdev_git_status",
-            "permission": "READ",
-            "description": "Query git status: branch, dirty files, staged/unstaged/untracked, recent commits.",
-        },
-        {
-            "name": "smartdev_git_diff_explain",
-            "permission": "READ",
-            "description": "Deterministic structured diff explanation: line counts, signals, commit split suggestion.",
-        },
-        {
-            "name": "smartdev_git_commit_plan",
-            "permission": "READ",
-            "description": "Generate Conventional Commit split suggestions from current diff. Does not execute commit.",
-        },
-        {
-            "name": "smartdev_git_release_plan",
-            "permission": "READ",
-            "description": "Suggest semver bump and release checklist from commits + CHANGELOG.",
-        },
-        {
-            "name": "smartdev_git_merge_check",
-            "permission": "READ",
-            "description": "Pre-merge readiness check: blockers and warnings before merging a branch.",
-        },
-        # Phase 11C Step 7: 只读 Doc Governance 工具
-        {
-            "name": "smartdev_doc_consistency",
-            "permission": "READ",
-            "description": "Check documentation consistency against code using 5 deterministic rules. Returns issues list.",
-        },
-        {
-            "name": "smartdev_doc_update_plan",
-            "permission": "READ",
-            "description": "Generate structured doc update plan from consistency issues: what to change, why, what not to touch.",
-        },
-        # Phase 11D Step 7: Handoff Pack 工具
-        {
-            "name": "smartdev_handoff_code",
-            "permission": "CACHE_WRITE",
-            "description": "Generate code-agent-pack.md and write to .smartdev/runs/<run_id>/handoff/.",
-        },
-        {
-            "name": "smartdev_handoff_doc",
-            "permission": "CACHE_WRITE",
-            "description": "Generate doc-steward-pack.md and write to .smartdev/runs/<run_id>/handoff/.",
-        },
-        {
-            "name": "smartdev_handoff_review",
-            "permission": "CACHE_WRITE",
-            "description": "Generate reviewer-pack.md and write to .smartdev/runs/<run_id>/handoff/.",
-        },
-        # Phase 11B Step 7: 只读 Guard 工具
-        {
-            "name": "smartdev_guard_run",
-            "permission": "READ",
-            "description": "Run all 5 Guard Skills and return an aggregate report with per-guard status.",
-        },
-        {
-            "name": "smartdev_change_budget",
-            "permission": "READ",
-            "description": "Change budget check: file count, line count, schema change, per-file limits.",
-        },
-        {
-            "name": "smartdev_dev_guard",
-            "permission": "READ",
-            "description": "AI coding rules guard: mass refactor, protected paths, unrelated changes, etc.",
-        },
-        {
-            "name": "smartdev_dependency_guard",
-            "permission": "READ",
-            "description": "Dependency manifest review: added/removed/version-changed dependencies, lock sync.",
-        },
-        {
-            "name": "smartdev_security_review",
-            "permission": "READ",
-            "description": "Security review: input validation, path traversal, command injection, secrets, etc.",
-        },
-        {
-            "name": "smartdev_diff_explain",
-            "permission": "READ",
-            "description": "Patch-level diff explanation: logical grouping, test coverage, dependency match, review order.",
-        },
-    ]
+    available = [{k: t[k] for k in ("name", "permission", "description")} for t in _TOOL_REGISTRY]
     return [TextContent(
         type="text",
         text=formatter.ok("smartdev_list_tools", {

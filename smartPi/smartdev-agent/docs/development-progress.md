@@ -94,6 +94,15 @@ Phase 14  FileWatcher / Incremental Sync
 > Phase 11A / 11B / 11C / 11D 已全部完成。SmartDev 当前为 standalone 工程协作工具。
 > 测试基线：**1897 passed, 1 skipped**。MCP 工具：**30 个**。
 > Phase 12 为可选后续增强（Model Router），非完整性前提。
+>
+> ### Phase 11 Closeout Step 2：收口 MCP 工具数量事实源（✅ 完成）
+>
+> - **`smartdev/mcp/tools.py`**：新增 `_TOOL_REGISTRY` 集中注册表 + `get_available_tools()`，`handle_version` / `handle_list_tools` 均由此派生
+> - **MCP 测试 ×8**：移除散落硬编码 `30`，改为 `len(get_available_tools())` 动态获取
+> - 测试函数名重命名：`test_total_tool_count_30` → `test_total_tool_count_matches_registry`
+> - 新增 MCP 工具时只需在 `_TOOL_REGISTRY` 追加一行；测试不再需要批量改数字
+>
+> ### Phase 11 Closeout Step 1：文档收口（✅ 完成，未提交）
 
 ### Phase 1：只读诊断 Agent（✅ 完成）
 

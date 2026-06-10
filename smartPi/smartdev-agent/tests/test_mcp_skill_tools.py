@@ -262,8 +262,9 @@ class TestStep3ToolsRegistration:
         from smartdev.mcp.tools import handle_list_tools
         result = await handle_list_tools({}, tmp_path)
         data = json.loads(result[0].text)
-        # 当前 MCP 工具总数：30
-        assert data["data"]["total"] == 30
+        # 应与工具注册表一致
+        from smartdev.mcp.tools import get_available_tools
+        assert data["data"]["total"] == len(get_available_tools())
 
     @pytest.mark.asyncio
     async def test_version_marks_step3_as_available(self, tmp_path):

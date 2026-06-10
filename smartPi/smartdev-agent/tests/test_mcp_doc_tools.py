@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 
 from smartdev.mcp.tools import (
+    get_available_tools,
     handle_doc_consistency,
     handle_doc_update_plan,
     handle_list_tools,
@@ -49,11 +50,11 @@ class TestToolRegistration:
             assert tool in names, f"{tool} missing from version list"
 
     @pytest.mark.asyncio
-    async def test_total_tool_count_30(self, tmp_path: Path):
-        """MCP 工具总数应为 30。"""
+    async def test_total_tool_count_matches_registry(self, tmp_path: Path):
+        """MCP 工具总数应与工具注册表一致。"""
         result = await handle_version({}, tmp_path)
         data = _parse(result)
-        assert len(data["data"]["tools"]) == 30
+        assert len(data["data"]["tools"]) == len(get_available_tools())
 
     @pytest.mark.asyncio
     async def test_doc_tools_in_list_tools(self, tmp_path: Path):
@@ -78,10 +79,10 @@ class TestToolRegistration:
         assert tools["smartdev_doc_update_plan"]["permission"] == "READ"
 
     @pytest.mark.asyncio
-    async def test_list_tools_total_count_30(self, tmp_path: Path):
+    async def test_list_tools_total_count_matches_registry(self, tmp_path: Path):
         result = await handle_list_tools({}, tmp_path)
         data = _parse(result)
-        assert data["data"]["total"] == 30
+        assert data["data"]["total"] == len(get_available_tools())
 
 
 # ── handle_doc_consistency ────────────────────────────────

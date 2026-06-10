@@ -122,7 +122,8 @@ class TestMCPProtocol:
         r = c.send("tools/list")
         assert "result" in r
         tools = r["result"]["tools"]
-        assert len(tools) == 30
+        from smartdev.mcp.tools import get_available_tools
+        assert len(tools) == len(get_available_tools())
 
     def test_tools_list_has_required_names(self, client):
         c, _ = client
@@ -171,7 +172,8 @@ class TestBasicTools:
         d = c.call_tool("smartdev_version")
         assert d["ok"] is True
         assert "version" in d["data"]
-        assert len(d["data"]["tools"]) == 30
+        from smartdev.mcp.tools import get_available_tools
+        assert len(d["data"]["tools"]) == len(get_available_tools())
         # 所有工具都应标记为 available（v0 全量完成）
         statuses = {t["name"]: t["status"] for t in d["data"]["tools"]}
         assert all(s == "available" for s in statuses.values())
