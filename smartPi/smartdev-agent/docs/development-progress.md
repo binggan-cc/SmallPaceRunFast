@@ -99,10 +99,10 @@ Phase 14  FileWatcher / Incremental Sync
 >
 > - **`smartdev/mcp/tools.py`**：新增 `_TOOL_REGISTRY` 集中注册表 + `get_available_tools()`，`handle_version` / `handle_list_tools` 均由此派生
 > - **MCP 测试 ×8**：移除散落硬编码 `30`，改为 `len(get_available_tools())` 动态获取
-> - 测试函数名重命名：`test_total_tool_count_30` → `test_total_tool_count_matches_registry`
+> - 测试函数名去数字化，统一表达为“工具总数应与注册表一致”
 > - 新增 MCP 工具时只需在 `_TOOL_REGISTRY` 追加一行；测试不再需要批量改数字
 >
-> ### Phase 11 Closeout Step 1：文档收口（✅ 完成，未提交）
+> ### Phase 11 Closeout Step 1：文档收口（✅ 完成，509f4ce）
 
 ### Phase 1：只读诊断 Agent（✅ 完成）
 
