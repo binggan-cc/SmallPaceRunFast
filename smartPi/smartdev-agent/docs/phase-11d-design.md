@@ -1,8 +1,10 @@
 # Phase 11D — Collaboration Handoff v0 执行前设计
 
-> 状态：Step 1–7 已完成
+> 状态：Step 1–7 已全部完成。Phase 11 Closeout（2026-06-10）
 > 前置：Phase 11C Documentation Governance v0（必须先产出事实层）
 > 定位：多模型协作交接层——把 SmartDev 的工程事实裁剪成角色化上下文包，并把模型输出回流到 run artifact
+>
+> 模式 A（手动文件交接）和 MCP 协作现在都可用。Phase 12 Model Router 为可选模式 C，非 11D 完成前提。
 
 ---
 
@@ -362,16 +364,16 @@ Step 7  MCP 暴露 handoff pack 工具                              ✅ 完成
 ```
 Phase 11A：Git Governance v0          ✅ 完成
     ↓
-Phase 11C：Documentation Governance v0  ← 当前进入实现
+Phase 11C：Documentation Governance v0  ✅ 完成
     ↓
-Phase 11D：Collaboration Handoff v0     ← 本文档，独立建档，暂不实现
+Phase 11D：Collaboration Handoff v0     ✅ 完成（本文档）
     ↓
-Phase 11B：Guard Skills（可稍后增强）
+Phase 11B：Guard Skills                ✅ 完成
     ↓
-Phase 12：Model Collaboration Router
+Phase 12：Model Collaboration Router   （可选后续增强）
 ```
 
-> 顺序调整说明：原计划 11A→11B→11C，但当前已在实际使用双模型协作，Doc Steward 需求更急，Guard Skills 可稍后。故调整为 **11A → 11C → 11D → 11B → 12**。
+> 顺序调整说明：实际实施顺序 11A → 11C → 11D → 11B，现已全部完成。Phase 12 为可选后续增强（Model Router），SmartDev 已是完整的 standalone 工程协作工具。
 
 ---
 
@@ -388,7 +390,7 @@ Phase 12：Model Collaboration Router
 7. ✅ 所有 handoff 命令只写 .smartdev/runs/，不修改源码
 8. ✅ handoff 命令不调用任何模型
 
-### Step 6 验收标准（当前目标）
+### Step 6 验收标准（已完成）
 
 9. agent-output/ 目录协议文档化（本文档 §14）
 10. review/ 目录协议文档化（本文档 §15）

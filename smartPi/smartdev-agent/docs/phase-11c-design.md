@@ -3,6 +3,12 @@
 > 状态：设计文档（Step 0），不动代码
 > 前置：Phase 11A Git Governance v0 完成（906 tests，19 个 MCP 工具）
 > 定位：Doc Steward 工具链——让高阶模型能基于确定性事实检查文档一致性
+>
+> **Phase 11 Closeout（2026-06-10）：** Phase 11C 已全部完成（Step 0–7）。
+> doc.map / doc.consistency / doc.update.plan / doc.patch.propose 四个 doc Skill、
+> MCP 工具 `smartdev_doc_consistency` 和 `smartdev_doc_update_plan`、Change Manifest
+> 和 Capability Snapshot 均已实现。11C 工具链本身已可作为 standalone 文档治理工具使用。
+> Phase 12 可将 Doc Steward 注册为可选角色，不是 11C 工具链可用的前提。
 
 ---
 
@@ -323,7 +329,7 @@ doc_claim: progress.md 测试基线行写的数字
 ## 7. 实施路线（Phase 11C）
 
 ```
-Step 0  设计文档 phase-11c-design.md（本文档）                 ✅ 当前
+Step 0  设计文档 phase-11c-design.md（本文档）                 ✅ 完成
 
 Step 1  Change Manifest 生成（R0，确定性）
         - ChangeManifest 数据模型
@@ -396,7 +402,9 @@ Step 7  MCP 暴露只读工具
 
 ## 10. 与 Phase 12 的关系
 
-Phase 11C 完成后，Phase 12（Model Collaboration Layer）可以把 Doc Steward 作为一个可注册的**角色（role）**纳入：
+Phase 11C 已完成后，SmartDev 的 Doc Steward 工具链可 standalone 使用（通过 MCP 工具
+`smartdev_doc_consistency` / `smartdev_doc_update_plan` 或 CLI）。Phase 12（Model Collaboration
+Layer，可选增强）可以把 Doc Steward 作为一个可注册的**角色（role）**纳入自动化路由：
 
 ```
 Phase 12 模型协作角色表：

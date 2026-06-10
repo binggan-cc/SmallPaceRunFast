@@ -3,6 +3,10 @@
 > 状态：设计文档（Step 0），不动代码
 > 前置：Phase 10 已完成并冻结（637 tests，14 个 MCP 工具，清洁基线）
 > 范围：本文档聚焦 **Phase 11A — Git Governance v0**；11B（Guard Skills）/ 11C（Model Collaboration Policy）只给方向，不在本次实施
+>
+> **Phase 11 Closeout（2026-06-10）：** Phase 11A / 11B / 11C / 11D 已全部完成。
+> 当前测试基线 **1897 passed, 1 skipped**，MCP 工具 **30 个**。
+> SmartDev 可作为 standalone 工程协作工具独立使用（本地 CLI · run artifact / handoff · GuardRunner · Doc Governance · MCP 工具 · Git 治理建议）。Phase 12 Model Router 为可选后续增强，非完整性前提。
 
 ---
 
@@ -455,7 +459,7 @@ MCP 工具总数：14（Phase 10）→ 19（Phase 11A）。
 ## 7. 实施路线（Phase 11A）
 
 ```
-Step 0  设计文档 phase-11-design.md（本文档）                          ✅ 当前
+Step 0  设计文档 phase-11-design.md（本文档）                          ✅ 完成
 
 Step 1  core/git.py（R1，~655 tests）
         - GitService（subprocess 封装）
@@ -528,14 +532,14 @@ Step 7  MCP 暴露只读 Git 工具（R1，~749 tests）
 ```
 Phase 11A  Git Governance v0           ← 本设计，交付记录层（L5）
     ↓
-Phase 11B  Guard Skills（L5 防护）
-           dev.guard / dependency.guard / security.review / change.budget / diff.explain
-           确定性 checklist，不接外部扫描器
+Phase 11B  Guard Skills（L5 防护）                                    ✅ 完成
+           dev.guard / dependency.guard / security.review / change.budget / diff.explain / guard.runner
     ↓
-Phase 11C  Model Collaboration Policy（可选，L7 配置层）
-           或直接进入 Phase 12（Model Collaboration Layer）
+Phase 11C  Documentation Governance v0                                ✅ 完成
     ↓
-Phase 12   Model Collaboration Layer（横向 L7）
+Phase 11D  Collaboration Handoff v0                                   ✅ 完成
+    ↓
+Phase 12   Model Collaboration Layer（横向 L7，可选后续增强）
 Phase 13   Call Graph（函数级引用分析）
 Phase 14   FileWatcher / Incremental Sync
 ```

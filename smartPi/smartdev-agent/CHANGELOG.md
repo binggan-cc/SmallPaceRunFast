@@ -2,7 +2,25 @@
 
 本文档记录 SmartDev Agent 的重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)。
 
-## [Unreleased] — Phase 11B: Guard Skills v0
+## [Unreleased] — Phase 11 Complete: Standalone Hardened
+
+### Added — Phase 11 Closeout: 文档收口
+
+- **`CHANGELOG.md`**（修改）：追加 Phase 11 Closeout 记录
+- **`docs/development-progress.md`**（修改）：Phase 11 全部完成状态、测试基线 1897/MCP 30、Phase 12 标记为可选增强
+- **`docs/phase-11-design.md`**（修改）：追加 Closeout 注记，更新路线图
+- **`docs/phase-11c-design.md`**（修改）：明确 11C 工具链 standalone 可用
+- **`docs/phase-11d-design.md`**（修改）：修正过期状态描述（暂不实现 → 已完成）
+- **`docs/phase-11b-design.md`**：Step 0–7 全部完成，无需更改
+
+Phase 11 Closeout 事实：
+- Phase 11A Git Governance v0 ✅
+- Phase 11B Guard Skills v0 ✅
+- Phase 11C Documentation Governance v0 ✅
+- Phase 11D Collaboration Handoff v0 ✅
+- 测试基线：**1897 passed, 1 skipped**
+- MCP 工具：**30 个**（READ×24 + CACHE_WRITE×5 + PATCH_PROPOSE×1）
+- SmartDev 为 standalone 工程协作工具（本地 CLI · run artifact / handoff · GuardRunner · Doc Governance · MCP 工具 · Git 治理建议）。Phase 12 Model Router 为可选后续增强，非完整性前提。
 
 ### Added — Phase 11B Step 7: MCP 暴露只读 Guard 工具
 

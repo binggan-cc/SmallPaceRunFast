@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-10
-> 当前阶段：Phase 11B Step 7 完成 — MCP Guard 工具 + CLI Guard 入口（1897 tests）
+> 当前阶段：Phase 11 已全部完成 — Standalone Hardened（1897 tests, 30 MCP 工具）
 
 ---
 
@@ -29,9 +29,9 @@ L3a Skill接入   risk.check ← impact / architecture.map ← index / task.plan
 L4  执行层      code.patch(propose) → code.apply → code.rollback
 L5  版本治理层  git.status / git.diff.explain / git.commit.plan / git.release.plan / git.merge.check（Phase 11A ✅）
                manifest / snapshot / doc.map / doc.consistency / doc.update.plan / doc.patch.propose（Phase 11C ✅）
-               dev.guard / dependency.guard / security.review / change.budget（Phase 11B）
-L6  外部接入层  MCP Server → Claude / Kiro / Cursor / Codex（Phase 10 ✅）
-L7  模型协作层  handoff pack / scope gate（Phase 11D）→ model registry / task router / output contract / risk policy（Phase 12，横向）
+               dev.guard / dependency.guard / security.review / change.budget / diff.explain / guard.runner（Phase 11B ✅）
+L6  外部接入层  MCP Server → Claude / Kiro / Cursor / Codex（Phase 10 ✅，30 工具）
+L7  模型协作层  handoff pack / scope gate（Phase 11D ✅）→ model registry / task router（Phase 12，可选）
 ```
 
 完整 AI 编程闭环（各层覆盖范围）：
@@ -63,13 +63,13 @@ AI 编程真正的风险是人失去理解权、判断权和验收权。SmartDev
 ```
 Phase 10  MCP Server v0（能力分发）               ✅ 完成
     ↓
-Phase 11  Human-Controlled AI Coding Layer
+Phase 11  Human-Controlled AI Coding Layer           ✅ 全部完成
     ├── 11A: Git Governance v0（版本治理层 L5）     ✅ 完成
     ├── 11C: Documentation Governance v0           ✅ 完成
     ├── 11D: Collaboration Handoff v0              ✅ 完成
-    └── 11B: Guard Skills（安全防护层 L5）          ← 当前阶段
+    └── 11B: Guard Skills（安全防护层 L5）          ✅ 完成
     ↓
-Phase 12  Model Collaboration Layer（横向 L7）
+Phase 12  Model Collaboration Layer（横向 L7，可选后续增强）
     ├── 12A: Policy 配置层（不调用真实 API）
     └── 12B: Router 真实路由（依赖 Phase 10 跑稳）
     ↓
@@ -89,9 +89,13 @@ Phase 14  FileWatcher / Incremental Sync
 
 ---
 
-## 2. 当前阶段
+## 2. 当前阶段 — Phase 11 全部完成
 
-### Phase 1：只读诊断 Agent（进行中）
+> Phase 11A / 11B / 11C / 11D 已全部完成。SmartDev 当前为 standalone 工程协作工具。
+> 测试基线：**1897 passed, 1 skipped**。MCP 工具：**30 个**。
+> Phase 12 为可选后续增强（Model Router），非完整性前提。
+
+### Phase 1：只读诊断 Agent（✅ 完成）
 
 目标：不改代码，只读项目。实现 R0 只读类 Skill。
 
@@ -110,7 +114,7 @@ Phase 14  FileWatcher / Incremental Sync
 
 **Phase 1 已完成。**
 
-### Phase 2：项目适配器（进行中）
+### Phase 2：项目适配器（✅ 完成）
 
 目标：让 Agent 能区分项目类型。
 
@@ -238,7 +242,7 @@ NullStructureExtractor      → 不支持的语言
 - ❌ 不支持 TypeScript Compiler API 类型级别解析（Phase 6.3B）
 - ❌ 不支持 extends / references 多文件继承
 
-### Phase 7：Tree-sitter Multi-language Graph Provider（进行中）
+### Phase 7：Tree-sitter Multi-language Graph Provider（✅ 完成）
 
 目标：为不支持的语言（首批 Go）提供高置信度解析，作为第三层 optional Provider。
 
@@ -514,7 +518,7 @@ Go 提取能力（Step 2）：
 - 生成与应用分离：code.patch(propose, R1) / code.apply(R2/R3 确认) / code.rollback(R1)
 - 默认安全：不加 --apply 绝不碰磁盘
 
-### Phase 11A：Git Governance v0（进行中）
+### Phase 11A：Git Governance v0（✅ 完成）
 
 目标：补齐 AI 编程闭环的后两步（版本提交 + 发布治理），覆盖交付记录层（L5）。
 
@@ -550,7 +554,7 @@ Go 提取能力（Step 2）：
 
 端到端验证：doc.consistency → doc.update.plan → 手动 code-agent-pack → Code Agent 起草 → 人工审阅 → apply。Rule 3 误报修复后，项目自检从 53 个 issue 降至 10 个，high 从 42 降至 0。测试基线：1210 passed, 1 skipped。
 
-### Phase 11D：Collaboration Handoff v0（进行中）
+### Phase 11D：Collaboration Handoff v0（✅ 完成）
 
 目标：基于 SmartDev run artifacts，把工程事实裁剪成角色化上下文包（code-agent / doc-steward / reviewer），让多模型协作不靠共享聊天记忆。
 
@@ -592,8 +596,8 @@ Step 6A 验证：`smartdev run new <id>` 新增强制创建 `agent-output/` 和 
 
 **当前协作模式：** DeepSeek = Code Agent；Claude/Codex = Doc Steward；SmartDev = Handoff Pack + Gates；Human = Apply / Commit / Release。
 
-**Phase 11 整体路线（已调整）：** 11A ✅ → 11C ✅ → 11D → 11B → Phase 12
-（原计划 11A→11B→11C，因当前已在实际使用双模型协作，Doc Steward 需求更急，故 11C/11D 提前，Guard Skills 稍后）
+**Phase 11 整体路线（全部完成）：** 11A ✅ → 11C ✅ → 11D ✅ → 11B ✅ → Standalone 闭环成立
+（Phase 12 为可选后续增强，SmartDev 不依赖 Phase 12 即可作为完整的工程协作工具独立使用）
 
 设计文档：[phase-11-design.md](phase-11-design.md)
 
@@ -662,7 +666,7 @@ Git Governance 核心设计原则：
 - `code.apply` 和 `git commit` 必须分开，apply 不自动 commit
 - 支持 `.smartdev/git-policy.yaml` 配置保护分支 / commit 规范 / 危险操作禁止项
 
-**Phase 11B：Guard Skills（安全防护层 L5）**
+**Phase 11B：Guard Skills（安全防护层 L5，✅ 完成）**
 
 设计文档：[phase-11b-design.md](phase-11b-design.md)
 
@@ -699,9 +703,11 @@ Phase 11 完成后，MCP 可扩展增加只读 Git 工具：
 
 ---
 
-**Phase 12：Model Collaboration Layer（模型协作控制层）**
+**Phase 12：Model Collaboration Layer（可选后续增强，非完整性前提）**
 
-SmartDev 不绑定某一个模型，而是把不同模型都纳入同一套项目上下文、任务边界、风险控制和验收流程里。Phase 12 分两步实现。
+> SmartDev 当前已可作为 standalone 工程协作工具独立使用：本地 CLI、run artifact / handoff、GuardRunner、Doc Governance、MCP 工具（30 个）、Git 提交建议/治理。Phase 12 为可选增强——自动 Model Router 和 Policy 配置。
+
+SmartDev 不绑定某一个模型，而是把不同模型都纳入同一套项目上下文、任务边界、风险控制和验收流程里。Phase 12 为可选增强，分两步实现。
 
 **Phase 12A：Model Collaboration Policy（配置层，不调用真实 API）**
 
