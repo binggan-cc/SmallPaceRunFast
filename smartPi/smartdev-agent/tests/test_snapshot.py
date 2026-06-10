@@ -403,6 +403,25 @@ class TestBuildCliSnapshot:
         assert "--tests" in rp.args
         assert "--status" in rp.args
 
+    def test_guard_run_present(self):
+        """Phase 11B Step 6: smartdev guard run 出现在 CLI 快照中"""
+        snap = build_cli_snapshot()
+        gr = next((c for c in snap.commands if c.command == "smartdev guard run"), None)
+        assert gr is not None, "smartdev guard run 应出现在 CLI 快照中"
+        assert "--changed-files" in gr.args
+        assert "--select" in gr.args
+        assert "--json" in gr.args
+
+    def test_guard_run_has_expected_args(self):
+        """smartdev guard run 包含所有必要参数"""
+        snap = build_cli_snapshot()
+        gr = next((c for c in snap.commands if c.command == "smartdev guard run"), None)
+        assert gr is not None
+        expected_args = ["--changed-files", "--select", "--task", "--diff-file",
+                         "--max-files", "--max-lines", "--json"]
+        for arg in expected_args:
+            assert arg in gr.args, f"guard run 应包含 {arg}"
+
     def test_to_json_roundtrip(self):
         snap = build_cli_snapshot()
         restored = CliSnapshot.from_dict(json.loads(snap.to_json()))

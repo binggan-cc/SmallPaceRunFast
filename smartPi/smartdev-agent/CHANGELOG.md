@@ -4,6 +4,28 @@
 
 ## [Unreleased] — Phase 11B: Guard Skills v0
 
+### Added — Phase 11B Step 6: GuardRunner + CLI 入口
+
+- **`smartdev/core/guard_runner.py`**（新增）：GuardRunner 组合执行层
+  - `GuardEntryResult` / `GuardRunResult` 数据模型
+  - `run_guard_runner()` 一键运行全部 5 个 Guard Skill，输出聚合报告
+  - 支持 `select` 过滤只运行指定 Guard；无效名称返回错误不崩溃
+  - 单个 Guard 异常时记录 error 字段，不中断整体流程
+  - 聚合 `overall_passed` / per-guard `passed` / `summary` / `duration_ms` / `risks` / `next_steps`
+  - 支持 `to_dict()` / `to_json()` JSON 序列化
+  - 无 git 依赖，R0 只读，基于显式输入运行
+- **`smartdev/cli.py`**（修改）：新增 `smartdev guard run` 命令
+  - 支持参数：`--project` / `--changed-files` / `--select` / `--task` / `--diff-file` / `--max-files` / `--max-lines` / `--json`
+  - 文本输出：overall、每个 guard 的 passed/summary、suggested_actions
+  - JSON 输出：完整聚合报告
+  - 错误处理：无效 guard 名称 / 不存在 diff-file / 不存在项目路径 → 返回非 0
+- **`smartdev/core/snapshot.py`**（修改）：`_build_cli_parser` 同步 `smartdev guard run`
+- **`tests/test_guard_runner.py`**（新增）：19 tests — 数据模型序列化 / 全量运行 / select 过滤 / 无效名称 / 空文件 / 聚合统计 / 确定性
+- **`tests/test_cli.py`**（修改）：新增 `TestGuardCLI`（11 tests） — help / run / json / select / invalid / missing-project / diff-file / max-files / text-output
+- **`tests/test_snapshot.py`**（修改）：新增 `test_guard_run_present` + `test_guard_run_has_expected_args`
+
+测试基线：**1869 passed, 1 skipped**
+
 ### Added — Phase 11B Step 5: diff.explain Guard Skill
 
 - **`smartdev/core/guard_diff_explain.py`**（新增）：`diff.explain` patch 级规则引擎

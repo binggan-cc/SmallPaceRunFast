@@ -1069,6 +1069,100 @@ def _cmd_mcp(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_guard_run(args: argparse.Namespace) -> int:
+    """guard run — 一键运行 Guard Skills 并输出聚合报告（Phase 11B Step 6）
+
+    R0 只读，不修改任何文件。
+    """
+    import json as _json
+
+    from smartdev.core.guard_runner import run_guard_runner
+
+    project_path = Path(args.project).resolve()
+    if not project_path.exists():
+        print(f"错误: 项目路径不存在: {project_path}", file=sys.stderr)
+        return 1
+
+    # 收集 changed_files
+    changed_files: list[str] = list(args.changed_files) if args.changed_files else []
+
+    # 读取 diff_file（若指定）
+    diff_content: str | None = None
+    if args.diff_file:
+        diff_path = Path(args.diff_file)
+        if not diff_path.exists():
+            print(f"错误: diff 文件不存在: {diff_path}", file=sys.stderr)
+            return 1
+        try:
+            diff_content = diff_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as e:
+            print(f"错误: 无法读取 diff 文件: {e}", file=sys.stderr)
+            return 1
+
+    # 解析 select
+    select: list[str] | None = None
+    if args.select:
+        select = [s.strip() for s in args.select.split(",") if s.strip()]
+        # 验证 guard 名称
+        valid_guards = {
+            "change.budget", "dev.guard", "dependency.guard",
+            "security.review", "diff.explain",
+        }
+        invalid = [g for g in select if g not in valid_guards]
+        if invalid:
+            print(
+                f"错误: 无效 Guard 名称: {', '.join(invalid)}\n"
+                f"可用 Guard: {', '.join(sorted(valid_guards))}",
+                file=sys.stderr,
+            )
+            return 1
+
+    # 运行 GuardRunner
+    result = run_guard_runner(
+        project_path=project_path,
+        changed_files=changed_files,
+        diff_content=diff_content,
+        select=select,
+        task_description=args.task or "",
+        max_files=args.max_files,
+        max_lines=args.max_lines,
+        run_id="cli-guard-run",
+    )
+
+    # 输出
+    if args.json:
+        print(result.to_json())
+    else:
+        # 人类可读输出
+        print(f"GuardRunner 报告")
+        print(f"───────────────")
+        print(f"状态: {'✅ 全部通过' if result.overall_passed else '❌ 存在问题'}")
+        print(f"运行: {len(result.selected)} 个 Guard, 跳过 {len(result.skipped)} 个")
+        print(f"错误: {result.error_count}, 警告: {result.warning_count}")
+        print()
+
+        for name in result.selected:
+            entry = result.guards.get(name)
+            if entry is None:
+                continue
+            icon = "✅" if entry.passed else "❌"
+            print(f"  {icon} {name} ({entry.duration_ms:.1f}ms)")
+            print(f"     {entry.summary}")
+            if entry.risks:
+                for r in entry.risks[:5]:  # 最多显示 5 个
+                    print(f"     ⚠ {r}")
+            if entry.error:
+                print(f"     ❌ 异常: {entry.error}")
+
+        if result.suggested_actions:
+            print()
+            print("建议操作:")
+            for action in result.suggested_actions:
+                print(f"  • {action}")
+
+    return 0 if result.overall_passed else 1
+
+
 def main() -> None:
     """CLI 主入口"""
     parser = argparse.ArgumentParser(
@@ -1325,6 +1419,56 @@ def main() -> None:
     )
     mcp_parser.add_argument("--project", "-p", required=True, help="项目根目录路径")
     mcp_parser.set_defaults(func=_cmd_mcp)
+
+    # guard 命令组（Phase 11B Step 6 新增）
+    guard_parser = subparsers.add_parser(
+        "guard",
+        help="Guard Skills 审查命令（R0 只读）",
+    )
+    guard_subparsers = guard_parser.add_subparsers(dest="guard_command", help="guard 子命令")
+
+    # guard run
+    guard_run_parser = guard_subparsers.add_parser(
+        "run",
+        help="一键运行 Guard Skills 并输出聚合报告（R0 只读）",
+    )
+    guard_run_parser.add_argument(
+        "--project", "-p", default=".",
+        help="项目根目录路径（默认当前目录）",
+    )
+    guard_run_parser.add_argument(
+        "--changed-files", nargs="*", default=[],
+        help="变更文件列表",
+    )
+    guard_run_parser.add_argument(
+        "--select", default=None,
+        help="指定运行 Guard 名称（逗号分隔，默认全部）",
+    )
+    guard_run_parser.add_argument(
+        "--task", "-t", default="",
+        help="任务描述（传给 dev.guard）",
+    )
+    guard_run_parser.add_argument(
+        "--diff-file", default=None,
+        help="diff 文件路径（读取 unified diff 内容）",
+    )
+    guard_run_parser.add_argument(
+        "--max-files", type=int, default=10,
+        help="文件数上限（默认 10，传给 change.budget）",
+    )
+    guard_run_parser.add_argument(
+        "--max-lines", type=int, default=None,
+        help="行数上限（传给 change.budget）",
+    )
+    guard_run_parser.add_argument(
+        "--json", action="store_true",
+        help="机器可读 JSON 输出",
+    )
+    guard_run_parser.set_defaults(func=_cmd_guard_run)
+
+    guard_parser.set_defaults(
+        func=lambda a: (guard_parser.print_help(), sys.exit(1))
+    )
 
     # git 命令组（Phase 11A 新增）
     git_parser = subparsers.add_parser(

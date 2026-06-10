@@ -672,6 +672,21 @@ def _build_cli_parser():
                                    description="启动 MCP Server（供外部 Agent 通过 stdio 调用）")
     mcp_p.add_argument("--project", "-p", required=True)
 
+    # guard（Phase 11B Step 6 新增）
+    guard_p = subparsers.add_parser("guard", help="Guard Skills 审查命令（R0 只读）",
+                                     description="Guard Skills 审查命令（R0 只读）")
+    guard_sub = guard_p.add_subparsers(dest="guard_command")
+    guard_run_p = guard_sub.add_parser("run", help="一键运行 Guard Skills 并输出聚合报告（R0 只读）",
+                                        description="一键运行 Guard Skills 并输出聚合报告（R0 只读）")
+    guard_run_p.add_argument("--project", "-p", default=".")
+    guard_run_p.add_argument("--changed-files", nargs="*", default=[])
+    guard_run_p.add_argument("--select", default=None)
+    guard_run_p.add_argument("--task", "-t", default="")
+    guard_run_p.add_argument("--diff-file", default=None)
+    guard_run_p.add_argument("--max-files", type=int, default=10)
+    guard_run_p.add_argument("--max-lines", type=int, default=None)
+    guard_run_p.add_argument("--json", action="store_true")
+
     # git
     git_p = subparsers.add_parser("git", help="Git 治理命令",
                                    description="Git 治理命令（commit/tag，默认 dry-run）")

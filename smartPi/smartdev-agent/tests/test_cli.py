@@ -499,3 +499,144 @@ class TestCLIRunReport:
         )
         assert result.returncode == 1
         assert "不存在" in result.stderr
+
+
+class TestGuardCLI:
+    """smartdev guard run CLI 测试（Phase 11B Step 6）"""
+
+    def test_guard_help(self):
+        """guard --help 输出子命令列表"""
+        result = _run_cli("guard", "--help")
+        assert result.returncode == 0
+        assert "run" in result.stdout
+
+    def test_guard_run_help(self):
+        """guard run --help 列出所有参数"""
+        result = _run_cli("guard", "run", "--help")
+        assert result.returncode == 0
+        assert "--changed-files" in result.stdout
+        assert "--select" in result.stdout
+        assert "--json" in result.stdout
+
+    def test_guard_run_basic(self, tmp_path: Path):
+        """基本运行：传入 changed_files → 输出成功"""
+        (tmp_path / "smartdev").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core" / "git.py").write_text("# test")
+        result = _run_cli(
+            "guard", "run",
+            "--project", str(tmp_path),
+            "--changed-files", "smartdev/core/git.py",
+        )
+        assert result.returncode == 0
+
+    def test_guard_run_json_output(self, tmp_path: Path):
+        """--json 输出合法 JSON"""
+        (tmp_path / "smartdev").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core" / "git.py").write_text("# test")
+        result = _run_cli(
+            "guard", "run",
+            "--project", str(tmp_path),
+            "--changed-files", "smartdev/core/git.py",
+            "--json",
+        )
+        assert result.returncode == 0
+        import json as _json
+        data = _json.loads(result.stdout)
+        assert "overall_passed" in data
+        assert "guards" in data
+        assert "error_count" in data
+
+    def test_guard_run_with_select(self, tmp_path: Path):
+        """--select 只运行指定 Guard"""
+        (tmp_path / "smartdev").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core" / "git.py").write_text("# test")
+        result = _run_cli(
+            "guard", "run",
+            "--project", str(tmp_path),
+            "--changed-files", "smartdev/core/git.py",
+            "--select", "change.budget,dev.guard",
+            "--json",
+        )
+        assert result.returncode == 0
+        import json as _json
+        data = _json.loads(result.stdout)
+        assert "change.budget" in data["guards"]
+        assert "dev.guard" in data["guards"]
+        assert "dependency.guard" in data["skipped"]
+
+    def test_guard_run_invalid_select(self):
+        """--select 无效名称 → 返回非 0"""
+        result = _run_cli(
+            "guard", "run",
+            "--changed-files", "a.py",
+            "--select", "nonexistent",
+        )
+        assert result.returncode == 1
+        assert "无效 Guard" in result.stderr
+
+    def test_guard_run_missing_project(self, tmp_path: Path):
+        """不存在的 project 路径 → 错误"""
+        result = _run_cli(
+            "guard", "run",
+            "--project", str(tmp_path / "does-not-exist"),
+            "--changed-files", "a.py",
+        )
+        assert result.returncode == 1
+
+    def test_guard_run_missing_diff_file(self, tmp_path: Path):
+        """--diff-file 文件不存在 → 错误"""
+        (tmp_path / "smartdev").mkdir(parents=True, exist_ok=True)
+        result = _run_cli(
+            "guard", "run",
+            "--project", str(tmp_path),
+            "--changed-files", "a.py",
+            "--diff-file", str(tmp_path / "nonexistent.diff"),
+        )
+        assert result.returncode == 1
+        assert "不存在" in result.stderr
+
+    def test_guard_run_with_diff_file(self, tmp_path: Path):
+        """--diff-file 正确读取 diff 内容"""
+        (tmp_path / "smartdev").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core" / "git.py").write_text("# test")
+        diff_file = tmp_path / "test.diff"
+        diff_file.write_text("+new line\n-old line")
+        result = _run_cli(
+            "guard", "run",
+            "--project", str(tmp_path),
+            "--changed-files", "smartdev/core/git.py",
+            "--diff-file", str(diff_file),
+            "--json",
+        )
+        assert result.returncode == 0
+
+    def test_guard_run_with_max_files(self, tmp_path: Path):
+        """--max-files 参数覆盖默认值"""
+        (tmp_path / "smartdev").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core" / "git.py").write_text("# test")
+        result = _run_cli(
+            "guard", "run",
+            "--project", str(tmp_path),
+            "--changed-files", "smartdev/core/git.py",
+            "--max-files", "5",
+            "--json",
+        )
+        assert result.returncode == 0
+
+    def test_guard_run_text_output(self, tmp_path: Path):
+        """文本模式输出包含 GuardRunner 标识"""
+        (tmp_path / "smartdev").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "smartdev" / "core" / "git.py").write_text("# test")
+        result = _run_cli(
+            "guard", "run",
+            "--project", str(tmp_path),
+            "--changed-files", "smartdev/core/git.py",
+        )
+        assert result.returncode == 0
+        assert "GuardRunner" in result.stdout
