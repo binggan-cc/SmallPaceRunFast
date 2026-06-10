@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-10
-> 当前阶段：Phase 11B Step 6 完成 — GuardRunner + CLI 入口（1869 tests）
+> 当前阶段：Phase 11B Step 7 完成 — MCP Guard 工具 + CLI Guard 入口（1897 tests）
 
 ---
 
@@ -363,7 +363,7 @@ Go 提取能力（Step 2）：
 ## 5. 测试覆盖
 
 ```
-1869 passed, 1 skipped — 0 failed
+1897 passed, 1 skipped — 0 failed
 ```
 
 | 测试文件 | 数量 | 覆盖模块 |
@@ -678,7 +678,9 @@ Step 4 验证：`security.review` Guard Skill 已实现；新增 `smartdev/core/
 
 Step 5 验证：`diff.explain` Guard Skill 已实现；新增 `smartdev/core/guard_diff_explain.py` 规则引擎、`smartdev/skills/diff_explain_patch/skill.py` + `skill.yaml` + `__init__.py`、`tests/test_guard_diff_explain.py`，并在 `smartdev/skills/__init__.py` 注册。规则覆盖逻辑分组 / 测试伴随 / 依赖匹配 / 跨模块检测 / 审查顺序建议；与 `git.diff.explain`（仓库级）互补，面向显式传入的 patch 文件列表和 diff 内容；支持 `base_signals` 合并外部既有信号；文件分类覆盖 source/test/doc/manifest/config/core/mcp/other；穿透项目根前缀（smartdev/src/app/lib）进行功能模块分组；risk_hints 覆盖 cross_module_change / dependency_manifest_changed_without_code / missing_related_tests 等 7 种风险信号；零外部依赖，R0 只读。测试基线：1838 passed, 1 skipped。
 
-Step 6 验证：GuardRunner + CLI 入口已实现；新增 `smartdev/core/guard_runner.py` 组合执行层、`smartdev guard run` CLI 命令、`tests/test_guard_runner.py`；修改 `smartdev/cli.py`（新增 guard 命令组 + _cmd_guard_run 处理函数）、`smartdev/core/snapshot.py`（同步 _build_cli_parser）、`tests/test_cli.py`（新增 TestGuardCLI，11 tests）、`tests/test_snapshot.py`（新增 2 tests）。GuardRunner 按固定顺序运行 5 个 Guard，支持 `--select` 过滤、`--json` 输出、`--diff-file`、`--max-files`、`--max-lines`；单个 Guard 异常不崩溃；聚合 over_all_passed / per-guard summary / duration_ms / risks / error_count / warning_count / suggested_actions。CLI snapshot 已同步 `smartdev guard run`。测试基线：1869 passed, 1 skipped。
+Step 6 验证：GuardRunner + CLI 入口已实现；新增 `smartdev/core/guard_runner.py` 组合执行层、`smartdev guard run` CLI 命令、`tests/test_guard_runner.py`（21 tests）；修改 `smartdev/cli.py`（新增 guard 命令组 + _cmd_guard_run 处理函数）、`smartdev/core/snapshot.py`（同步 _build_cli_parser）、`tests/test_cli.py`（新增 TestGuardCLI，11 tests）、`tests/test_snapshot.py`（新增 2 tests）。GuardRunner 按固定顺序运行 5 个 Guard，支持 `--select` 过滤、`--json` 输出、`--diff-file`、`--max-files`、`--max-lines`；单个 Guard 异常不崩溃；聚合 overall_passed / per-guard summary / duration_ms / risks / error_count / warning_count / suggested_actions；warning_count 只统计 warning/info 级 violations，不混入 error risks。CLI snapshot 已同步 `smartdev guard run`。测试基线：1871 passed, 1 skipped。
+
+Step 7 验证：MCP Server 暴露 6 个 Guard 工具；新增 `smartdev/mcp/tools.py`（6 个 handler：handle_guard_run / handle_change_budget / handle_dev_guard / handle_dependency_guard / handle_security_review / handle_diff_explain）、`smartdev/mcp/server.py`（6 个 Tool schema + handler 路由注册）、`tests/test_mcp_guard_tools.py`（26 tests）；修改 `smartdev/mcp/tools.py`（handle_version / handle_list_tools 包含 6 个新工具）、8 个现有测试文件（工具总数 24 → 30）。smartdev_guard_run 支持 `--select` 过滤只运行指定 Guard；5 个单 Guard 工具接受和 Skill 一致的显式输入；所有 Guard 为 R0 只读，不依赖 git，不修改任何源文件；MCP 工具总数：24 → 30。测试基线：1897 passed, 1 skipped。
 
 | Skill | 说明 |
 |-------|------|

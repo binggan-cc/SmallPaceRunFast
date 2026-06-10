@@ -153,6 +153,25 @@ def _now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+def _count_warning_like_violations(data: dict) -> int:
+    """统计 warning/info 级 violation。
+
+    SkillResult.risks 在现有 Guard 中主要承载 error 级风险，不能直接当作
+    warning_count。聚合报告的 warning_count 应来自结构化 violations。
+    """
+    violations = data.get("violations", []) if isinstance(data, dict) else []
+    if not isinstance(violations, list):
+        return 0
+
+    count = 0
+    for violation in violations:
+        if not isinstance(violation, dict):
+            continue
+        if violation.get("severity") in {"warning", "info"}:
+            count += 1
+    return count
+
+
 # ── 核心入口 ──────────────────────────────────────────────────
 
 
@@ -238,6 +257,7 @@ def run_guard_runner(
     }
 
     guards: dict[str, GuardEntryResult] = {}
+    guard_warning_counts: dict[str, int] = {}
 
     for guard_name in _GUARD_ORDER:
         if guard_name in skipped:
@@ -288,6 +308,9 @@ def run_guard_runner(
                 risks=list(result.risks) if result.risks else [],
                 next_steps=list(result.next_steps) if result.next_steps else [],
             )
+            guard_warning_counts[guard_name] = _count_warning_like_violations(
+                result.data
+            )
         except Exception as e:
             t_end = time.perf_counter()
             guards[guard_name] = GuardEntryResult(
@@ -302,15 +325,14 @@ def run_guard_runner(
     warning_count = 0
     all_passed = True
 
-    for entry in guards.values():
+    for guard_name, entry in guards.items():
         if entry.error:
             error_count += 1
             all_passed = False
         elif not entry.passed:
             error_count += 1
             all_passed = False
-        # risks 中的 warning 计数
-        warning_count += len(entry.risks)
+        warning_count += guard_warning_counts.get(guard_name, 0)
 
     # 构建 suggested_actions
     suggested_actions: list[str] = []

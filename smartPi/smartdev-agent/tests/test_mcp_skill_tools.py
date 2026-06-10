@@ -263,7 +263,7 @@ class TestStep3ToolsRegistration:
         result = await handle_list_tools({}, tmp_path)
         data = json.loads(result[0].text)
         # Step 4 後有 14 個工具
-        assert data["data"]["total"] == 24
+        assert data["data"]["total"] == 30
 
     @pytest.mark.asyncio
     async def test_version_marks_step3_as_available(self, tmp_path):

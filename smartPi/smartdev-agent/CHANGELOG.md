@@ -4,6 +4,32 @@
 
 ## [Unreleased] — Phase 11B: Guard Skills v0
 
+### Added — Phase 11B Step 7: MCP 暴露只读 Guard 工具
+
+- **`smartdev/mcp/tools.py`**（修改）：新增 6 个 MCP Guard handler
+  - `handle_guard_run()` — 一键运行全部 5 个 Guard，返回聚合报告
+  - `handle_change_budget()` — 变更预算检查（文件数/行数/schema）
+  - `handle_dev_guard()` — AI 编程规则守卫
+  - `handle_dependency_guard()` — 依赖变更审查
+  - `handle_security_review()` — 安全审查清单（6 类检查）
+  - `handle_diff_explain()` — Patch 级 diff 解释
+  - 所有 Guard handler 遵循统一模式：Skill.create() → can_run() → run() → 结构化响应
+  - 缺少 required 参数时返回 `INVALID_ARGUMENT`，异常时返回 `INTERNAL_ERROR`
+- **`smartdev/mcp/server.py`**（修改）：注册 6 个 Tool schema + 路由 handler
+- **`smartdev/mcp/tools.py`**（修改）：`handle_version` 和 `handle_list_tools` 包含 6 个新 Guard 工具
+- **`tests/test_mcp_guard_tools.py`**（新增）：26 tests
+  - `TestGuardToolsRegistered`：4 tests（version/list_tools/handlers/schemas 注册验证）
+  - `TestGuardRunHandler`：6 tests（有效输入/select 过滤/无效名称/全量运行/空文件/diff_content）
+  - `TestChangeBudgetHandler`：4 tests（缺失参数/空列表/有效输入/自定义 max_files）
+  - `TestDevGuardHandler`：3 tests（缺失参数/有效输入/protected_paths）
+  - `TestDependencyGuardHandler`：3 tests（缺失参数/有效输入/manifest diff）
+  - `TestSecurityReviewHandler`：3 tests（缺失参数/有效输入/hardcoded secret 检测）
+  - `TestDiffExplainHandler`：3 tests（缺失参数/有效输入/diff_content 行数统计）
+- **MCP 工具总数**：24 → 30
+- **现有测试**（8 个文件）：更新硬编码工具总数（24 → 30）
+
+测试基线：**1897 passed, 1 skipped**
+
 ### Added — Phase 11B Step 6: GuardRunner + CLI 入口
 
 - **`smartdev/core/guard_runner.py`**（新增）：GuardRunner 组合执行层
@@ -20,11 +46,11 @@
   - JSON 输出：完整聚合报告
   - 错误处理：无效 guard 名称 / 不存在 diff-file / 不存在项目路径 → 返回非 0
 - **`smartdev/core/snapshot.py`**（修改）：`_build_cli_parser` 同步 `smartdev guard run`
-- **`tests/test_guard_runner.py`**（新增）：19 tests — 数据模型序列化 / 全量运行 / select 过滤 / 无效名称 / 空文件 / 聚合统计 / 确定性
+- **`tests/test_guard_runner.py`**（新增）：21 tests — 数据模型序列化 / 全量运行 / select 过滤 / 无效名称 / 空文件 / 聚合统计 / warning_count 语义 / 确定性
 - **`tests/test_cli.py`**（修改）：新增 `TestGuardCLI`（11 tests） — help / run / json / select / invalid / missing-project / diff-file / max-files / text-output
 - **`tests/test_snapshot.py`**（修改）：新增 `test_guard_run_present` + `test_guard_run_has_expected_args`
 
-测试基线：**1869 passed, 1 skipped**
+测试基线：**1871 passed, 1 skipped**
 
 ### Added — Phase 11B Step 5: diff.explain Guard Skill
 

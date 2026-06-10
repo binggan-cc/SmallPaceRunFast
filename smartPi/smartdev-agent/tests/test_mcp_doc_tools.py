@@ -53,7 +53,7 @@ class TestToolRegistration:
         """MCP 工具总数应为 21（19 + 2 个 doc 工具）。"""
         result = await handle_version({}, tmp_path)
         data = _parse(result)
-        assert len(data["data"]["tools"]) == 24
+        assert len(data["data"]["tools"]) == 30
 
     @pytest.mark.asyncio
     async def test_doc_tools_in_list_tools(self, tmp_path: Path):
@@ -81,7 +81,7 @@ class TestToolRegistration:
     async def test_list_tools_total_count_24(self, tmp_path: Path):
         result = await handle_list_tools({}, tmp_path)
         data = _parse(result)
-        assert data["data"]["total"] == 24
+        assert data["data"]["total"] == 30
 
 
 # ── handle_doc_consistency ────────────────────────────────

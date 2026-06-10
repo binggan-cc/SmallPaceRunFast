@@ -97,6 +97,13 @@ async def handle_version(arguments: dict, project_path: Path) -> list[TextConten
         {"name": "smartdev_handoff_code",     "permission": "CACHE_WRITE",   "status": "available"},
         {"name": "smartdev_handoff_doc",      "permission": "CACHE_WRITE",   "status": "available"},
         {"name": "smartdev_handoff_review",   "permission": "CACHE_WRITE",   "status": "available"},
+        # Phase 11B Step 7: 只读 Guard 工具
+        {"name": "smartdev_guard_run",        "permission": "READ",          "status": "available"},
+        {"name": "smartdev_change_budget",    "permission": "READ",          "status": "available"},
+        {"name": "smartdev_dev_guard",        "permission": "READ",          "status": "available"},
+        {"name": "smartdev_dependency_guard",  "permission": "READ",          "status": "available"},
+        {"name": "smartdev_security_review",  "permission": "READ",          "status": "available"},
+        {"name": "smartdev_diff_explain",     "permission": "READ",          "status": "available"},
     ]
     return [TextContent(
         type="text",
@@ -234,6 +241,37 @@ async def handle_list_tools(arguments: dict, project_path: Path) -> list[TextCon
             "name": "smartdev_handoff_review",
             "permission": "CACHE_WRITE",
             "description": "Generate reviewer-pack.md and write to .smartdev/runs/<run_id>/handoff/.",
+        },
+        # Phase 11B Step 7: 只读 Guard 工具
+        {
+            "name": "smartdev_guard_run",
+            "permission": "READ",
+            "description": "Run all 5 Guard Skills and return an aggregate report with per-guard status.",
+        },
+        {
+            "name": "smartdev_change_budget",
+            "permission": "READ",
+            "description": "Change budget check: file count, line count, schema change, per-file limits.",
+        },
+        {
+            "name": "smartdev_dev_guard",
+            "permission": "READ",
+            "description": "AI coding rules guard: mass refactor, protected paths, unrelated changes, etc.",
+        },
+        {
+            "name": "smartdev_dependency_guard",
+            "permission": "READ",
+            "description": "Dependency manifest review: added/removed/version-changed dependencies, lock sync.",
+        },
+        {
+            "name": "smartdev_security_review",
+            "permission": "READ",
+            "description": "Security review: input validation, path traversal, command injection, secrets, etc.",
+        },
+        {
+            "name": "smartdev_diff_explain",
+            "permission": "READ",
+            "description": "Patch-level diff explanation: logical grouping, test coverage, dependency match, review order.",
         },
     ]
     return [TextContent(
@@ -1364,5 +1402,411 @@ async def handle_handoff_review(arguments: dict, project_path: Path) -> list[Tex
             type="text",
             text=formatter.error(
                 "smartdev_handoff_review", "INTERNAL_ERROR", f"handoff-review failed: {e}",
+            ),
+        )]
+
+
+# ── Phase 11B Step 7 工具：只读 Guard 工具 ──────────────────────
+#
+# 设计原则（phase-11b-design.md §6 Step 7）：
+# - 6 个工具全部 READ 权限，调用对应 Guard Skill（R0）
+# - smartdev_guard_run：一键全跑 5 个 Guard，聚合报告
+# - 其余 5 个：单跑一个 Guard，接受和 Skill 一致的输入
+# - 所有 Guard 为 R0 只读，不修改任何源文件
+# - 不依赖 git，纯显式输入
+
+
+async def handle_guard_run(arguments: dict, project_path: Path) -> list[TextContent]:
+    """一键运行全部 Guard Skill，输出聚合报告。
+
+    select 参数可指定只运行部分 Guard（如 "change.budget,dev.guard"）。
+    """
+    import smartdev.skills  # noqa: F401
+
+    try:
+        # 解析 changed_files
+        changed_files_raw = arguments.get("changed_files")
+        if isinstance(changed_files_raw, list):
+            changed_files = [str(f) for f in changed_files_raw]
+        else:
+            changed_files = None
+
+        diff_content = arguments.get("diff_content")
+        if diff_content is not None:
+            diff_content = str(diff_content)
+
+        select_raw = arguments.get("select")
+        if isinstance(select_raw, list) and select_raw:
+            select = [str(s) for s in select_raw]
+        elif isinstance(select_raw, str) and select_raw.strip():
+            select = [s.strip() for s in select_raw.split(",")]
+        else:
+            select = None
+
+        task_description = str(arguments.get("task_description", ""))
+        max_files = int(arguments.get("max_files", 10))
+        max_lines_raw = arguments.get("max_lines")
+        max_lines = int(max_lines_raw) if max_lines_raw is not None else None
+
+        protected_paths_raw = arguments.get("protected_paths")
+        if isinstance(protected_paths_raw, list):
+            protected_paths = [str(p) for p in protected_paths_raw]
+        else:
+            protected_paths = None
+
+        denied_paths_raw = arguments.get("denied_paths")
+        if isinstance(denied_paths_raw, list):
+            denied_paths = [str(p) for p in denied_paths_raw]
+        else:
+            denied_paths = None
+
+        run_id = str(arguments.get("run_id", ""))
+
+        from smartdev.core.guard_runner import run_guard_runner
+        result = run_guard_runner(
+            project_path=project_path,
+            changed_files=changed_files,
+            diff_content=diff_content,
+            select=select,
+            task_description=task_description,
+            max_files=max_files,
+            max_lines=max_lines,
+            protected_paths=protected_paths,
+            denied_paths=denied_paths,
+            run_id=run_id,
+        )
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_guard_run",
+                result.to_dict(),
+                risk_level="R0",
+                warnings=(
+                    [f"{result.error_count} error(s) detected."]
+                    if result.error_count
+                    else []
+                ),
+                next_steps=result.suggested_actions[:5],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_guard_run", "INTERNAL_ERROR", f"guard.run failed: {e}",
+            ),
+        )]
+
+
+async def handle_change_budget(arguments: dict, project_path: Path) -> list[TextContent]:
+    """变更预算检查：文件数/行数/schema 变更上限"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    changed_files_raw = arguments.get("changed_files")
+    if not changed_files_raw or not isinstance(changed_files_raw, list) or len(changed_files_raw) == 0:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_change_budget",
+                "INVALID_ARGUMENT",
+                "Parameter 'changed_files' is required and must be a non-empty list of file paths.",
+            ),
+        )]
+
+    try:
+        skill = Skill.create("change.budget")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_change_budget",
+                    "SKILL_CANNOT_RUN",
+                    f"change.budget cannot run at: {project_path}",
+                ),
+            )]
+
+        inputs: dict = {"changed_files": [str(f) for f in changed_files_raw]}
+        if "max_files" in arguments:
+            inputs["max_files"] = int(arguments["max_files"])
+        if "max_lines" in arguments:
+            inputs["max_lines"] = int(arguments["max_lines"])
+        if "allow_schema_change" in arguments:
+            inputs["allow_schema_change"] = bool(arguments["allow_schema_change"])
+        if "per_file_limit" in arguments:
+            inputs["per_file_limit"] = int(arguments["per_file_limit"])
+        if "line_counts" in arguments:
+            raw_lc = arguments["line_counts"]
+            if isinstance(raw_lc, dict):
+                inputs["line_counts"] = {str(k): int(v) for k, v in raw_lc.items()}
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_change_budget",
+                result.data,
+                risk_level="R0",
+                warnings=result.risks[:3],
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_change_budget", "INTERNAL_ERROR", f"change.budget failed: {e}",
+            ),
+        )]
+
+
+async def handle_dev_guard(arguments: dict, project_path: Path) -> list[TextContent]:
+    """AI 编程规则守卫：大规模重构/protected_path/禁止文件等硬规则检查"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    changed_files_raw = arguments.get("changed_files")
+    if not changed_files_raw or not isinstance(changed_files_raw, list) or len(changed_files_raw) == 0:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_dev_guard",
+                "INVALID_ARGUMENT",
+                "Parameter 'changed_files' is required and must be a non-empty list of file paths.",
+            ),
+        )]
+
+    try:
+        skill = Skill.create("dev.guard")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_dev_guard",
+                    "SKILL_CANNOT_RUN",
+                    f"dev.guard cannot run at: {project_path}",
+                ),
+            )]
+
+        inputs: dict = {"changed_files": [str(f) for f in changed_files_raw]}
+        for key in ("protected_paths", "denied_paths", "forbidden_paths"):
+            raw = arguments.get(key)
+            if isinstance(raw, list):
+                inputs[key] = [str(p) for p in raw]
+        if "task_description" in arguments:
+            inputs["task_description"] = str(arguments["task_description"])
+        if "diff_content" in arguments:
+            inputs["diff_content"] = str(arguments["diff_content"])
+        if "max_files_per_commit" in arguments:
+            inputs["max_files_per_commit"] = int(arguments["max_files_per_commit"])
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_dev_guard",
+                result.data,
+                risk_level="R0",
+                warnings=result.risks[:3],
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_dev_guard", "INTERNAL_ERROR", f"dev.guard failed: {e}",
+            ),
+        )]
+
+
+async def handle_dependency_guard(arguments: dict, project_path: Path) -> list[TextContent]:
+    """依赖变更审查：manifest 文件新增/删除/版本变更检测"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    changed_files_raw = arguments.get("changed_files")
+    if not changed_files_raw or not isinstance(changed_files_raw, list) or len(changed_files_raw) == 0:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_dependency_guard",
+                "INVALID_ARGUMENT",
+                "Parameter 'changed_files' is required and must be a non-empty list of file paths.",
+            ),
+        )]
+
+    try:
+        skill = Skill.create("dependency.guard")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_dependency_guard",
+                    "SKILL_CANNOT_RUN",
+                    f"dependency.guard cannot run at: {project_path}",
+                ),
+            )]
+
+        inputs: dict = {"changed_files": [str(f) for f in changed_files_raw]}
+        if "diff_content" in arguments:
+            inputs["diff_content"] = str(arguments["diff_content"])
+        for key in ("manifest_before", "manifest_after"):
+            raw = arguments.get(key)
+            if isinstance(raw, dict):
+                inputs[key] = {str(k): str(v) for k, v in raw.items()}
+        if "lock_files_changed" in arguments:
+            raw_lf = arguments["lock_files_changed"]
+            if isinstance(raw_lf, list):
+                inputs["lock_files_changed"] = [str(f) for f in raw_lf]
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_dependency_guard",
+                result.data,
+                risk_level="R0",
+                warnings=result.risks[:3],
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_dependency_guard", "INTERNAL_ERROR", f"dependency.guard failed: {e}",
+            ),
+        )]
+
+
+async def handle_security_review(arguments: dict, project_path: Path) -> list[TextContent]:
+    """安全审查清单：输入校验/路径穿越/命令注入/敏感数据/硬编码密钥/动态执行"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    changed_files_raw = arguments.get("changed_files")
+    if not changed_files_raw or not isinstance(changed_files_raw, list) or len(changed_files_raw) == 0:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_security_review",
+                "INVALID_ARGUMENT",
+                "Parameter 'changed_files' is required and must be a non-empty list of file paths.",
+            ),
+        )]
+
+    try:
+        skill = Skill.create("security.review")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_security_review",
+                    "SKILL_CANNOT_RUN",
+                    f"security.review cannot run at: {project_path}",
+                ),
+            )]
+
+        inputs: dict = {"changed_files": [str(f) for f in changed_files_raw]}
+        if "diff_content" in arguments:
+            inputs["diff_content"] = str(arguments["diff_content"])
+        if "file_contents" in arguments:
+            raw_fc = arguments["file_contents"]
+            if isinstance(raw_fc, dict):
+                inputs["file_contents"] = {str(k): str(v) for k, v in raw_fc.items()}
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_security_review",
+                result.data,
+                risk_level="R0",
+                warnings=result.risks[:3],
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_security_review", "INTERNAL_ERROR", f"security.review failed: {e}",
+            ),
+        )]
+
+
+async def handle_diff_explain(arguments: dict, project_path: Path) -> list[TextContent]:
+    """Patch 级 diff 解释：逻辑分组/测试伴随/依赖匹配/审查顺序"""
+    import smartdev.skills  # noqa: F401
+    from smartdev.skills.base import Skill
+
+    patch_files_raw = arguments.get("patch_files")
+    if not patch_files_raw or not isinstance(patch_files_raw, list) or len(patch_files_raw) == 0:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_diff_explain",
+                "INVALID_ARGUMENT",
+                "Parameter 'patch_files' is required and must be a non-empty list of file paths.",
+            ),
+        )]
+
+    try:
+        skill = Skill.create("diff.explain")
+        context = _make_context(project_path)
+
+        if not skill.can_run(context):
+            return [TextContent(
+                type="text",
+                text=formatter.error(
+                    "smartdev_diff_explain",
+                    "SKILL_CANNOT_RUN",
+                    f"diff.explain cannot run at: {project_path}",
+                ),
+            )]
+
+        inputs: dict = {"patch_files": [str(f) for f in patch_files_raw]}
+        if "diff_content" in arguments:
+            inputs["diff_content"] = str(arguments["diff_content"])
+        if "project_path" in arguments:
+            inputs["project_path"] = str(arguments["project_path"])
+        else:
+            inputs["project_path"] = str(project_path)
+        if "base_signals" in arguments:
+            raw_bs = arguments["base_signals"]
+            if isinstance(raw_bs, dict):
+                inputs["base_signals"] = raw_bs
+
+        result = skill.run(context, inputs)
+
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_diff_explain",
+                result.data,
+                risk_level="R0",
+                warnings=result.risks[:3],
+                next_steps=result.next_steps[:3],
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_diff_explain", "INTERNAL_ERROR", f"diff.explain failed: {e}",
             ),
         )]

@@ -431,6 +431,249 @@ def create_server(project_path: Path):
                 "required": [],
             },
         ),
+        # Phase 11B Step 7: 只读 Guard 工具
+        Tool(
+            name="smartdev_guard_run",
+            description=(
+                "Run all 5 Guard Skills (change.budget, dev.guard, dependency.guard, "
+                "security.review, diff.explain) and return an aggregate report. "
+                "Use --select to run only specific guards. "
+                "All guards are R0 read-only — they never modify source files."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "changed_files": {
+                        "type": "array",
+                        "description": "Changed file paths (list[str]). Required by most guards.",
+                        "items": {"type": "string"},
+                    },
+                    "diff_content": {
+                        "type": "string",
+                        "description": "Unified diff text (optional, used by dependency/security/diff guards).",
+                    },
+                    "select": {
+                        "type": "array",
+                        "description": "Guard names to run (default: all 5). e.g. ['change.budget', 'dev.guard']",
+                        "items": {"type": "string"},
+                    },
+                    "task_description": {
+                        "type": "string",
+                        "description": "Task description (optional, used by dev.guard for unrelated change detection).",
+                    },
+                    "max_files": {
+                        "type": "integer",
+                        "description": "Maximum file count budget (default: 10, used by change.budget).",
+                        "default": 10,
+                    },
+                    "max_lines": {
+                        "type": "integer",
+                        "description": "Maximum line count budget (optional, used by change.budget).",
+                    },
+                    "protected_paths": {
+                        "type": "array",
+                        "description": "Protected path glob patterns (optional, used by dev.guard).",
+                        "items": {"type": "string"},
+                    },
+                    "denied_paths": {
+                        "type": "array",
+                        "description": "Denied path glob patterns (optional, used by dev.guard).",
+                        "items": {"type": "string"},
+                    },
+                    "run_id": {
+                        "type": "string",
+                        "description": "Run identifier (optional, for report labeling).",
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="smartdev_change_budget",
+            description=(
+                "Check whether a change exceeds budget limits: file count, line count, "
+                "schema changes, per-file limits. Deterministic rule engine, R0 read-only."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "changed_files": {
+                        "type": "array",
+                        "description": "List of changed file paths (required).",
+                        "items": {"type": "string"},
+                    },
+                    "max_files": {
+                        "type": "integer",
+                        "description": "Maximum file count (default: 10).",
+                        "default": 10,
+                    },
+                    "max_lines": {
+                        "type": "integer",
+                        "description": "Maximum total line count (optional, None=no limit).",
+                    },
+                    "allow_schema_change": {
+                        "type": "boolean",
+                        "description": "Whether data model changes are allowed (default: false).",
+                        "default": False,
+                    },
+                    "per_file_limit": {
+                        "type": "integer",
+                        "description": "Maximum lines changed per file (default: 200).",
+                        "default": 200,
+                    },
+                    "line_counts": {
+                        "type": "object",
+                        "description": "Per-file line counts dict, e.g. {\"src/a.py\": 15}.",
+                    },
+                },
+                "required": ["changed_files"],
+            },
+        ),
+        Tool(
+            name="smartdev_dev_guard",
+            description=(
+                "AI coding rules guard: mass refactor detection, protected path hits, "
+                "unrelated changes, test deletion, config mixing, forbidden file modifications, "
+                "oversized commits. Deterministic rule engine, R0 read-only."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "changed_files": {
+                        "type": "array",
+                        "description": "List of changed file paths (required).",
+                        "items": {"type": "string"},
+                    },
+                    "protected_paths": {
+                        "type": "array",
+                        "description": "Protected path glob patterns (optional).",
+                        "items": {"type": "string"},
+                    },
+                    "denied_paths": {
+                        "type": "array",
+                        "description": "Denied path glob patterns (optional).",
+                        "items": {"type": "string"},
+                    },
+                    "forbidden_paths": {
+                        "type": "array",
+                        "description": "Additional forbidden paths (optional).",
+                        "items": {"type": "string"},
+                    },
+                    "task_description": {
+                        "type": "string",
+                        "description": "Task description for unrelated change detection.",
+                    },
+                    "diff_content": {
+                        "type": "string",
+                        "description": "Unified diff content for precise test deletion detection.",
+                    },
+                    "max_files_per_commit": {
+                        "type": "integer",
+                        "description": "Maximum files per commit (default: 12).",
+                        "default": 12,
+                    },
+                },
+                "required": ["changed_files"],
+            },
+        ),
+        Tool(
+            name="smartdev_dependency_guard",
+            description=(
+                "Dependency manifest change review: detects added/removed/version-changed "
+                "dependencies, manifest additions/removals, and lock file sync. "
+                "Supports pyproject.toml, package.json, go.mod, requirements.txt. "
+                "Deterministic rule engine, R0 read-only."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "changed_files": {
+                        "type": "array",
+                        "description": "List of changed file paths (required).",
+                        "items": {"type": "string"},
+                    },
+                    "diff_content": {
+                        "type": "string",
+                        "description": "Unified diff text for manifest content analysis.",
+                    },
+                    "manifest_before": {
+                        "type": "object",
+                        "description": "Manifest contents before change (dict[str, str], optional).",
+                    },
+                    "manifest_after": {
+                        "type": "object",
+                        "description": "Manifest contents after change (dict[str, str], optional).",
+                    },
+                    "lock_files_changed": {
+                        "type": "array",
+                        "description": "List of changed lock files (optional).",
+                        "items": {"type": "string"},
+                    },
+                },
+                "required": ["changed_files"],
+            },
+        ),
+        Tool(
+            name="smartdev_security_review",
+            description=(
+                "Security review checklist: 6 categories — input validation, path traversal, "
+                "command injection, sensitive data exposure, hardcoded secrets, dynamic code execution. "
+                "Deterministic pattern matching, R0 read-only. "
+                "Suggests external tools (bandit/semgrep) but never executes them."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "changed_files": {
+                        "type": "array",
+                        "description": "List of changed file paths (required).",
+                        "items": {"type": "string"},
+                    },
+                    "diff_content": {
+                        "type": "string",
+                        "description": "Unified diff text for content-level security scanning.",
+                    },
+                    "file_contents": {
+                        "type": "object",
+                        "description": "File contents map (dict[str, str], optional) for deeper scanning.",
+                    },
+                },
+                "required": ["changed_files"],
+            },
+        ),
+        Tool(
+            name="smartdev_diff_explain",
+            description=(
+                "Patch-level diff explanation: logical grouping, test coverage analysis, "
+                "dependency matching, cross-module detection, file categorization, "
+                "risk hints, and suggested review order. "
+                "Deterministic rule engine, R0 read-only. "
+                "Consumes base_signals from git.diff.explain for supplemental signals."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "patch_files": {
+                        "type": "array",
+                        "description": "List of changed file paths (required, same as changed_files).",
+                        "items": {"type": "string"},
+                    },
+                    "diff_content": {
+                        "type": "string",
+                        "description": "Unified diff text for line count statistics.",
+                    },
+                    "project_path": {
+                        "type": "string",
+                        "description": "Project root path (optional, defaults to bound project path).",
+                    },
+                    "base_signals": {
+                        "type": "object",
+                        "description": "External signals from git.diff.explain (optional, merged as supplement).",
+                    },
+                },
+                "required": ["patch_files"],
+            },
+        ),
         # Phase 11D Step 7: Handoff Pack 工具
         Tool(
             name="smartdev_handoff_code",
@@ -542,6 +785,13 @@ def create_server(project_path: Path):
         # Phase 11C Step 7: 只读 Doc Governance 工具
         "smartdev_doc_consistency":  t.handle_doc_consistency,
         "smartdev_doc_update_plan":  t.handle_doc_update_plan,
+        # Phase 11B Step 7: 只读 Guard 工具
+        "smartdev_guard_run":        t.handle_guard_run,
+        "smartdev_change_budget":   t.handle_change_budget,
+        "smartdev_dev_guard":       t.handle_dev_guard,
+        "smartdev_dependency_guard": t.handle_dependency_guard,
+        "smartdev_security_review": t.handle_security_review,
+        "smartdev_diff_explain":    t.handle_diff_explain,
         # Phase 11D Step 7: Handoff Pack 工具
         "smartdev_handoff_code":     t.handle_handoff_code,
         "smartdev_handoff_doc":      t.handle_handoff_doc,

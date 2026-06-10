@@ -62,7 +62,7 @@ class TestHandoffToolRegistration:
     async def test_total_tool_count_24(self, tmp_path: Path):
         result = await handle_version({}, tmp_path)
         data = _parse(result)
-        assert len(data["data"]["tools"]) == 24
+        assert len(data["data"]["tools"]) == 30
 
     @pytest.mark.asyncio
     async def test_handoff_tools_in_list_tools(self, tmp_path: Path):

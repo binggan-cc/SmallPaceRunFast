@@ -205,6 +205,27 @@ class TestRunGuardRunner:
         assert isinstance(result.warning_count, int)
         assert isinstance(result.overall_passed, bool)
 
+    def test_error_risks_do_not_increment_warning_count(self):
+        """error 级 risks 不应被误算进 warning_count。"""
+        result = run_guard_runner(
+            project_path=_project_path(),
+            changed_files=[".env"],
+            select=["security.review"],
+        )
+        assert result.overall_passed is False
+        assert result.error_count == 1
+        assert result.warning_count == 0
+
+    def test_warning_violations_increment_warning_count(self):
+        """warning/info 级 violations 应进入 warning_count。"""
+        result = run_guard_runner(
+            project_path=_project_path(),
+            changed_files=["config.json", "smartdev/core/git.py"],
+            select=["dev.guard"],
+        )
+        assert result.error_count == 0
+        assert result.warning_count >= 1
+
     def test_suggested_actions_present(self):
         """suggested_actions 不为空。"""
         result = run_guard_runner(
