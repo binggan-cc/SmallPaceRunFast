@@ -1,0 +1,43 @@
+# SmartDev Skill: security.review
+# 安全审查清单 — 确定性规则引擎，R0 只读
+
+id: security.review
+name: 安全审查清单
+capability: guard
+risk: R0
+mode: read_only
+
+description: >
+  对 patch 或受影响文件做确定性安全 checklist 检查。
+  不替代专业安全审计，但覆盖 AI 生成代码最常见的 6 类安全问题：
+  - 输入校验（input_validation）
+  - 路径穿越（path_traversal）
+  - 命令注入（command_injection）
+  - 敏感数据（sensitive_data）
+  - 硬编码密钥（hardcoded_secrets）
+  - 动态代码执行（eval_exec）
+  确定性规则引擎，不调用模型，不接外部扫描器。
+  外部工具只输出建议命令（bandit / semgrep），不执行。
+
+inputs:
+  required:
+    - changed_files   # 变更文件列表（list[str]）
+  optional:
+    - diff_content         # 完整的 unified diff 文本（str | None）
+    - file_contents        # 文件内容映射（dict[str, str] | None）
+
+outputs:
+  - passed       # 是否通过（无 error 级别违规）
+  - checks       # 各项检查结果（6 类）
+  - violations   # 违规列表
+  - suggestions  # 外部工具建议命令
+  - summary      # 人类可读摘要
+
+preconditions:
+  - none（无需 git，纯显式输入）
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic

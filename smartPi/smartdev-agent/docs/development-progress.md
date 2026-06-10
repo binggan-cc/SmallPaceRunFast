@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
-> 最后更新：2026-06-09
-> 当前阶段：Phase 11B Step 3 完成 — dependency.guard Guard Skill（1683 tests）
+> 最后更新：2026-06-10
+> 当前阶段：Phase 11B Step 4 完成 — security.review Guard Skill（1752 tests）
 
 ---
 
@@ -673,6 +673,8 @@ Step 1 验证：`change.budget` Guard Skill 已实现；新增 `smartdev/core/gu
 Step 2 验证：`dev.guard` Guard Skill 已实现；新增 `smartdev/core/guard_dev.py` 规则引擎、`smartdev/skills/dev_guard/skill.py` + `skill.yaml`、`tests/test_guard_dev.py`，并在 `smartdev/skills/__init__.py` 注册。规则覆盖 mass_refactor / protected_path_hit / unrelated_change / test_deletion / config_in_code / forbidden_file_modification / large_commit；支持显式输入运行，无 git 依赖，R0 只读。测试基线：1584 passed, 1 skipped。
 
 Step 3 验证：`dependency.guard` Guard Skill 已实现；新增 `smartdev/core/guard_dependency.py` 规则引擎、`smartdev/skills/dependency_guard/skill.py` + `skill.yaml` + `__init__.py`、`tests/test_guard_dependency.py`，并在 `smartdev/skills/__init__.py` 注册。规则覆盖 dependency_added / dependency_removed / dependency_version_changed / manifest_added / manifest_removed / lock_not_updated；支持 pyproject.toml（tomllib 优先 + 行解析降级）、package.json（json）、go.mod（行解析）、requirements.txt（行解析）4 种 manifest 格式；lock 文件同步检查支持 poetry.lock / uv.lock / package-lock.json / pnpm-lock.yaml / yarn.lock / go.sum；外部工具建议（pip-audit / npm audit / govulncheck / semgrep）只输出不执行。支持显式输入运行（changed_files / diff_content / manifest_before / manifest_after / lock_files_changed），无 git 依赖，R0 只读；unified diff 中 manifest 新增/删除（`/dev/null`）也会触发 manifest_added / manifest_removed。测试基线：1683 passed, 1 skipped。
+
+Step 4 验证：`security.review` Guard Skill 已实现；新增 `smartdev/core/guard_security.py` 规则引擎、`smartdev/skills/security_review/skill.py` + `skill.yaml` + `__init__.py`、`tests/test_guard_security.py`，并在 `smartdev/skills/__init__.py` 注册。规则覆盖 input_validation / path_traversal / command_injection / sensitive_data / hardcoded_secrets / eval_exec 六类确定性安全检查；第一版只做文本/正则模式匹配（不做 AST/数据流分析）；支持显式输入运行（changed_files / diff_content / file_contents），无 git 依赖，R0 只读；敏感数据检测识 OpenAI/GitHub/Slack 等 token 前缀；外部工具建议（bandit / semgrep）只输出不执行。测试基线：1752 passed, 1 skipped。
 
 | Skill | 说明 |
 |-------|------|

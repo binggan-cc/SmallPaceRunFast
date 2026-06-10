@@ -39,6 +39,25 @@
 
 测试基线：**1683 passed, 1 skipped**
 
+### Added — Phase 11B Step 4: security.review Guard Skill
+
+- **`smartdev/core/guard_security.py`**（新增）：`security.review` 规则引擎
+  - `SecurityViolation` / `SecurityResult` 数据模型
+  - `check_security_review()` 核心函数，覆盖 input_validation / path_traversal / command_injection / sensitive_data / hardcoded_secrets / eval_exec 六类确定性安全检查
+  - 支持显式输入运行（changed_files / diff_content / file_contents），无 git 依赖
+  - 零外部依赖，R0 只读，不执行外部扫描器，不调用模型
+  - 第一版只做文本/正则模式匹配，不做 AST/数据流分析
+  - 外部工具建议（只输出，不执行）：bandit（Python）/ semgrep（JS/TS/多语言）
+  - passed 语义：只有 error 阻断；仅 warning/info 时 passed=True
+- **`smartdev/skills/security_review/__init__.py` + `skill.py` + `skill.yaml`**（新增）：`security.review` R0 只读 Skill
+  - 调用 core 规则引擎，不复制规则逻辑
+  - SkillResult.data 直接消费 core result
+- **`smartdev/skills/__init__.py`**：注册 `security.review` Skill
+- **`tests/test_guard_security.py`**（新增）：69 tests
+  - 覆盖 6 类安全检查、建议命令、Skill 集成、确定性、diff_content 解析和边界情况
+
+测试基线：**1752 passed, 1 skipped**
+
 ### Added — Phase 11B Step 1: change.budget Guard Skill
 
 - **`smartdev/core/guard_budget.py`**（新增）：`change.budget` 规则引擎
