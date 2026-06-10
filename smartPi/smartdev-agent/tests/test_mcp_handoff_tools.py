@@ -2,7 +2,7 @@
 MCP Handoff Pack 工具测试 — Phase 11D Step 7
 
 覆盖：
-1. 三个工具在 version/list_tools 中已注册（21 → 24 工具）
+1. 三个工具在 version/list_tools 中已注册（当前 30 工具）
 2. handle_handoff_code 成功路径 + 缺失 run_id
 3. handle_handoff_doc 成功路径 + 缺失 run_id
 4. handle_handoff_review 成功路径 + 缺失 run_id
@@ -59,7 +59,7 @@ class TestHandoffToolRegistration:
             assert tool in names, f"{tool} missing from version list"
 
     @pytest.mark.asyncio
-    async def test_total_tool_count_24(self, tmp_path: Path):
+    async def test_total_tool_count_30(self, tmp_path: Path):
         result = await handle_version({}, tmp_path)
         data = _parse(result)
         assert len(data["data"]["tools"]) == 30

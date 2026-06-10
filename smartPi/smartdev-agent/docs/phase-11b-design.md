@@ -454,7 +454,7 @@ smartPi/smartdev-agent/
 | 触发方 | 开发者随时调用 | Guard Runner 自动调用 |
 | 特有信号 | commit_split / file_categories / protected_path_hits | logical_groups / test_coverage / review_order |
 | 消费方 | Git 工作流 | Guard 工作流 + Human Review |
-| MCP 工具 | `smartdev_git_diff_explain`（已有） | 不单独暴露 MCP，作为 guard run 的一部分 |
+| MCP 工具 | `smartdev_git_diff_explain`（已有） | `smartdev_diff_explain`（Step 7 ✅，也可作为 `smartdev_guard_run` 的一部分运行） |
 
 两者独立，各司其职。`diff.explain` 在输出中引用 `git.diff.explain` 的既有信号（如 file_categories），但新增 patch 专属维度。
 
@@ -618,7 +618,7 @@ Step 7  MCP 暴露只读 Guard 工具（R0）                                   
 | Step 4 | `test_guard_security.py` | 6 类安全检查 + 误报控制 + 边界 | 69 |
 | Step 5 | `test_guard_diff_explain.py` | 逻辑分组 / 测试伴随 / 依赖匹配 / 审查顺序 | 86 |
 | Step 6 | `test_guard_runner.py` | 组合运行 / 聚合报告 / --select 过滤 / warning_count 语义 | 21 |
-| Step 7 | `test_mcp_guard_tools.py` | 6 个 MCP Guard 工具 + 优雅降级 | 14–18 |
+| Step 7 | `test_mcp_guard_tools.py` | 6 个 MCP Guard 工具 + 优雅降级 | 26 |
 
 测试用 fixture：在临时目录构造小项目（含各种 manifest / 代码模式），避免依赖真实项目状态。
 
@@ -637,7 +637,7 @@ Step 7  MCP 暴露只读 Guard 工具（R0）                                   
 | Step 4 | R1 ✅ | 新增 guard_security.py + security_review Skill（69 tests） |
 | Step 5 | R1 ✅ | 新增 guard_diff_explain.py + diff_explain_patch Skill（86 tests） |
 | Step 6 | R1 ✅ | GuardRunner + CLI 入口（21 tests） |
-| Step 7 | R1 | MCP 只读 Guard 工具 |
+| Step 7 | R1 ✅ | MCP 只读 Guard 工具（26 tests） |
 
 > 所有 Guard Skill 为 R0 只读，不修改任何文件。风险主要来自新增代码的 bug（如规则误报/漏报），而非对现有系统的破坏。
 

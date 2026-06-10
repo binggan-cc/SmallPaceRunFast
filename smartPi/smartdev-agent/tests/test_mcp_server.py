@@ -161,7 +161,7 @@ class TestHandleListTools:
         from smartdev.mcp.tools import handle_list_tools
         result = await handle_list_tools({}, tmp_path)
         data = json.loads(result[0].text)
-        # Step 4 后有 14 个工具（3 基础 + 4 Context + 5 Skill + 2 Patch）
+        # 当前 MCP 工具总数：30
         assert data["data"]["total"] == 30
 
 
