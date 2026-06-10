@@ -2,7 +2,27 @@
 
 本文档记录 SmartDev Agent 的重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)。
 
-## [Unreleased] — Phase 11B: Guard Skills v0（设计中）
+## [Unreleased] — Phase 11B: Guard Skills v0
+
+### Added — Phase 11B Step 5: diff.explain Guard Skill
+
+- **`smartdev/core/guard_diff_explain.py`**（新增）：`diff.explain` patch 级规则引擎
+  - `DiffExplainResult` 数据模型
+  - `explain_diff()` 核心函数，覆盖逻辑分组 / 测试伴随 / 依赖匹配 / 跨模块检测 / 审查顺序建议
+  - 与 `git.diff.explain`（仓库级）互补：面向显式传入的 patch 文件列表和 diff 内容
+  - 支持 `base_signals` 参数合并外部既有信号（如 `git.diff.explain` 输出）
+  - 零外部依赖，R0 只读，无 git 环境也能运行，不调用模型
+  - 文件分类覆盖 source / test / doc / manifest / config / core / mcp / other
+  - 穿透项目根前缀（smartdev/src/app/lib）进行功能模块分组
+  - risk_hints 覆盖 cross_module_change / dependency_manifest_changed_without_code / missing_related_tests / core_module_touched / touches_protected_path / large_changeset / large_diff
+- **`smartdev/skills/diff_explain_patch/__init__.py` + `skill.py` + `skill.yaml`**（新增）：`diff.explain` R0 只读 Skill
+  - 调用 core 规则引擎，不复制规则逻辑
+  - SkillResult.data 输出 summary / signals / file_categories / logical_groups / risk_hints / test_coverage / suggested_review_order
+- **`smartdev/skills/__init__.py`**：注册 `diff.explain` Skill
+- **`tests/test_guard_diff_explain.py`**（新增）：86 tests
+  - 覆盖文件分类、diff 解析、信号计算（含 base_signals 合并）、逻辑分组、测试覆盖、依赖匹配、审查顺序、风险提示、Skill 集成、确定性和边界情况
+
+测试基线：**1838 passed, 1 skipped**
 
 ### Added — Phase 11B Step 2: dev.guard Guard Skill
 

@@ -42,5 +42,6 @@ from smartdev.skills.change_budget import skill as _change_budget_skill  # noqa:
 from smartdev.skills.dev_guard import skill as _dev_guard_skill  # noqa: F401
 from smartdev.skills.dependency_guard import skill as _dependency_guard_skill  # noqa: F401
 from smartdev.skills.security_review import skill as _security_review_skill  # noqa: F401
+from smartdev.skills.diff_explain_patch import skill as _diff_explain_patch_skill  # noqa: F401
 
 __all__ = ["Skill"]

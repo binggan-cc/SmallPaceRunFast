@@ -1,0 +1,40 @@
+# SmartDev Skill: diff.explain
+# Patch 级差异解释 — 确定性规则引擎，R0 只读
+
+id: diff.explain
+name: Patch 级差异解释
+capability: guard
+risk: R0
+mode: read_only
+
+description: >
+  对 patch 文件列表和 diff 内容做确定性结构化解释：逻辑分组、测试伴随检查、
+  依赖匹配、跨模块检测、审查顺序建议。与 git.diff.explain（仓库级）互补，
+  diff.explain 面向显式传入的 patch 文件列表和 diff 内容。
+  支持消费 base_signals（如 git.diff.explain 既有输出）作为补充信号。
+
+inputs:
+  required:
+    - patch_files               # 变更文件列表（list[str]）
+  optional:
+    - diff_content              # unified diff 文本（str | None，用于行数统计）
+    - project_path              # 项目根目录（Path | None）
+    - base_signals              # 外部既有信号（dict | None，合并但不覆盖本地信号）
+
+outputs:
+  - summary                    # {files_changed, insertions, deletions, logical_groups}
+  - signals                    # 变更信号（touches_tests/docs/manifest/core/mcp/cross_module/...）
+  - file_categories            # 文件按类型分组 {category: [files]}
+  - logical_groups             # 逻辑分组 [{label, files, description}]
+  - risk_hints                 # 风险提示列表
+  - test_coverage              # 测试覆盖分析 {has_related_tests, test_files_touched, ...}
+  - suggested_review_order     # 审查顺序建议
+
+preconditions:
+  - none（无需 git，纯显式输入）
+
+postconditions:
+  - no_file_modified
+
+adapter_support:
+  - generic
