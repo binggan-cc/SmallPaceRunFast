@@ -497,11 +497,11 @@ Step 4  security.review（R0）                                          ✅ 完
         - smartdev/skills/security_review/skill.py + skill.yaml
         - tests/test_guard_security.py（69 tests）
 
-Step 5  diff.explain（R0，patch 级）
+Step 5  diff.explain（R0，patch 级）                                  ✅ 完成
         - smartdev/core/guard_diff_explain.py（规则引擎）
         - smartdev/skills/diff_explain_patch/skill.py + skill.yaml
         - 消费 git.diff.explain 既有信号 + patch 专属逻辑分组/测试伴随
-        - tests/test_guard_diff_explain.py（预计 14-20 tests）
+        - tests/test_guard_diff_explain.py（86 tests）
 
 Step 6  GuardRunner 组合 + CLI 入口（R0）
         - smartdev/core/guard_runner.py（一键全跑 + 聚合报告）
@@ -616,7 +616,7 @@ Step 7  MCP 暴露只读 Guard 工具（R0）
 | Step 2 | `test_guard_dev.py` | 7 条规则 + 边界 + 组合违规 | 14–20 |
 | Step 3 | `test_guard_dependency.py` | 4 种 manifest 解析 + diff 检测 + 外部工具建议 | 99 |
 | Step 4 | `test_guard_security.py` | 6 类安全检查 + 误报控制 + 边界 | 69 |
-| Step 5 | `test_guard_diff_explain.py` | 逻辑分组 / 测试伴随 / 依赖匹配 / 审查顺序 | 14–20 |
+| Step 5 | `test_guard_diff_explain.py` | 逻辑分组 / 测试伴随 / 依赖匹配 / 审查顺序 | 86 |
 | Step 6 | `test_guard_runner.py` | 组合运行 / 聚合报告 / --select 过滤 | 10–14 |
 | Step 7 | `test_mcp_guard_tools.py` | 6 个 MCP Guard 工具 + 优雅降级 | 14–18 |
 
@@ -635,7 +635,7 @@ Step 7  MCP 暴露只读 Guard 工具（R0）
 | Step 2 | R1 | 新增 guard_dev.py + dev_guard Skill |
 | Step 3 | R1 ✅ | 新增 guard_dependency.py + dependency_guard Skill（99 tests） |
 | Step 4 | R1 ✅ | 新增 guard_security.py + security_review Skill（69 tests） |
-| Step 5 | R1 | 新增 guard_diff_explain.py + diff_explain_patch Skill |
+| Step 5 | R1 ✅ | 新增 guard_diff_explain.py + diff_explain_patch Skill（86 tests） |
 | Step 6 | R1 | GuardRunner + CLI 入口 |
 | Step 7 | R1 | MCP 只读 Guard 工具 |
 
