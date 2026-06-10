@@ -212,3 +212,53 @@ class TestDiffSummaryFields:
         assert "diff.deletions" in source
         assert "lines_added" not in source
         assert "lines_deleted" not in source
+
+
+# ── Agent Output 消费契约（Phase 11 Closeout Step 3）─────────
+
+
+class TestHandoffDocConsumesAgentOutput:
+    """handoff doc 读取 agent-output/code-agent-result.md 的契约。"""
+
+    def _setup_with_agent_output(self, tmp_project: Path, run_id: str = "doc-ao"):
+        """创建含 agent-output/code-agent-result.md 的 run artifact。"""
+        from smartdev.core.run_artifact import ScopeConfig
+        scope = ScopeConfig(allowed_paths=["smartdev/", "tests/"])
+        from smartdev.core.run_artifact import create_run_artifact
+        run_dir, err = create_run_artifact(tmp_project, run_id, scope=scope, force=True)
+        if err:
+            raise RuntimeError(f"Failed to create run: {err}")
+        # 写入 code-agent-result.md
+        ao_dir = run_dir / "agent-output"
+        ao_dir.mkdir(parents=True, exist_ok=True)
+        (ao_dir / "code-agent-result.md").write_text(
+            "# Code Agent Result — doc-ao\n\n"
+            "## Status\ncompleted\n\n"
+            "## Implemented\n- 测试\n\n"
+            "## Changed Files\n| a.py |\n\n"
+            "## Tests\npassed\n\n"
+            "## Open Questions\n无\n",
+            encoding="utf-8",
+        )
+        # 最小项目骨架
+        (tmp_project / "smartdev").mkdir(exist_ok=True)
+        (tmp_project / "smartdev" / "__init__.py").write_text("")
+        return tmp_project
+
+    def test_agent_output_section_present(self, tmp_project):
+        """agent-output/code-agent-result.md 存在 → Agent Output 节出现。"""
+        self._setup_with_agent_output(tmp_project, "doc-ao-1")
+        result = generate_doc_steward_pack(tmp_project, "doc-ao-1")
+        assert result.error is None
+        content = result.output_path.read_text(encoding="utf-8")
+        assert "Agent Output" in content
+        assert "completed" in content
+
+    def test_missing_agent_output_no_section(self, tmp_project):
+        """agent-output/code-agent-result.md 缺失 → 不报错，不出现 Agent Output 节。"""
+        _setup_run(tmp_project, "doc-ao-2")
+        result = generate_doc_steward_pack(tmp_project, "doc-ao-2")
+        assert result.error is None
+        content = result.output_path.read_text(encoding="utf-8")
+        # Agent Output 节不应出现（文件不存在时跳过）
+        assert "Agent Output" not in content

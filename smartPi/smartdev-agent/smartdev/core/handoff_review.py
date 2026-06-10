@@ -331,6 +331,69 @@ patch_propose_only: true（Reviewer 不直接 apply）
         else:
             skipped.append(f"Test Report: {test_text}")
 
+    # Agent Output（若 agent-output/ 下有产物，纳入上下文）
+    agent_dir = run_dir / "agent-output"
+    # 读取 code-agent-result.md 状态
+    ca_path = agent_dir / "code-agent-result.md"
+    if ca_path.exists():
+        try:
+            ca_content = ca_path.read_text(encoding="utf-8")
+            status_line = ""
+            for i, line in enumerate(ca_content.splitlines()):
+                if line.startswith("## Status"):
+                    if i + 1 < len(ca_content.splitlines()):
+                        status_line = ca_content.splitlines()[i + 1].strip()
+                    break
+            if status_line:
+                pack += f"""## {sec_num}. Code Agent Result
+
+- Status: {status_line}
+- 详见: `.smartdev/runs/{run_id}/agent-output/code-agent-result.md`
+
+"""
+                sections.append(f"{sec_num}. Code Agent Result")
+                sec_num += 1
+        except Exception:
+            skipped.append("Code Agent Result: 读取失败")
+
+    # 读取 changed-files.txt（补充或验证 Changed Files）
+    cf_path = agent_dir / "changed-files.txt"
+    if cf_path.exists():
+        try:
+            cf_content = cf_path.read_text(encoding="utf-8")
+            cf_files = [f.strip() for f in cf_content.splitlines() if f.strip()]
+            if cf_files:
+                pack += f"""## {sec_num}. Agent Changed Files
+
+Code Agent 记录的变更文件（`agent-output/changed-files.txt`）：
+"""
+                pack += "\n".join(f"- `{f}`" for f in cf_files[:40]) + "\n\n"
+                if len(cf_files) > 40:
+                    pack += f"> 已截断，剩余 {len(cf_files) - 40} 个文件未列出。\n\n"
+                sections.append(f"{sec_num}. Agent Changed Files")
+                sec_num += 1
+        except Exception:
+            skipped.append("Agent Changed Files: 读取失败")
+
+    # 读取 test-report.txt（若未运行实时测试，纳入已有报告）
+    tr_path = agent_dir / "test-report.txt"
+    if tr_path.exists():
+        try:
+            tr_content = tr_path.read_text(encoding="utf-8")
+            if tr_content.strip():
+                pack += f"""## {sec_num}. Agent Test Report
+
+Code Agent 记录的测试结果（`agent-output/test-report.txt`）：
+```
+{tr_content.strip()[:3000]}
+```
+
+"""
+                sections.append(f"{sec_num}. Agent Test Report")
+                sec_num += 1
+        except Exception:
+            skipped.append("Agent Test Report: 读取失败")
+
     pack += f"""## {sec_num}. Dependency Changes
 
 {_dependency_changes(changed)}

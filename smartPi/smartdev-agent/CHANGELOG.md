@@ -18,7 +18,7 @@ Phase 11 Closeout 事实：
 - Phase 11B Guard Skills v0 ✅
 - Phase 11C Documentation Governance v0 ✅
 - Phase 11D Collaboration Handoff v0 ✅
-- 测试基线：**1897 passed, 1 skipped**
+- 测试基线：**1903 passed, 1 skipped**
 - MCP 工具：**30 个**（READ×24 + CACHE_WRITE×5 + PATCH_PROPOSE×1）
 - SmartDev 为 standalone 工程协作工具（本地 CLI · run artifact / handoff · GuardRunner · Doc Governance · MCP 工具 · Git 治理建议）。Phase 12 Model Router 为可选后续增强，非完整性前提。
 
@@ -34,6 +34,16 @@ Phase 11 Closeout 事实：
   - `tests/test_mcp_readonly_tools.py`：`test_list_tools_total_count_updated`
   - `tests/test_mcp_skill_tools.py`：`test_list_tools_total_count_step3`
   - `tests/test_mcp_patch_propose.py`：`test_list_tools_total_count_step4`
+
+### Added — Phase 11 Closeout Step 3: 协作产物契约测试
+
+- **`smartdev/core/handoff_review.py`**（修改）：`generate_reviewer_pack` 新增 agent-output 消费
+  - 读取 `agent-output/code-agent-result.md` → "Code Agent Result" 节（含状态摘要）
+  - 读取 `agent-output/changed-files.txt` → "Agent Changed Files" 节（补充变更列表）
+  - 读取 `agent-output/test-report.txt` → "Agent Test Report" 节（纳入已有报告）
+  - 缺失文件时优雅降级，不报错
+- **`tests/test_handoff_doc.py`**（修改）：+2 tests — agent-output/code-agent-result.md 存在/缺失时的 doc pack 行为
+- **`tests/test_handoff_review.py`**（修改）：+4 tests — agent-output 三文件存在/缺失时的 review pack 行为
 
 ### Added — Phase 11B Step 7: MCP 暴露只读 Guard 工具
 

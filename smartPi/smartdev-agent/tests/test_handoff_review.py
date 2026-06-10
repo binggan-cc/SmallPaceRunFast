@@ -143,3 +143,82 @@ class TestHandoffReviewResult:
         assert d["sections"] == ["1. Risk + Impact"]
         assert d["skipped"] == ["Git Diff Explain: unavailable"]
         assert d["error"] is None
+
+
+# ── Agent Output 消费契约（Phase 11 Closeout Step 3）─────────
+
+
+class TestHandoffReviewConsumesAgentOutput:
+    """handoff review 读取 agent-output/ 下产物的契约。"""
+
+    @staticmethod
+    def _setup_with_agent_output(tmp_path: Path, run_id: str = "rev-ao"):
+        """创建含 agent-output 产物的 run artifact。"""
+        from smartdev.core.run_artifact import ScopeConfig, create_run_artifact
+        scope = ScopeConfig(allowed_paths=["smartdev/", "tests/"])
+        run_dir, err = create_run_artifact(tmp_path, run_id, scope=scope, force=True)
+        if err:
+            raise RuntimeError(f"Failed to create run: {err}")
+        (tmp_path / "smartdev").mkdir(exist_ok=True)
+        (tmp_path / "smartdev" / "__init__.py").write_text("")
+        ao_dir = run_dir / "agent-output"
+        # 写入完整 agent-output 产物
+        (ao_dir / "code-agent-result.md").write_text(
+            "# Code Agent Result — rev-ao\n\n"
+            "## Status\nblocked\n\n"
+            "## Implemented\n- feature X\n\n"
+            "## Changed Files\n| smartdev/core/a.py |\n\n"
+            "## Tests\n2 failed\n\n"
+            "## Open Questions\n需要 review 依赖变更\n",
+            encoding="utf-8",
+        )
+        (ao_dir / "changed-files.txt").write_text(
+            "smartdev/core/auth.py\ntests/test_auth.py\n",
+            encoding="utf-8",
+        )
+        (ao_dir / "test-report.txt").write_text(
+            "1897 passed, 1 skipped in 53.12s\n",
+            encoding="utf-8",
+        )
+        return tmp_path
+
+    def test_code_agent_result_section_present(self):
+        """agent-output/code-agent-result.md 存在 → Code Agent Result 节出现。"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project = self._setup_with_agent_output(Path(tmpdir), "rev-ao-1")
+            result = generate_reviewer_pack(project, "rev-ao-1")
+            assert result.error is None
+            content = result.output_path.read_text(encoding="utf-8")
+            assert "Code Agent Result" in content
+            assert "blocked" in content
+
+    def test_agent_changed_files_section_present(self):
+        """agent-output/changed-files.txt 存在 → Agent Changed Files 节出现。"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project = self._setup_with_agent_output(Path(tmpdir), "rev-ao-2")
+            result = generate_reviewer_pack(project, "rev-ao-2")
+            assert result.error is None
+            content = result.output_path.read_text(encoding="utf-8")
+            assert "Agent Changed Files" in content
+            assert "smartdev/core/auth.py" in content
+
+    def test_agent_test_report_section_present(self):
+        """agent-output/test-report.txt 存在 → Agent Test Report 节出现。"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project = self._setup_with_agent_output(Path(tmpdir), "rev-ao-3")
+            result = generate_reviewer_pack(project, "rev-ao-3")
+            assert result.error is None
+            content = result.output_path.read_text(encoding="utf-8")
+            assert "Agent Test Report" in content
+            assert "1897 passed" in content
+
+    def test_missing_agent_output_no_error(self):
+        """agent-output/ 为空 → 不报错，相关节不出现。"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project = _setup_run(Path(tmpdir), "rev-ao-empty")
+            result = generate_reviewer_pack(project, "rev-ao-empty")
+            assert result.error is None
+            content = result.output_path.read_text(encoding="utf-8")
+            assert "Code Agent Result" not in content
+            assert "Agent Changed Files" not in content
+            assert "Agent Test Report" not in content

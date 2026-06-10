@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-10
-> 当前阶段：Phase 11 已全部完成 — Standalone Hardened（1897 tests, 30 MCP 工具）
+> 当前阶段：Phase 11 已全部完成 — Standalone Hardened（1903 tests, 30 MCP 工具）
 
 ---
 
@@ -92,8 +92,15 @@ Phase 14  FileWatcher / Incremental Sync
 ## 2. 当前阶段 — Phase 11 全部完成
 
 > Phase 11A / 11B / 11C / 11D 已全部完成。SmartDev 当前为 standalone 工程协作工具。
-> 测试基线：**1897 passed, 1 skipped**。MCP 工具：**30 个**。
+> 测试基线：**1903 passed, 1 skipped**。MCP 工具：**30 个**。
 > Phase 12 为可选后续增强（Model Router），非完整性前提。
+>
+> ### Phase 11 Closeout Step 3：协作产物契约测试（✅ 完成）
+>
+> - **`smartdev/core/handoff_review.py`**：新增 agent-output 消费（code-agent-result.md / changed-files.txt / test-report.txt），缺失时优雅降级
+> - **`tests/test_handoff_doc.py`**：+2 contract tests — agent-output/code-agent-result.md 存在/缺失时的 doc pack 行为
+> - **`tests/test_handoff_review.py`**：+4 contract tests — agent-output 三文件存在/缺失时的 review pack 行为
+> - Handoff doc/review 现在能消费 Code Agent 已写回的 agent-output/ 产物，形成闭环
 >
 > ### Phase 11 Closeout Step 2：收口 MCP 工具数量事实源（✅ 完成）
 >
