@@ -19,7 +19,7 @@ Phase 11 Closeout 事实：
 - Phase 11C Documentation Governance v0 ✅
 - Phase 11D Collaboration Handoff v0 ✅
 - 测试基线：**1925 passed, 1 skipped**
-- MCP 工具：**30 个**（READ×24 + CACHE_WRITE×5 + PATCH_PROPOSE×1）
+- MCP 工具：**30 个**（READ×25 + CACHE_WRITE×4 + PATCH_PROPOSE×1）
 - SmartDev 为 standalone 工程协作工具（本地 CLI · run artifact / handoff · GuardRunner · Doc Governance · MCP 工具 · Git 治理建议）。Phase 12 Model Router 为可选后续增强，非完整性前提。
 
 ### Changed — Phase 11 Closeout Step 2: 收口 MCP 工具数量事实源
@@ -39,7 +39,7 @@ Phase 11 Closeout 事实：
 
 - **`README.md`**（修改）：更新为 Phase 11 完成状态
   - 分层架构：补充 L5 Guard/安全层 + L7 handoff/scope gate，Phase 12 标记为可选增强
-  - MCP 工具：21 → 30，权限分布更新（READ×24 + CACHE_WRITE×5 + PATCH_PROPOSE×1）
+  - MCP 工具：21 → 30，权限分布更新（READ×25 + CACHE_WRITE×4 + PATCH_PROPOSE×1）
   - Skill 列表：22 → 27（新增 5 个 Guard Skill）
   - CLI 命令：24 → 25（新增 guard run）
   - 新增 Standalone 使用示例（6 步完整闭环）

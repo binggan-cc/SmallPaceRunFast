@@ -82,8 +82,8 @@ smartdev mcp --project .
 
 | 权限级别 | 数量 | 工具 |
 |---------|------|------|
-| READ | 24 | ping / version / list_tools / code_search / code_impact / project_map / graph_validate / repo_scan / risk_check / architecture_map / task_plan / qa_checklist / git_status / git_diff_explain / git_commit_plan / git_release_plan / git_merge_check / doc_consistency / doc_update_plan / guard_run / change_budget / dev_guard / dependency_guard / security_review / diff_explain |
-| CACHE_WRITE | 5 | code_index / handoff_code / handoff_doc / handoff_review（只写 .smartdev/runs/）|
+| READ | 25 | ping / version / list_tools / code_search / code_impact / project_map / graph_validate / repo_scan / risk_check / architecture_map / task_plan / qa_checklist / git_status / git_diff_explain / git_commit_plan / git_release_plan / git_merge_check / doc_consistency / doc_update_plan / guard_run / change_budget / dev_guard / dependency_guard / security_review / diff_explain |
+| CACHE_WRITE | 4 | code_index / handoff_code / handoff_doc / handoff_review（只写 .smartdev/runs/）|
 | PATCH_PROPOSE | 1 | patch_propose |
 
 在 Claude / Kiro / Cursor / Codex 的 `mcp.json` 中配置即可接入。
@@ -161,7 +161,7 @@ smartdev run scope-check my-fix --changed-files "smartdev/core/a.py" "tests/test
 
 - **Phase**：Phase 11 已全部完成 — Standalone Hardened（11A / 11B / 11C / 11D ✅）
 - **测试**：1925 passed，1 skipped
-- **MCP 工具**：30 个（READ×24 + CACHE_WRITE×5 + PATCH_PROPOSE×1）
+- **MCP 工具**：30 个（READ×25 + CACHE_WRITE×4 + PATCH_PROPOSE×1）
 - **Skill**：27 个
 - **CLI 命令**：25 条
 - Phase 12（Model Router）为可选后续增强，非完整性前提
