@@ -1,7 +1,7 @@
 # SmartDev Agent 开发进度
 
 > 最后更新：2026-06-10
-> 当前阶段：Phase 11 已全部完成 — Standalone Hardened（1903 tests, 30 MCP 工具）
+> 当前阶段：Phase 11 已全部完成 — Standalone Hardened（1925 tests, 30 MCP 工具）
 
 ---
 
@@ -92,8 +92,14 @@ Phase 14  FileWatcher / Incremental Sync
 ## 2. 当前阶段 — Phase 11 全部完成
 
 > Phase 11A / 11B / 11C / 11D 已全部完成。SmartDev 当前为 standalone 工程协作工具。
-> 测试基线：**1903 passed, 1 skipped**。MCP 工具：**30 个**。
+> 测试基线：**1925 passed, 1 skipped**。MCP 工具：**30 个**。
 > Phase 12 为可选后续增强（Model Router），非完整性前提。
+>
+> ### Phase 11 Closeout Step 4：Standalone 烟测（✅ 完成）
+>
+> - **`tests/test_standalone_workflow.py`**（新增）：22 tests 覆盖完整 standalone 闭环
+> - 验证路径：run new → run report → handoff-* → context → guard run → scope-check
+> - 零模型调用、零 MCP、零网络、零 git 依赖 — 纯本地 CLI/core API
 >
 > ### Phase 11 Closeout Step 3：协作产物契约测试（✅ 完成）
 >

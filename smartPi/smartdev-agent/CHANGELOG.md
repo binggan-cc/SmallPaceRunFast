@@ -18,7 +18,7 @@ Phase 11 Closeout 事实：
 - Phase 11B Guard Skills v0 ✅
 - Phase 11C Documentation Governance v0 ✅
 - Phase 11D Collaboration Handoff v0 ✅
-- 测试基线：**1903 passed, 1 skipped**
+- 测试基线：**1925 passed, 1 skipped**
 - MCP 工具：**30 个**（READ×24 + CACHE_WRITE×5 + PATCH_PROPOSE×1）
 - SmartDev 为 standalone 工程协作工具（本地 CLI · run artifact / handoff · GuardRunner · Doc Governance · MCP 工具 · Git 治理建议）。Phase 12 Model Router 为可选后续增强，非完整性前提。
 
@@ -34,6 +34,18 @@ Phase 11 Closeout 事实：
   - `tests/test_mcp_readonly_tools.py`：`test_list_tools_total_count_updated`
   - `tests/test_mcp_skill_tools.py`：`test_list_tools_total_count_step3`
   - `tests/test_mcp_patch_propose.py`：`test_list_tools_total_count_step4`
+
+### Added — Phase 11 Closeout Step 4: Standalone 烟测
+
+- **`tests/test_standalone_workflow.py`**（新增）：22 tests 覆盖完整 standalone 闭环
+  - Run Artifact 创建（task-card / scope.json / agent-output / review）
+  - Code Agent Report 写入（code-agent-result.md / changed-files.txt / test-report.txt）
+  - Handoff Pack 生成（code / doc / reviewer，验证内容 + 预算）
+  - Run Context（三个 pack 可读取）
+  - Guard Runner（全量 5 guard / 选择性 / 空输入）
+  - Scope Gate（通过 / 违规 / 缺失 run_id）
+  - 完整闭环测试：new → report → handoff → context → guard → scope-check
+- 验证 Step 3 合约：reviewer pack 消费 Code Agent Result / Agent Changed Files / Agent Test Report
 
 ### Added — Phase 11 Closeout Step 3: 协作产物契约测试
 
