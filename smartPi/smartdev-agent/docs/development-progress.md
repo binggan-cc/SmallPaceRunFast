@@ -95,6 +95,11 @@ Phase 14  FileWatcher / Incremental Sync
 > 测试基线：**1925 passed, 1 skipped**。MCP 工具：**30 个**。
 > Phase 12 为可选后续增强（Model Router），非完整性前提。
 >
+> ### Phase 11 Closeout Step 5：更新入口文档（✅ 完成）
+>
+> - **`README.md`**：更新为 Phase 11 完成状态（架构/MCP 30/Skill 27/CLI 25/standalone 示例）
+> - **`CLAUDE.md`**：更新为 Closeout 后项目规则（分层/L5-L7/协作角色/Phase 12 可选）
+>
 > ### Phase 11 Closeout Step 4：Standalone 烟测（✅ 完成）
 >
 > - **`tests/test_standalone_workflow.py`**（新增）：22 tests 覆盖完整 standalone 闭环

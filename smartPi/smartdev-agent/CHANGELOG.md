@@ -35,6 +35,20 @@ Phase 11 Closeout 事实：
   - `tests/test_mcp_skill_tools.py`：`test_list_tools_total_count_step3`
   - `tests/test_mcp_patch_propose.py`：`test_list_tools_total_count_step4`
 
+### Added — Phase 11 Closeout Step 5: 更新入口文档
+
+- **`README.md`**（修改）：更新为 Phase 11 完成状态
+  - 分层架构：补充 L5 Guard/安全层 + L7 handoff/scope gate，Phase 12 标记为可选增强
+  - MCP 工具：21 → 30，权限分布更新（READ×24 + CACHE_WRITE×5 + PATCH_PROPOSE×1）
+  - Skill 列表：22 → 27（新增 5 个 Guard Skill）
+  - CLI 命令：24 → 25（新增 guard run）
+  - 新增 Standalone 使用示例（6 步完整闭环）
+  - 当前状态：1925 passed, 1 skipped
+- **`CLAUDE.md`**（修改）：更新为 Phase 11 Closeout 后项目规则
+  - 分层架构：补充 L5–L7 + Reviewer 角色
+  - 目录结构：MCP 21→30、tests 1375→1925、core 模块更新
+  - 当前阶段：Phase 11 Complete / Standalone Hardened，Phase 12 可选
+
 ### Added — Phase 11 Closeout Step 4: Standalone 烟测
 
 - **`tests/test_standalone_workflow.py`**（新增）：22 tests 覆盖完整 standalone 闭环

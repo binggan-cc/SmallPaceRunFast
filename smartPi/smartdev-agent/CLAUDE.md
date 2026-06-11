@@ -22,6 +22,7 @@ SmartDev = 项目语义图谱 + Skill 执行层 + 风险控制 + 安全 Patch + 
 DeepSeek      = Code Agent
 Claude/Codex  = Doc Steward
 SmartDev      = Handoff Pack + Gates
+Reviewer      = Risk / Architecture / Security
 Human         = Apply / Commit / Release
 ```
 
@@ -36,6 +37,11 @@ L3  语义层      code.index / code.search / code.impact / project.map / graph.
                多语言 Provider：Python(1.0) / JS-TS(0.95) / Go(0.98)
 L3a Skill接入   risk.check ← impact / architecture.map ← index / task.plan ← impact
 L4  执行层      code.patch(propose) → code.apply → code.rollback
+L5  版本治理层  git.status / git.diff.explain / git.commit.plan / git.release.plan / git.merge.check（11A ✅）
+               manifest / snapshot / doc.map / doc.consistency / doc.update.plan / doc.patch.propose（11C ✅）
+               dev.guard / dependency.guard / security.review / change.budget / diff.explain / guard.runner（11B ✅）
+L6  外部接入层  MCP Server → Claude / Kiro / Cursor / Codex（30 工具：READ×24 + CACHE_WRITE×5 + PATCH_PROPOSE×1）
+L7  模型协作层  handoff pack / scope gate（11D ✅）→ model registry / task router（Phase 12，可选增强）
 ```
 
 技术栈：Python 3.10+，core 零外部依赖（mcp 为 optional dependency）。
@@ -212,23 +218,27 @@ python -m pytest tests/test_xxx.py -v
 ```
 smartdev-agent/
 ├── smartdev/
-│   ├── core/          # 运行时（risk, reporter, adapter, workflow, patch）
+│   ├── core/          # 运行时（risk, reporter, adapter, workflow, patch, git,
+│   │                  #   manifest, guard_runner, run_artifact, run_report,
+│   │                  #   scope_gate, handoff_code, handoff_doc, handoff_review, snapshot）
 │   ├── context/       # 语义上下文层（index_store, artifact_extractor, structure_extractor,
 │   │                  #   node_bridge, tree_sitter_provider, tsconfig_resolver,
 │   │                  #   impact_analyzer, project_map, graph_validator）
 │   ├── detectors/     # 检测器（tech_stack, docs_status, entrypoints）
-│   ├── skills/        # 22 个 Skill（repo.scan / code.search / code.impact /
+│   ├── skills/        # 27 个 Skill（repo.scan / code.search / code.impact /
 │   │                  #   code.patch / code.apply / code.rollback /
 │   │                  #   doc.map / doc.consistency / doc.update.plan / doc.generate /
 │   │                  #   doc.patch.propose / git.status / git.diff.explain /
 │   │                  #   git.commit.plan / git.commit.message / git.release.plan /
 │   │                  #   git.merge.check / task.plan / architecture.map /
-│   │                  #   risk.check / qa.checklist / token.audit）
-│   ├── mcp/           # MCP Server v0（Phase 10 ✅，21 工具，stdio transport）
+│   │                  #   risk.check / qa.checklist / token.audit /
+│   │                  #   change.budget / dev.guard / dependency.guard /
+│   │                  #   security.review / diff.explain）
+│   ├── mcp/           # MCP Server v0（Phase 10 ✅，30 工具，stdio transport）
 │   ├── adapters/      # 项目适配器（JSON）
 │   ├── models.py      # 核心数据模型
-│   └── cli.py         # CLI 入口（22 条命令）
-├── tests/             # 测试（1375 passed, 1 skipped）
+│   └── cli.py         # CLI 入口（25 条命令）
+├── tests/             # 测试（1925 passed, 1 skipped）
 ├── docs/              # Phase 设计文档 + 开发进度
 ├── pyproject.toml     # 项目配置（core 零依赖，mcp optional）
 └── CHANGELOG.md       # 变更记录
@@ -238,39 +248,25 @@ smartdev-agent/
 
 ## 当前阶段
 
-Phase 11D Step 5 完成 — handoff review（21 MCP 工具，1375 tests）
+Phase 11 已全部完成 — Standalone Hardened（1925 tests, 30 MCP 工具）
 
-SmartDev 的文档治理层 v0 已全部完成。doc.consistency（5 条规则）、doc.update.plan、doc.patch.propose 上线。MCP Server 21 个工具通过 stdio transport 暴露给外部 Agent（Claude / Kiro / Cursor / Codex）。
-
-Phase 11C 端到端验证已完成：doc.consistency → doc.update.plan → code-agent-pack → Code Agent 起草 → 人工审阅 → apply。Rule 3 capability_overpromise 已按真实项目误报修复：只用最新设计文档的 ❌ 声明、只检查 README.md、使用 `_RULE3_STOPWORDS` 过滤通用词，宁可漏报不要误报。
+Phase 11A / 11B / 11C / 11D 全部完成。SmartDev 当前为 standalone 工程协作工具，可通过本地 CLI 完成完整工程协作循环（run new → run report → handoff-* → context → guard run → scope-check），不依赖 MCP 连接、模型调用或外部服务。Phase 12 Model Router 为可选后续增强，非完整性前提。
 
 已完成：
 - ✅ Phase 1-5：12 Skill + Workflow + Adapter
 - ✅ Phase 6-MVP / 6.2 / 6.3 / 7：多语言语义索引（Python/JS-TS/Go）
 - ✅ Phase 8：Context Layer ↔ Skill 接入（risk / architecture / plan 消费图谱）
 - ✅ Phase 9：Safe Patch（propose / apply / rollback + 备份 / hash校验 / R3确认）
-- ✅ Phase 10：MCP Server v0（21 工具：READ×18 + CACHE_WRITE×1 + PATCH_PROPOSE×1）
+- ✅ Phase 10：MCP Server v0（30 工具：READ×24 + CACHE_WRITE×5 + PATCH_PROPOSE×1）
 - ✅ Phase 11A：Git Governance v0（git.status / diff.explain / commit.plan / release.plan / merge.check）
+- ✅ Phase 11B：Guard Skills v0（change.budget / dev.guard / dependency.guard / security.review / diff.explain / guard.runner）
 - ✅ Phase 11C：Documentation Governance v0（doc.map / doc.consistency / doc.update.plan / doc.patch.propose）
-- ✅ Phase 11D Step 1：Run Artifact 目录约定（smartdev run new / task-card.md / scope.json）
-- ✅ Phase 11D Step 2：Scope Gate（smartdev run scope-check / scope.json 边界检查）
-- ✅ Phase 11D Step 3：handoff code（smartdev run handoff-code / code-agent-pack.md）
-- ✅ Phase 11D Step 4：handoff doc（smartdev run handoff-doc / doc-steward-pack.md）
-- ✅ Phase 11D Step 5：handoff review（smartdev run handoff-review / reviewer-pack.md）
+- ✅ Phase 11D：Collaboration Handoff v0（run new / scope-check / handoff-code / handoff-doc / handoff-review / run report / run context）
+- ✅ Phase 11 Closeout Step 1-4：文档收口 / 工具数量事实源 / 产物契约测试 / Standalone 烟测
 
-**测试基线：1375 passed, 1 skipped**
+**测试基线：1925 passed, 1 skipped**
 
-进行中：
-
-### Phase 11D — Collaboration Handoff v0（Step 5 完成，Step 6 待实现）
-- Step 6：MCP 暴露只读 handoff 工具（下一步默认从这里开始）
-- 11C 生产事实，11D 只组装事实为角色化 context pack
-- Code Agent pack 给 DeepSeek；Doc Steward pack 给 Claude/Codex；SmartDev 负责 Handoff Pack + Gates
-
-### Phase 11B — Guard Skills（待开始）
-- change.budget / dev.guard / dependency.guard / security.review
-
-### 后续规划
+### 后续规划（可选增强，非必需）
 - Phase 12：Model Collaboration Layer（model registry + task router）
 - Phase 13：Call Graph（函数级引用分析）
 - Phase 14：FileWatcher（增量同步 + .smartdev/index 自动刷新）
