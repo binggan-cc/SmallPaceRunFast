@@ -2,7 +2,11 @@
 
 本文档记录 SmartDev Agent 的重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)。
 
-## [Unreleased] — Phase 11 Complete: Standalone Hardened
+## [Unreleased]
+
+暂无。
+
+## [0.5.0] — 2026-06-11 — Phase 11 Complete: Standalone Hardened
 
 ### Added — Phase 11 Closeout: 文档收口
 

@@ -160,6 +160,7 @@ smartdev run scope-check my-fix --changed-files "smartdev/core/a.py" "tests/test
 ## 当前状态
 
 - **Phase**：Phase 11 已全部完成 — Standalone Hardened（11A / 11B / 11C / 11D ✅）
+- **Version**：0.5.0
 - **测试**：1925 passed，1 skipped
 - **MCP 工具**：30 个（READ×25 + CACHE_WRITE×4 + PATCH_PROPOSE×1）
 - **Skill**：27 个
