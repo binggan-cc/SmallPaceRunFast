@@ -83,6 +83,51 @@ def test_policy_is_the_only_place_that_can_block():
     assert findings[0].severity == "warn"
 
 
+def test_postprocess_preserves_verdict_and_keeps_block_findings():
+    from smartdev.core.gate import (
+        RuleFinding,
+        aggregate_verdict,
+        apply_policy,
+        _postprocess_findings,
+    )
+
+    findings = apply_policy([
+        RuleFinding(
+            rule_id="path.protected_modified",
+            confidence="high",
+            subject={"file": ".smartdev/index.sqlite", "range": None},
+            evidence={"changed_file": ".smartdev/index.sqlite"},
+            machine_action="remove_file_from_patch",
+        ),
+        RuleFinding(
+            rule_id="patch.unverifiable_source",
+            confidence="low",
+            subject={"file": "src/a.py", "range": None},
+            evidence={"file": "src/a.py", "reason": "missing_patch_id_and_old_hash"},
+            machine_action="rerun_with_index",
+        ),
+        RuleFinding(
+            rule_id="patch.unverifiable_source",
+            confidence="low",
+            subject={"file": "src/b.py", "range": None},
+            evidence={"file": "src/b.py", "reason": "missing_patch_id_and_old_hash"},
+            machine_action="rerun_with_index",
+        ),
+    ])
+
+    before = aggregate_verdict(findings)
+    postprocessed = _postprocess_findings(findings)
+
+    assert aggregate_verdict(postprocessed) == before == "block"
+    assert any(f.rule_id == "path.protected_modified" for f in postprocessed)
+    unverifiable = [
+        f for f in postprocessed
+        if f.rule_id == "patch.unverifiable_source"
+    ]
+    assert len(unverifiable) == 1
+    assert unverifiable[0].evidence["affected_files"] == ["src/a.py", "src/b.py"]
+
+
 def test_deps_manifest_is_warn_only_even_with_high_confidence():
     from smartdev.core.gate import RuleFinding, apply_policy
 

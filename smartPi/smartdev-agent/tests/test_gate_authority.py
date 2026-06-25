@@ -147,6 +147,28 @@ def test_declared_scope_exceeding_authorized_scope_warns(tmp_path: Path):
     assert finding["evidence"]["declared_only_patterns"] == ["docs/**"]
 
 
+def test_broad_declared_scope_excess_is_not_suppressed_by_blocked_file(tmp_path: Path):
+    from smartdev.core.gate import gate_check
+
+    _write_authorized_scope(tmp_path, "run-broad", allowed_paths=["src/a.py"])
+
+    result = gate_check(
+        tmp_path,
+        _request(
+            [{"path": "src/b.py", "change_type": "create"}],
+            run_id="run-broad",
+            allowed_paths=["src/**"],
+        ),
+    )
+
+    assert result["verdict"] == "block"
+    assert _finding(result, "scope.unlisted_file_modified")["severity"] == "block"
+    declared = _finding(result, "scope.declared_exceeds_authorized")
+    assert declared is not None
+    assert declared["severity"] == "warn"
+    assert declared["evidence"]["declared_only_patterns"] == ["src/**"]
+
+
 def test_inputs_digest_excludes_authorized_scope_snapshot(tmp_path: Path):
     from smartdev.core.gate import gate_check
 

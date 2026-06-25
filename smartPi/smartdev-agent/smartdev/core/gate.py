@@ -192,6 +192,67 @@ def aggregate_verdict(findings: list[GateFinding]) -> str:
     return "allow"
 
 
+def _is_exact_file_pattern(pattern: str) -> bool:
+    return bool(pattern) and not any(ch in pattern for ch in "*?[]") and not pattern.endswith("/")
+
+
+def _postprocess_findings(findings: list[GateFinding]) -> list[GateFinding]:
+    """Presentation-layer denoising. Policy-derived severity is not changed.
+
+    This keeps every block finding intact, so aggregate_verdict remains stable.
+    """
+    blocked_files = {
+        finding.subject.get("file")
+        for finding in findings
+        if finding.severity == "block" and finding.subject.get("file")
+    }
+
+    output: list[GateFinding] = []
+    unverifiable_files: list[str] = []
+    for finding in findings:
+        if finding.severity == "block":
+            output.append(finding)
+            continue
+
+        if finding.rule_id == "patch.unverifiable_source":
+            affected = finding.evidence.get("affected_files")
+            if isinstance(affected, list):
+                unverifiable_files.extend(
+                    str(path) for path in affected if isinstance(path, str)
+                )
+            else:
+                file_path = finding.subject.get("file") or finding.evidence.get("file")
+                if isinstance(file_path, str) and file_path:
+                    unverifiable_files.append(file_path)
+            continue
+
+        if finding.rule_id == "scope.declared_exceeds_authorized":
+            declared_only = finding.evidence.get("declared_only_patterns", [])
+            if (
+                declared_only
+                and all(isinstance(pattern, str) for pattern in declared_only)
+                and all(_is_exact_file_pattern(pattern) for pattern in declared_only)
+                and all(pattern in blocked_files for pattern in declared_only)
+            ):
+                continue
+
+        output.append(finding)
+
+    if unverifiable_files:
+        output.append(GateFinding(
+            rule_id="patch.unverifiable_source",
+            confidence="low",
+            severity="warn",
+            evidence={
+                "affected_files": list(dict.fromkeys(unverifiable_files)),
+                "reason": "missing_patch_id_and_old_hash",
+            },
+            suggestion="Provide patch_id or old_hash before applying.",
+            machine_action="rerun_with_index",
+        ))
+    return output
+
+
 def compute_inputs_digest(request: dict[str, Any]) -> str:
     task_scope = request.get("task_scope", {})
     changed_files = request.get("change", {}).get("changed_files", [])
@@ -337,14 +398,6 @@ def _pattern_is_covered(pattern: str, authorized_patterns: list[str]) -> bool:
     return False
 
 
-def _pattern_matches_path(pattern: str, path: str) -> bool:
-    return (
-        fnmatch.fnmatch(path, pattern)
-        or fnmatch.fnmatch(Path(path).name, pattern)
-        or (pattern.endswith("/") and path.startswith(pattern))
-    )
-
-
 def adapt_scope_violation(violation: Any) -> RuleFinding:
     """Map legacy ScopeViolation to raw gate facts without copying severity."""
     rule_map = {
@@ -433,25 +486,11 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
         if pattern not in disallowed_paths:
             disallowed_paths.append(pattern)
 
-    unlisted_paths = []
-    for item in changed_files:
-        path = item.get("path", "")
-        disallowed_match = _match_any(path, disallowed_paths)
-        allowed_match = _match_any(path, allowed_paths)
-        if (
-            allowed_paths
-            and not allowed_match
-            and not disallowed_match
-            and not _is_manifest(path)
-        ):
-            unlisted_paths.append(path)
-
     declared_paths = task_scope.get("allowed_paths") or []
     if authority["status"] == "anchored":
         declared_only = [
             pattern for pattern in declared_paths
             if not _pattern_is_covered(pattern, allowed_paths)
-            and not any(_pattern_matches_path(pattern, path) for path in unlisted_paths)
         ]
         if declared_only:
             raw_findings.append(RuleFinding(
@@ -477,7 +516,6 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
             machine_action="none",
         ))
 
-    unverifiable_files: list[str] = []
     for item in changed_files:
         path = item.get("path", "")
         change_type = item.get("change_type", "")
@@ -549,7 +587,14 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
         old_hash = _normalize_hash(item.get("old_hash", ""))
         if change_type in {"modify", "delete"}:
             if not change.get("patch_id") and not old_hash:
-                unverifiable_files.append(path)
+                raw_findings.append(RuleFinding(
+                    rule_id="patch.unverifiable_source",
+                    confidence="low",
+                    subject={"file": path, "range": None},
+                    evidence={"file": path, "reason": "missing_patch_id_and_old_hash"},
+                    suggestion="Provide patch_id or old_hash before applying.",
+                    machine_action="rerun_with_index",
+                ))
             elif old_hash:
                 target = project_path / path
                 try:
@@ -580,19 +625,8 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
                             machine_action="rerun_patch_propose",
                         ))
 
-    if unverifiable_files:
-        raw_findings.append(RuleFinding(
-            rule_id="patch.unverifiable_source",
-            confidence="low",
-            evidence={
-                "affected_files": unverifiable_files,
-                "reason": "missing_patch_id_and_old_hash",
-            },
-            suggestion="Provide patch_id or old_hash before applying.",
-            machine_action="rerun_with_index",
-        ))
-
     findings = apply_policy(raw_findings, policy_profile)
+    findings = _postprocess_findings(findings)
     return _result_dict(findings, digest, authority)
 
 

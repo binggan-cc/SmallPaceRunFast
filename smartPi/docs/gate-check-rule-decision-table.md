@@ -108,7 +108,7 @@
 | **positive_test** | status=anchored,declared=`["src/**","docs/**"]`,authorized=`["src/**"]` → finding,declared_only=`["docs/**"]`,severity=warn |
 | **negative_test** | status=anchored,declared=`["src/a.py"]`,authorized=`["src/**"]`(declared ⊆ authorized) → 无 finding |
 | **关键 negative（不做过宽启发式）** | declared=`["**/*"]` 但 authorized 也=`["**/*"]` → **无 finding**(不因模式"看起来宽"而告警;只看是否超出授权) |
-| **体感 negative（同事实去噪）** | status=anchored,authorized=`["src/a.py"]`,declared=`["src/a.py","src/b.py"]`,changed=`["src/b.py"]` → 仅产 `scope.unlisted_file_modified` block,**不再**产 `scope.declared_exceeds_authorized` warn |
+| **体感 negative（同事实去噪）** | status=anchored,authorized=`["src/a.py"]`,declared=`["src/a.py","src/b.py"]`,changed=`["src/b.py"]` → 仅产 `scope.unlisted_file_modified` block,**不再**产 `scope.declared_exceeds_authorized` warn。若 declared=`["src/**"]`,仍产 declared warn,因为宽 glob 不是同一文件事实 |
 
 ---
 
