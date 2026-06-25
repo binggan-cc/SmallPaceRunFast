@@ -241,9 +241,16 @@ class Patch:
 def compute_line_changes(old_lines: list[str], new_lines: list[str]) -> list[LineChange]:
     """计算两组文本的行级差异
 
-    使用简单的 LCS（最长公共子序列）算法。
-    为什么不用 difflib？标准库的 difflib 可以用，但这里需要
-    结构化的 LineChange 输出，自定义更灵活。
+    实现说明：当前采用**逐行索引对位比较**（按相同行号比较 old/new），
+    而非 LCS（最长公共子序列）。这意味着在文件开头插入或删除一行，
+    会导致其后所有行被判为 remove + add，diff 噪音较大。
+
+    该结果仅用于**展示/审查**（真正落盘的是 FilePatch.new_content），
+    不影响 apply 的正确性。若需更精确的最小化 diff，可改用 difflib.SequenceMatcher
+    或自实现 LCS（见 TODO）。
+
+    为什么不直接用 difflib？这里需要结构化的 LineChange 输出（行号 + action），
+    自定义比包装 difflib 更直接。
 
     参数：
         old_lines: 原始文本行
@@ -252,8 +259,8 @@ def compute_line_changes(old_lines: list[str], new_lines: list[str]) -> list[Lin
     返回：
         LineChange 列表
     """
-    # 简单的 diff：逐行比较
-    # 后续可以用 LCS 优化
+    # 逐行索引对位比较（非 LCS）。
+    # TODO: 如需最小化 diff，改用 difflib.SequenceMatcher 或 LCS。
     changes = []
     max_len = max(len(old_lines), len(new_lines))
 
@@ -661,6 +668,8 @@ def apply_patch(
     backup_dir.mkdir(parents=True, exist_ok=True)
     skipped_paths = {p for p, _ in result.skipped_files}
 
+    # 执行阶段原子性（P0-4）：任一文件写盘失败，立即回滚本次已应用的所有文件，
+    # 使磁盘恢复到 apply 之前的状态，避免仓库停留在"改了一半"的半残状态。
     for fp in patch.files:
         if fp.file_path in skipped_paths:
             continue
@@ -677,6 +686,20 @@ def apply_patch(
             result.applied_files.append(fp.file_path)
         except OSError as e:
             result.errors.append(f"{fp.file_path}: {e}")
+            # 执行中途失败 → 用已生成的备份回滚已应用的文件（执行阶段原子性）
+            rb = rollback_patch(backup_dir, project_path)
+            if rb.success:
+                result.errors.append(
+                    f"已自动回滚本次 {len(result.applied_files)} 个已应用文件"
+                )
+            else:
+                result.errors.append(
+                    "自动回滚失败，请用 backup_path 手动 rollback: "
+                    + "; ".join(rb.errors)
+                )
+            result.applied_files.clear()
+            result.success = False
+            return result
 
     result.success = not result.errors and bool(result.applied_files)
     return result
@@ -716,6 +739,17 @@ def rollback_patch(backup_dir: Path, project_path: Path) -> RollbackResult:
                 target = project_path / original_rel
                 if target.exists():
                     target.unlink()
+                # 清理 CREATE 时可能新建的空目录（自底向上，遇非空即停）
+                parent = target.parent
+                while parent != project_path and parent.is_relative_to(project_path):
+                    try:
+                        next(parent.iterdir())
+                        break  # 目录非空，停止
+                    except StopIteration:
+                        parent.rmdir()
+                        parent = parent.parent
+                    except OSError:
+                        break
                 result.restored_files.append(original_rel)
             else:
                 # 恢复 MODIFY/DELETE 前的内容
