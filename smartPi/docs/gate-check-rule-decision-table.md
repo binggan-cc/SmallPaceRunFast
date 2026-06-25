@@ -108,6 +108,7 @@
 | **positive_test** | status=anchored,declared=`["src/**","docs/**"]`,authorized=`["src/**"]` → finding,declared_only=`["docs/**"]`,severity=warn |
 | **negative_test** | status=anchored,declared=`["src/a.py"]`,authorized=`["src/**"]`(declared ⊆ authorized) → 无 finding |
 | **关键 negative（不做过宽启发式）** | declared=`["**/*"]` 但 authorized 也=`["**/*"]` → **无 finding**(不因模式"看起来宽"而告警;只看是否超出授权) |
+| **体感 negative（同事实去噪）** | status=anchored,authorized=`["src/a.py"]`,declared=`["src/a.py","src/b.py"]`,changed=`["src/b.py"]` → 仅产 `scope.unlisted_file_modified` block,**不再**产 `scope.declared_exceeds_authorized` warn |
 
 ---
 
@@ -129,6 +130,7 @@
 | **INV-10 authority 自报不参与裁决** | 请求 `task_scope.authority="human"` 但无 run_id/反查失败 → status 仍为 unverified,verdict 不受自报字段影响(self-asserted ≠ authority) |
 | **INV-11 inputs_digest 不吃反查** | 同一请求、两份不同 authorized_scope.json → `inputs_digest` 相同、`authorized_scope_digest` 不同 |
 | **INV-12 授权文件受保护** | patch 触碰 `.smartdev/runs/**/authorized_scope.json` → `path.protected_modified`(可 block);验证 anchored authority 闭环锁 |
+| **INV-13 finding 体感去噪** | 同一 scope 越界事实已 block 时,抑制对应 declared 超授权 warn;多个 unverifiable 文件聚合为一条 `patch.unverifiable_source` |
 
 ---
 

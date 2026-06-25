@@ -307,6 +307,7 @@ none                     // 无可自动化动作
 > - `scope.unlisted_file_modified` 判的是"**实际改动 vs effective_scope**"——当 `status==anchored` 时 effective_scope = authorized_scope,此规则可 block(改了被授权范围外的文件,确定性违规)。当 `status==unverified/missing` 时 effective_scope = declared_scope,此规则**降级为 warn**(因为基准本身不可信,见下方注)。
 > - `scope.declared_exceeds_authorized` 判的是"**declared_scope vs authorized_scope**"——agent 声明的意图范围超出授权,是关于"意图"的 warn,不直接拦具体文件。
 > - 二者不重叠:前者管"改了什么",后者管"声称要改什么"。
+> - 若某 declared pattern 覆盖的文件已被 `scope.unlisted_file_modified` block,则抑制对应的 `scope.declared_exceeds_authorized` warn,避免同一越界事实同时给出 `remove_file_from_patch` 与 `update_scope` 两种机器动作。
 >
 > **关键补充**:`scope.unlisted_file_modified` 可 block 的前提是 **`authority.status == anchored`**。若 authority 未锚定,基准是 agent 自报的 declared_scope,用不可信基准去 block 等于让 agent 自己定义"什么算越界"——故 unanchored 时此规则封顶 warn,另由 `scope.authority_unverified` 提示授权缺失。
 
@@ -330,6 +331,8 @@ none                     // 无可自动化动作
 > `deps.runtime_dependency_added_without_scope` / `deps.runtime_dependency_removed_without_scope` / `deps.lockfile_changed_without_manifest_change`。
 
 非确定性规则示例(v1 **永远 ≤ warn**):`deps.manifest_changed_without_scope`、`impact.wide_blast_radius`、`arch.layer_violation`、`tests.insufficient_coverage`、`patch.large_diff`、`patch.unverifiable_source`。
+
+> `patch.unverifiable_source` 按请求聚合输出:当多个文件同时缺少 `patch_id` / `old_hash`,返回一条 finding,`evidence.affected_files` 列出受影响文件,避免逐文件刷屏。
 
 完整的 per-rule proof requirement 与单测判定表见 [`gate-check-rule-decision-table.md`](gate-check-rule-decision-table.md)。
 

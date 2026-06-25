@@ -96,7 +96,7 @@ def test_gate_cli_e2e_blocks_anchored_unlisted_change_with_machine_action(tmp_pa
         _request(
             [{"path": "src/b.py", "change_type": "create"}],
             run_id="e2e-gate-002",
-            allowed_paths=["src/a.py"],
+            allowed_paths=["src/a.py", "src/b.py"],
         ),
     )
 
@@ -107,6 +107,7 @@ def test_gate_cli_e2e_blocks_anchored_unlisted_change_with_machine_action(tmp_pa
     assert finding["severity"] == "block"
     assert finding["machine_action"] == "remove_file_from_patch"
     assert finding["evidence"]["authority_status"] == "anchored"
+    assert _finding(data, "scope.declared_exceeds_authorized") is None
 
 
 def test_gate_cli_e2e_blocks_authorized_scope_tampering(tmp_path: Path):
@@ -149,3 +150,29 @@ def test_gate_cli_e2e_warns_without_anchored_authority(tmp_path: Path):
     scope = _finding(data, "scope.unlisted_file_modified")
     assert scope is not None
     assert scope["severity"] == "warn"
+
+
+def test_gate_cli_e2e_aggregates_unverifiable_source_warnings(tmp_path: Path):
+    _write_authorized_scope(tmp_path, "e2e-gate-004", ["src/**"])
+
+    result, data = _run_gate(
+        tmp_path,
+        _request(
+            [
+                {"path": "src/a.py", "change_type": "modify"},
+                {"path": "src/b.py", "change_type": "modify"},
+            ],
+            run_id="e2e-gate-004",
+            allowed_paths=["src/**"],
+        ),
+    )
+
+    assert result.returncode == 0
+    assert data["verdict"] == "warn"
+    findings = [
+        finding for finding in data["findings"]
+        if finding["rule_id"] == "patch.unverifiable_source"
+    ]
+    assert len(findings) == 1
+    assert findings[0]["evidence"]["affected_files"] == ["src/a.py", "src/b.py"]
+    assert findings[0]["machine_action"] == "rerun_with_index"

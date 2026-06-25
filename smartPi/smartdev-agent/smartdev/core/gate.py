@@ -337,6 +337,14 @@ def _pattern_is_covered(pattern: str, authorized_patterns: list[str]) -> bool:
     return False
 
 
+def _pattern_matches_path(pattern: str, path: str) -> bool:
+    return (
+        fnmatch.fnmatch(path, pattern)
+        or fnmatch.fnmatch(Path(path).name, pattern)
+        or (pattern.endswith("/") and path.startswith(pattern))
+    )
+
+
 def adapt_scope_violation(violation: Any) -> RuleFinding:
     """Map legacy ScopeViolation to raw gate facts without copying severity."""
     rule_map = {
@@ -425,11 +433,25 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
         if pattern not in disallowed_paths:
             disallowed_paths.append(pattern)
 
+    unlisted_paths = []
+    for item in changed_files:
+        path = item.get("path", "")
+        disallowed_match = _match_any(path, disallowed_paths)
+        allowed_match = _match_any(path, allowed_paths)
+        if (
+            allowed_paths
+            and not allowed_match
+            and not disallowed_match
+            and not _is_manifest(path)
+        ):
+            unlisted_paths.append(path)
+
     declared_paths = task_scope.get("allowed_paths") or []
     if authority["status"] == "anchored":
         declared_only = [
             pattern for pattern in declared_paths
             if not _pattern_is_covered(pattern, allowed_paths)
+            and not any(_pattern_matches_path(pattern, path) for path in unlisted_paths)
         ]
         if declared_only:
             raw_findings.append(RuleFinding(
@@ -455,6 +477,7 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
             machine_action="none",
         ))
 
+    unverifiable_files: list[str] = []
     for item in changed_files:
         path = item.get("path", "")
         change_type = item.get("change_type", "")
@@ -526,14 +549,7 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
         old_hash = _normalize_hash(item.get("old_hash", ""))
         if change_type in {"modify", "delete"}:
             if not change.get("patch_id") and not old_hash:
-                raw_findings.append(RuleFinding(
-                    rule_id="patch.unverifiable_source",
-                    confidence="low",
-                    subject={"file": path, "range": None},
-                    evidence={"file": path, "reason": "missing_patch_id_and_old_hash"},
-                    suggestion="Provide patch_id or old_hash before applying.",
-                    machine_action="rerun_with_index",
-                ))
+                unverifiable_files.append(path)
             elif old_hash:
                 target = project_path / path
                 try:
@@ -563,6 +579,18 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
                             suggestion="Re-run patch proposal; the file changed.",
                             machine_action="rerun_patch_propose",
                         ))
+
+    if unverifiable_files:
+        raw_findings.append(RuleFinding(
+            rule_id="patch.unverifiable_source",
+            confidence="low",
+            evidence={
+                "affected_files": unverifiable_files,
+                "reason": "missing_patch_id_and_old_hash",
+            },
+            suggestion="Provide patch_id or old_hash before applying.",
+            machine_action="rerun_with_index",
+        ))
 
     findings = apply_policy(raw_findings, policy_profile)
     return _result_dict(findings, digest, authority)
