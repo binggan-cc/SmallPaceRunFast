@@ -20,13 +20,14 @@
 | 列 | 值 |
 |----|----|
 | **rule_id** | `scope.unlisted_file_modified` |
-| **can_block** | ✅(deterministic) |
-| **required_inputs** | `task_scope.allowed_paths`(非空)、`change.changed_files[].path` |
-| **high_confidence_evidence** | 存在某 `changed_file.path`,对 `allowed_paths` 中**所有** glob 均不匹配,且对 `task_scope.disallowed_paths` 也不匹配(后者归 `path.protected_modified`),且不是 dependency manifest 文件(后者归 warn-only deps 规则)。evidence 须含:`{changed_file, allowed_paths, matched: false}` |
-| **downgrade_to_warn_when** | `allowed_paths` 为空或缺失(scope 未声明范围 → 无基准可判越界,confidence=low → warn);或 `changed_file` 同时匹配 `disallowed_paths`(交由 protected 规则,本规则不重复 block);或 `changed_file` 是 dependency manifest(交由 `deps.manifest_changed_without_scope`,封顶 warn) |
+| **can_block** | ✅(deterministic)**仅当 `authority.status == anchored`**;否则封顶 warn(见下) |
+| **required_inputs** | `effective_scope.allowed_paths`(非空,源自 §2.3 反查)、`change.changed_files[].path`、`authority.status` |
+| **high_confidence_evidence** | `authority.status == anchored` **且** 存在某 `changed_file.path` 对 `effective_scope.allowed_paths` 所有 glob 均不匹配,且不匹配 `disallowed_paths`(后者归 `path.protected_modified`)。evidence 须含:`{changed_file, effective_scope, authority_status: "anchored", matched: false}` |
+| **downgrade_to_warn_when** | `authority.status != anchored`(基准是 agent 自报 declared_scope,不可信 → 用不可信基准 block = 让 agent 自定义越界,封顶 warn,另由 `scope.authority_unverified` 提示);或 `allowed_paths` 为空/缺失;或 `changed_file` 同时匹配 `disallowed_paths` |
 | **machine_action** | `remove_file_from_patch \| update_scope` |
-| **positive_test** | allowed=`["src/a.py"]`,changed=`["src/a.py","src/b.py"]` → finding on `src/b.py`,confidence=high,policy severity=block,verdict=block |
-| **negative_test** | allowed=`["src/**"]`,changed=`["src/a.py","src/sub/c.py"]` → 无 finding,verdict=allow；allowed=`["src/**"]`,changed=`["pyproject.toml"]` → 不触发本规则 block,只触发 deps warn |
+| **positive_test** | status=anchored,effective(authorized)=`["src/a.py"]`,changed=`["src/a.py","src/b.py"]` → finding on `src/b.py`,confidence=high,severity=block,verdict=block |
+| **negative_test #1** | status=anchored,effective=`["src/**"]`,changed=`["src/a.py","src/sub/c.py"]` → 无 finding,verdict=allow |
+| **negative_test #2（anchored 前提）** | **status=unverified**,declared=`["src/a.py"]`,changed=`["src/a.py","src/b.py"]` → `src/b.py` finding **severity=warn(非 block)**,verdict=warn。断言:无锚定授权时此规则绝不 block |
 
 ### 1.2 `path.protected_modified` — can_block: ✅
 
@@ -80,6 +81,34 @@
 | **positive_test** | changed=`["pyproject.toml"]`,不在 allowed_paths → finding,confidence=high,**policy severity=warn**(非 block),verdict=warn(若无其他 block) |
 | **negative_test** | changed=`["src/a.py"]`(无 manifest) → 无 deps finding;**断言:绝不出现 severity=block 的本规则 finding,即便构造 confidence=high 也封顶 warn**(承重墙回归测试) |
 
+### 1.6 `scope.authority_unverified` — can_block: ❌（v1 warn-only，enforcing 预留）
+
+| 列 | 值 |
+|----|----|
+| **rule_id** | `scope.authority_unverified` |
+| **can_block** | ❌ v1 conservative=warn;**enforcing=block（预留，不实现）** |
+| **required_inputs** | `run_id`(可选)、`.smartdev/runs/{run_id}/authorized_scope.json` 可读性、`policy_profile` |
+| **high_confidence_evidence** | 无 `run_id`,或 run_id 路径校验失败,或 `authorized_scope.json` 不存在/不可读 → `authority.status ∈ {unverified, missing}`。evidence 含 `{run_id, status, source}` |
+| **downgrade_to_warn_when** | N/A(v1 恒 ≤ warn);反查成功(status=anchored)时**不产** finding |
+| **machine_action** | `update_scope \| none` |
+| **positive_test** | 请求无 `run_id` → finding,status=unverified,severity=warn,verdict=warn |
+| **negative_test** | run_id 指向存在的 authorized_scope.json → status=anchored,无本 finding |
+| **enforcing_test（预留，标 xfail）** | profile=enforcing + 无授权 → 预期 severity=block;v1 标记 `xfail`(profile 降级为 conservative),锁住未来语义 |
+
+### 1.7 `scope.declared_exceeds_authorized` — can_block: ❌（v1 warn-only，enforcing 预留）
+
+| 列 | 值 |
+|----|----|
+| **rule_id** | `scope.declared_exceeds_authorized` |
+| **can_block** | ❌ v1 warn-only;**enforcing=block（预留）** |
+| **required_inputs** | `declared_scope`(请求 allowed_paths)、`authorized_scope`(反查,status=anchored 时才有意义) |
+| **high_confidence_evidence** | status=anchored 且 `declared_scope ⊄ authorized_scope`(declared 中存在某 glob 不被 authorized 覆盖)。evidence 含 `{declared_only_patterns: [...], authorized_scope}` |
+| **downgrade_to_warn_when** | status != anchored(无授权基准,无法判"超出",不产本 finding,改由 `scope.authority_unverified` 处理) |
+| **machine_action** | `update_scope \| remove_file_from_patch` |
+| **positive_test** | status=anchored,declared=`["src/**","docs/**"]`,authorized=`["src/**"]` → finding,declared_only=`["docs/**"]`,severity=warn |
+| **negative_test** | status=anchored,declared=`["src/a.py"]`,authorized=`["src/**"]`(declared ⊆ authorized) → 无 finding |
+| **关键 negative（不做过宽启发式）** | declared=`["**/*"]` 但 authorized 也=`["**/*"]` → **无 finding**(不因模式"看起来宽"而告警;只看是否超出授权) |
+
 ---
 
 ## 2. 必备的不变量回归测试（跨 rule）
@@ -93,10 +122,13 @@
 | **INV-3 deps 永不 block** | `deps.manifest_changed_without_scope` 在任何 profile / confidence 下,policy severity ≤ warn |
 | **INV-4 verdict 聚合** | findings=[info, warn] → verdict=warn;findings=[warn, block] → verdict=block;findings=[] → allow |
 | **INV-5 无 patch_id 降级** | block 类 hash 规则在无 patch_id 且无 old_hash 时,severity 降为 warn,产出 `patch.unverifiable_source` |
-| **INV-6 contract_version 降级** | 缺失版本 → verdict=warn + `gate.contract_version_missing`;未知版本 → verdict=warn + `gate.contract_version_unsupported`;二者**绝不 block** |
+| **INV-6 未知 contract_version** | 传入未知版本 → verdict=warn + `gate.contract_version_unsupported`,**绝不 block** |
 | **INV-7 inputs_digest 可复现** | 相同输入两次调用 → 相同 `inputs_digest`;改变 `index_evidence` → digest 不变(增强信号不入 digest) |
 | **INV-8 旧 severity 不透传** | 喂入带 `severity="error"` 的旧 `ScopeViolation`,gate 适配层重过 policy,不得直接产出 block(§7.1 迁移注记回归) |
-| **INV-9 block finding 可机器处理** | 任意 `severity=block` finding 必须带非 `none` 的闭集 `machine_action`;无动作则 policy 降级 warn |
+| **INV-9 unanchored 不 block scope** | `authority.status != anchored` 时,`scope.unlisted_file_modified` 封顶 warn —— 不可信基准不得 block(§2.3 核心) |
+| **INV-10 authority 自报不参与裁决** | 请求 `task_scope.authority="human"` 但无 run_id/反查失败 → status 仍为 unverified,verdict 不受自报字段影响(self-asserted ≠ authority) |
+| **INV-11 inputs_digest 不吃反查** | 同一请求、两份不同 authorized_scope.json → `inputs_digest` 相同、`authorized_scope_digest` 不同 |
+| **INV-12 授权文件受保护** | patch 触碰 `.smartdev/runs/**/authorized_scope.json` → `path.protected_modified`(可 block);验证 anchored authority 闭环锁 |
 
 ---
 

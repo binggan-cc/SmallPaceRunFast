@@ -72,9 +72,12 @@ severity 偏序: info < warn < block
 {
   "contract_version": "2026-06-25.v1",      // 必填。未知版本见 §6
 
+  "run_id": "20260625-fix-patch",            // 可选但强烈建议。gate 据此反查 anchored authority，见 §2.3
+
   "task_scope": {
     "task_id": "optional",
     "description": "Fix patch apply rollback behavior",
+    "authority": "human",        // declared_authority：仅作 audit label，不参与裁决（§2.3）
     "allowed_paths":    ["smartdev/core/patch.py", "tests/test_patch.py"],
     "disallowed_paths": [".git/**", ".smartdev/index.sqlite", "node_modules/**"],
     "allowed_change_types": ["modify", "create_test"],   // 见 §2.1
@@ -108,8 +111,6 @@ severity 偏序: info < warn < block
 }
 ```
 
-> MCP 暴露层不得用 JSON Schema `required` 直接拦截这些字段。`contract_version` / `task_scope` / `change` 是契约语义上的必填字段,但畸形输入必须进入 `gate.check` core,由 core 返回结构化 `warn` finding(见 §6),避免 MCP SDK 在 handler 前返回非契约错误文本。
-
 ### 2.1 `change_type` 闭集
 
 ```
@@ -125,16 +126,85 @@ modify | create | delete | create_test | rename
 
 ---
 
+## 2.3 Scope Authority（anchored authority，定位的根）
+
+**核心原则:被审查方不能定义审查范围。** `gate.check` 实际裁决用的范围(`effective_scope`)不得来自请求自报,而必须由 gate **自己反查**一个 agent 碰不到的带外锚点。
+
+### 三层 scope
+
+| 层 | 来源 | 信任级别 | 用途 |
+|----|------|---------|------|
+| `declared_scope` | 请求 `task_scope.allowed_paths` | **不可信**(agent 自报) | 记录 agent"认为"要改什么 |
+| `authorized_scope` | gate 反查 `.smartdev/runs/{run_id}/authorized_scope.json` | **anchored**(带外锚点) | 真正的授权范围 |
+| `effective_scope` | 见下方决议 | — | gate 裁决实际使用的范围 |
+
+### effective_scope 决议
+
+```
+有 run_id 且 authorized_scope.json 存在可读
+    → effective_scope = authorized_scope        (status: "anchored")
+    → 若 declared_scope ⊄ authorized_scope，产出 scope.declared_exceeds_authorized
+
+无 run_id，或文件不存在/不可读
+    → effective_scope = declared_scope           (status: "unverified")
+    → 产出 scope.authority_unverified（conservative=warn / enforcing=block 预留）
+
+run_id 提供但路径校验失败（如 run_id 含 .. 或越界）
+    → effective_scope = declared_scope           (status: "missing")
+    → 产出 scope.authority_unverified
+```
+
+### 信任边界（诚实声明）
+
+`authorized_scope.json` **不是强加密授权(verified authority)**,而是 **anchored authority**——可信性仅来自两点:
+
+1. **gate 自己读,不从 agent 请求接收**——agent 能传 `run_id`,但碰不到 run_id 指向的内容。
+2. **`.smartdev/runs/**/authorized_scope.json` 必须在 protected paths 内**(§7),agent 改它即触发 `path.protected_modified` block。
+
+> 它比 self-reported authority 高一个数量级,但**不要在任何文档/输出里称它为 "verified"**。v1 的信任模型止于 anchored。强签名授权是未来版本的事。
+
+### `request.task_scope.authority` 的地位
+
+请求里若带 `authority` 字段,**仅作 `declared_authority` 审计标签**,回显进 audit,**绝不参与裁决**。self-asserted authority 不是 authority。
+
+### `authorized_scope.json` 格式
+
+```jsonc
+{
+  "schema_version": "authorized-scope.v1",
+  "run_id": "20260625-fix-patch",
+  "issued_by": "human|ci|issue|run_artifact",   // 授权来源（带外，非 agent 自报）
+  "issued_at": "2026-06-25T10:00:00Z",
+  "allowed_paths":    ["smartdev/core/patch.py", "tests/**"],
+  "disallowed_paths": [".git/**", ".smartdev/**"],
+  "max_files": 10,
+  "allowed_change_types": ["modify", "create_test"]
+}
+```
+
+> 谁写这个文件不属于 `gate.check` 契约范围——它由任务派发侧(人工 / CI / issue 同步 / `create_run_artifact`)生成。gate 只负责**读取与裁决**,不负责生成,这正是"被审查者不写授权"的体现。
+
+---
+
 ## 3. 输出 schema
 
 ```jsonc
 {
   "verdict": "allow",                       // allow | warn | block，§1.2 聚合
   "audit_id": "gate_20260625_abcd1234",
-  "inputs_digest": "sha256:...",            // 见 §3.2，审计地基
+  "inputs_digest": "sha256:...",            // 见 §3.2，审计地基（不含反查结果）
   "contract_version": "2026-06-25.v1",
   "policy_version": "scope-gate.v1",
   "summary": "No blocking findings. 1 warning.",
+
+  "authority": {                            // 见 §2.3 / §3.4
+    "status": "anchored",                   // anchored | unverified | missing
+    "run_id": "20260625-fix-patch",
+    "declared_authority": "human",          // 请求自报，仅 audit，不参与裁决
+    "source": ".smartdev/runs/20260625-fix-patch/authorized_scope.json",
+    "authorized_scope_digest": "sha256:...",        // 反查到的授权快照摘要
+    "authorized_scope_snapshot": { "allowed_paths": ["..."] }   // 当时查到的授权
+  },
 
   "findings": [
     {
@@ -184,12 +254,15 @@ inputs_digest = sha256( canonical_json(
     task_scope,
     sorted(changed_files by path: {path, change_type, old_hash, new_hash}),
     contract_version,
+    run_id,
     policy_version,
     options.policy_profile
 ) )
 ```
 
 用途:(1) 相同输入命中缓存,agent 重复调用免重算;(2) 事后审计可证明"当时闸门看到的就是这些输入"。`index_evidence` **不**纳入 digest(它是增强信号,不应改变同一变更的准入判定的可复现标识)。
+
+> **`inputs_digest` 也不纳入反查到的 `authorized_scope`**(见 §3.4)。digest 只对**请求本身**稳定;反查结果是 gate 在某时刻读到的外部状态,放进 audit 而非 digest。
 
 ### 3.3 `machine_action` 闭集 enum
 
@@ -204,6 +277,19 @@ none                     // 无可自动化动作
 
 **v1 保证:**所有 `severity = "block"` 的 finding 必须带非 `none` 的 `machine_action`。若无法给出机器可执行动作,policy 必须把该 finding 降级为 `warn`,避免上游 agent 收到不可自动修复的 block。
 
+### 3.4 `authority` 输出与两类摘要的分工
+
+`gate.check` 反查 anchored authority 后,**不再是纯函数**(要读 `.smartdev/runs/{run_id}/`)。这与 `inputs_digest` 的可复现性有张力,契约用**两个独立摘要**化解:
+
+| 摘要 | 覆盖 | 回答的问题 |
+|------|------|-----------|
+| `inputs_digest` | 仅请求(task_scope / changed_files / 版本 / profile) | "同样的请求是否会被同样对待?" → 可复现性 |
+| `authorized_scope_digest` | 反查到的 `authorized_scope.json` 快照 | "gate 当时看到的授权是什么?" → 可审计性 |
+
+- `authority.status`:`anchored`(反查成功) / `unverified`(无 run_id 或文件不可读) / `missing`(run_id 路径校验失败)。
+- `authority.authorized_scope_snapshot`:落审计的授权快照,事后可复核 effective_scope 的依据。
+- 同一请求在两个时刻反查到不同授权 → `inputs_digest` 相同、`authorized_scope_digest` 不同。这是**预期行为**,正好把"请求可复现"与"授权可审计"分开。
+
 ---
 
 ## 4. deterministic blocklist（v1 唯一可 block 的规则集）
@@ -212,20 +298,33 @@ none                     // 无可自动化动作
 
 | `rule_id` | 含义 | proof requirement（满足才可 block） |
 |-----------|------|-----------------------------------|
-| `scope.unlisted_file_modified` | 改了 `allowed_paths` 之外的文件 | 该文件 ∉ allowed_paths 且匹配的 change 确实存在；dependency manifest 文件除外，交由 warn-only deps 规则处理 |
+| `scope.unlisted_file_modified` | 改了 **effective_scope** 之外的文件 | 该文件 ∉ effective_scope.allowed_paths 且匹配的 change 确实存在(effective_scope 定义见 §2.3) |
 | `path.protected_modified` | 触碰 protected / disallowed 路径 | 文件匹配 `disallowed_paths` glob |
 | `patch.hash_mismatch` | 声明的 `old_hash` 与仓库现状不符(TOCTOU) | **须有 `patch_id` 或 `old_hash`**;无则降级 warn(§2.2);block finding 必须给出 `rerun_patch_propose` |
 | `patch.binary_or_generated_file_modified` | 改了二进制/生成文件 | 命中 `_BINARY_EXTS` 或已知 generated 路径 |
+
+> **`scope.unlisted_file_modified` 与 `scope.declared_exceeds_authorized` 的分工(消歧,必读):**
+> - `scope.unlisted_file_modified` 判的是"**实际改动 vs effective_scope**"——当 `status==anchored` 时 effective_scope = authorized_scope,此规则可 block(改了被授权范围外的文件,确定性违规)。当 `status==unverified/missing` 时 effective_scope = declared_scope,此规则**降级为 warn**(因为基准本身不可信,见下方注)。
+> - `scope.declared_exceeds_authorized` 判的是"**declared_scope vs authorized_scope**"——agent 声明的意图范围超出授权,是关于"意图"的 warn,不直接拦具体文件。
+> - 二者不重叠:前者管"改了什么",后者管"声称要改什么"。
+>
+> **关键补充**:`scope.unlisted_file_modified` 可 block 的前提是 **`authority.status == anchored`**。若 authority 未锚定,基准是 agent 自报的 declared_scope,用不可信基准去 block 等于让 agent 自己定义"什么算越界"——故 unanchored 时此规则封顶 warn,另由 `scope.authority_unverified` 提示授权缺失。
 
 > **已从 v1 blocklist 移除**:
 > - `patch.apply_not_atomic` —— 原子性属于 **apply 执行层**(`code.apply` 运行时保证 + 失败注入测试),`gate.check` 在 apply **之前**调用,无法预测执行期失败,纳入闸门属范畴错误。
 > - `deps.manifest_changed_without_scope` —— 降为 **warn-only**(见下)。manifest 文件多义(版本号 / metadata / tool 配置 / pytest / ruff / 真依赖),"文件名命中"不足以达到 block 所需的低误杀。
 
-**warn-only deps 规则(v1 不可 block):**
+**warn-only deps / scope 规则(v1 不可 block):**
 
 | `rule_id` | severity 上界 | machine_action |
 |-----------|--------------|----------------|
 | `deps.manifest_changed_without_scope` | `warn` | `update_scope \| none` |
+| `scope.authority_unverified` | `warn`(conservative)/ **block 预留**(enforcing) | `update_scope \| none` |
+| `scope.declared_exceeds_authorized` | `warn`(v1)/ **block 预留**(enforcing) | `update_scope \| remove_file_from_patch` |
+
+> `scope.authority_unverified`:无 `run_id` 可反查,或反查不到 `authorized_scope.json`(§2.3)。v1 `conservative`=warn,`enforcing`=block(预留,不实现)——"无授权时多严"是 policy 决策,不写死。
+>
+> `scope.declared_exceeds_authorized`:`declared_scope ⊄ authorized_scope`,即 agent 声明范围超出反查到的授权。这是**确定性**关系(可证明),v1 先 warn-only,enforcing 可 block。**v1 不做"过宽"启发式检测**(`**/*` 这类),因为模式宽窄是猫鼠游戏;只做"超出授权"这条可证明的关系。
 
 > 将来若要恢复可 block,必须拆成更窄的 deterministic rule,且 proof 须**解析 manifest 前后的依赖集合**确认 runtime dependency 增删,不能只凭文件名命中:
 > `deps.runtime_dependency_added_without_scope` / `deps.runtime_dependency_removed_without_scope` / `deps.lockfile_changed_without_manifest_change`。
@@ -242,6 +341,7 @@ none                     // 无可自动化动作
 |---------|------|
 | `conservative`（v1 默认） | 严格执行 §1:仅 deterministic + high confidence + proof 满足才 block;其余 ≤ warn。**早期产品唯一推荐档**。 |
 | `standard`（预留） | 未来可放宽,**v1 不实现**;收到时按 `conservative` 处理并产出 info `gate.profile_downgraded`。 |
+| `enforcing`（预留） | CI 硬门槛档,**v1 不实现**。预留语义:`scope.authority_unverified` 与 `scope.declared_exceeds_authorized` 在此档可 **block**(无授权/超授权时硬拦)。收到时 v1 按 `conservative` 处理并产出 info `gate.profile_downgraded`。 |
 
 > "宁可漏报,不可误杀"是 **policy 配置**,不是散落在规则里的承诺。回滚保守策略 = 改 policy 一处,无需动任何 rule。
 
@@ -275,6 +375,19 @@ none                     // 无可自动化动作
 | `core/guard_runner.py` | 多 rule 编排 + finding 聚合 | `run_guard_runner(...)` 已存在 |
 | `core/patch.py` | 提供 patch hash / changed files / rollback evidence | `load_patch` / `compute_content_hash` / `apply_patch` 的 backup_path |
 | `run_artifact` | 落 `audit_id` / `inputs_digest` / handoff / evidence | `create_run_artifact(...)` |
+| **anchored authority** | gate 反查 `.smartdev/runs/{run_id}/authorized_scope.json`(§2.3) | run_id 须做路径校验(拒 `..` / 越界);文件不存在→unverified |
+
+### 7.0 ⚠️ Protected path 硬性要求（anchored authority 的前提）
+
+anchored authority 成立的前提是 agent **改不到**授权文件。因此 gate 的默认 protected paths **必须包含**:
+
+```
+.smartdev/runs/**/authorized_scope.json
+.smartdev/**              # 整个 .smartdev 目录建议保护（含 index、runs、patches）
+```
+
+> 若 agent 的 patch 触碰这些路径 → `path.protected_modified`(可 block)。**这条不配,anchored authority 形同虚设**——agent 可以先改 authorized_scope.json 再让自己"被授权"。这是整个 scope authority 机制的闭环锁。
+
 
 ### 7.1 ⚠️ 关键迁移注记（不写实现必塌）
 

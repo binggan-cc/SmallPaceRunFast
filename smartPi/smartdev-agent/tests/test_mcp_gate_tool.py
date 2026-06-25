@@ -19,8 +19,8 @@ def _parse(text_content) -> dict:
     return json.loads(text_content[0].text)
 
 
-def _gate_request(changed_files, *, allowed_paths=None, disallowed_paths=None):
-    return {
+def _gate_request(changed_files, *, allowed_paths=None, disallowed_paths=None, run_id=None):
+    request = {
         "contract_version": "2026-06-25.v1",
         "task_scope": {
             "description": "MCP gate test",
@@ -32,6 +32,24 @@ def _gate_request(changed_files, *, allowed_paths=None, disallowed_paths=None):
         "change": {"changed_files": changed_files},
         "options": {"policy_profile": "conservative", "emit_handoff": False},
     }
+    if run_id is not None:
+        request["run_id"] = run_id
+    return request
+
+
+def _write_authorized_scope(project_path: Path, run_id: str, allowed_paths):
+    target = project_path / ".smartdev" / "runs" / run_id / "authorized_scope.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps({
+            "source": "human",
+            "description": "MCP gate authority",
+            "allowed_paths": allowed_paths,
+            "disallowed_paths": [],
+            "risk_level": "R2",
+        }),
+        encoding="utf-8",
+    )
 
 
 class TestMcpGateToolRegistered:
@@ -99,10 +117,13 @@ class TestMcpGateToolHandler:
     async def test_gate_check_returns_contract_output_inside_data(self, tmp_path: Path):
         from smartdev.mcp.tools import handle_gate_check
 
+        _write_authorized_scope(tmp_path, "mcp-run", ["src/**"])
+
         result = await handle_gate_check(
             _gate_request(
                 [{"path": "lib/outside.py", "change_type": "modify"}],
                 allowed_paths=["src/**"],
+                run_id="mcp-run",
             ),
             tmp_path,
         )

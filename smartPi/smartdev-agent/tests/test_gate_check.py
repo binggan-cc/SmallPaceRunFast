@@ -6,6 +6,7 @@ rules report facts and confidence, while policy alone derives severity.
 """
 
 from pathlib import Path
+import json
 
 from smartdev.core.patch import compute_content_hash
 
@@ -17,8 +18,9 @@ def _request(
     disallowed_paths=None,
     contract_version="2026-06-25.v1",
     index_evidence=None,
+    run_id=None,
 ):
-    return {
+    request = {
         "contract_version": contract_version,
         "task_scope": {
             "description": "contract test",
@@ -31,10 +33,28 @@ def _request(
         "index_evidence": index_evidence or {},
         "options": {"policy_profile": "conservative", "emit_handoff": False},
     }
+    if run_id is not None:
+        request["run_id"] = run_id
+    return request
 
 
 def _finding(result, rule_id):
     return next((f for f in result["findings"] if f["rule_id"] == rule_id), None)
+
+
+def _write_authorized_scope(tmp_path: Path, run_id: str, allowed_paths):
+    target = tmp_path / ".smartdev" / "runs" / run_id / "authorized_scope.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps({
+            "source": "human",
+            "description": "contract test authority",
+            "allowed_paths": allowed_paths,
+            "disallowed_paths": [],
+            "risk_level": "R2",
+        }),
+        encoding="utf-8",
+    )
 
 
 def test_rule_findings_do_not_carry_severity():
@@ -81,12 +101,15 @@ def test_deps_manifest_is_warn_only_even_with_high_confidence():
 def test_scope_unlisted_file_blocks(tmp_path: Path):
     from smartdev.core.gate import gate_check
 
+    _write_authorized_scope(tmp_path, "scope-run", ["src/**"])
+
     result = gate_check(
         tmp_path,
         _request(
             [{"path": "src/a.py", "change_type": "modify"},
              {"path": "lib/b.py", "change_type": "modify"}],
             allowed_paths=["src/**"],
+            run_id="scope-run",
         ),
     )
 
@@ -230,11 +253,13 @@ def test_block_findings_always_have_machine_action(tmp_path: Path):
     target = tmp_path / "src" / "a.py"
     target.parent.mkdir()
     target.write_text("current\n")
+    _write_authorized_scope(tmp_path, "scope-run", ["src/**"])
 
     scenarios = [
         _request(
             [{"path": "lib/outside.py", "change_type": "modify"}],
             allowed_paths=["src/**"],
+            run_id="scope-run",
         ),
         _request(
             [{"path": ".smartdev/index.sqlite", "change_type": "modify"}],
@@ -297,5 +322,5 @@ def test_legacy_scope_violation_severity_is_not_transmitted_as_block():
     raw = adapt_scope_violation(legacy)
     assert "severity" not in raw.to_dict()
     finding = apply_policy([raw])[0]
-    assert finding.severity == "block"
+    assert finding.severity == "warn"
     assert finding.rule_id == "scope.unlisted_file_modified"

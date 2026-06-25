@@ -27,6 +27,10 @@ _DETERMINISTIC_BLOCKLIST = {
     "patch.binary_or_generated_file_modified",
 }
 _WARN_ONLY_RULES = {"deps.manifest_changed_without_scope"}
+_WARN_ONLY_RULES.update({
+    "scope.authority_unverified",
+    "scope.declared_exceeds_authorized",
+})
 _INFO_RULES = {
     "gate.diff_ignored_patch_id_present",
     "gate.profile_downgraded",
@@ -53,6 +57,9 @@ _GENERATED_PATTERNS = [
     "dist/**",
     "build/**",
     "**/*.min.js",
+]
+_DEFAULT_PROTECTED_PATTERNS = [
+    ".smartdev/runs/**/authorized_scope.json",
 ]
 
 
@@ -142,6 +149,11 @@ def derive_severity(finding: RuleFinding, policy_profile: str = "conservative") 
     if finding.rule_id in _WARN_ONLY_RULES:
         return "warn"
     if (
+        finding.rule_id == "scope.unlisted_file_modified"
+        and finding.evidence.get("authority_status") != "anchored"
+    ):
+        return "warn"
+    if (
         finding.rule_id in _DETERMINISTIC_BLOCKLIST
         and finding.confidence == "high"
         and bool(finding.evidence)
@@ -200,6 +212,7 @@ def compute_inputs_digest(request: dict[str, Any]) -> str:
         "task_scope": task_scope,
         "changed_files": canonical_changed,
         "contract_version": request.get("contract_version", ""),
+        "run_id": request.get("run_id", ""),
         "policy_version": POLICY_VERSION,
         "policy_profile": request.get("options", {}).get(
             "policy_profile", "conservative"
@@ -217,6 +230,111 @@ def _malformed_finding(reason: str) -> RuleFinding:
         suggestion="Provide a complete gate.check request matching contract_version 2026-06-25.v1.",
         machine_action="none",
     )
+
+
+def _canonical_digest(data: dict[str, Any]) -> str:
+    encoded = json.dumps(data, sort_keys=True, separators=(",", ":"))
+    return "sha256:" + hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _safe_run_id(value: Any) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    candidate = Path(value)
+    if candidate.is_absolute() or ".." in candidate.parts or len(candidate.parts) != 1:
+        return None
+    return value
+
+
+def _authority_state(
+    project_path: Path,
+    request: dict[str, Any],
+    declared_scope: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], RuleFinding | None]:
+    """Resolve anchored authority from run_id without trusting request labels."""
+    run_id = request.get("run_id")
+    declared_authority = declared_scope.get("authority")
+    base = {
+        "status": "unverified",
+        "run_id": run_id if isinstance(run_id, str) else None,
+        "declared_authority": declared_authority,
+        "source": "",
+        "authorized_scope_digest": "",
+        "authorized_scope_snapshot": {},
+    }
+
+    safe_run_id = _safe_run_id(run_id)
+    if safe_run_id is None:
+        status = "unverified" if not run_id else "missing"
+        base["status"] = status
+        return base, declared_scope, RuleFinding(
+            rule_id="scope.authority_unverified",
+            confidence="high",
+            evidence={"run_id": run_id, "status": status, "source": ""},
+            suggestion="Provide a run_id with an anchored authorized_scope.json.",
+            machine_action="update_scope",
+        )
+
+    source = project_path / ".smartdev" / "runs" / safe_run_id / "authorized_scope.json"
+    base["source"] = str(source.relative_to(project_path))
+    try:
+        authorized_scope = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        base["status"] = "unverified"
+        return base, declared_scope, RuleFinding(
+            rule_id="scope.authority_unverified",
+            confidence="high",
+            evidence={
+                "run_id": safe_run_id,
+                "status": "unverified",
+                "source": base["source"],
+                "reason": str(exc),
+            },
+            suggestion="Create a valid authorized_scope.json for this run_id.",
+            machine_action="update_scope",
+        )
+
+    if not isinstance(authorized_scope, dict):
+        base["status"] = "unverified"
+        return base, declared_scope, RuleFinding(
+            rule_id="scope.authority_unverified",
+            confidence="high",
+            evidence={
+                "run_id": safe_run_id,
+                "status": "unverified",
+                "source": base["source"],
+                "reason": "authorized_scope_not_object",
+            },
+            suggestion="Create a valid authorized_scope.json object for this run_id.",
+            machine_action="update_scope",
+        )
+
+    snapshot = {
+        "description": authorized_scope.get("description", ""),
+        "allowed_paths": authorized_scope.get("allowed_paths") or [],
+        "disallowed_paths": authorized_scope.get("disallowed_paths") or [],
+        "risk_level": authorized_scope.get("risk_level", ""),
+        "source": authorized_scope.get("source", ""),
+    }
+    base.update({
+        "status": "anchored",
+        "authorized_scope_digest": _canonical_digest(snapshot),
+        "authorized_scope_snapshot": snapshot,
+    })
+    return base, snapshot, None
+
+
+def _pattern_is_covered(pattern: str, authorized_patterns: list[str]) -> bool:
+    for authorized in authorized_patterns:
+        if pattern == authorized or authorized in {"*", "**", "**/*"}:
+            return True
+        if authorized.endswith("/**"):
+            prefix = authorized[:-3]
+            if pattern == prefix or pattern.startswith(prefix + "/"):
+                return True
+        if not any(ch in pattern for ch in "*?[]") and fnmatch.fnmatch(pattern, authorized):
+            return True
+    return False
 
 
 def adapt_scope_violation(violation: Any) -> RuleFinding:
@@ -295,8 +413,38 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
         item for item in change.get("changed_files", [])
         if isinstance(item, dict)
     ]
-    allowed_paths = task_scope.get("allowed_paths") or []
-    disallowed_paths = task_scope.get("disallowed_paths") or []
+    authority, effective_scope, authority_finding = _authority_state(
+        project_path, request, task_scope
+    )
+    if authority_finding is not None:
+        raw_findings.append(authority_finding)
+
+    allowed_paths = effective_scope.get("allowed_paths") or []
+    disallowed_paths = list(effective_scope.get("disallowed_paths") or [])
+    for pattern in _DEFAULT_PROTECTED_PATTERNS:
+        if pattern not in disallowed_paths:
+            disallowed_paths.append(pattern)
+
+    declared_paths = task_scope.get("allowed_paths") or []
+    if authority["status"] == "anchored":
+        declared_only = [
+            pattern for pattern in declared_paths
+            if not _pattern_is_covered(pattern, allowed_paths)
+        ]
+        if declared_only:
+            raw_findings.append(RuleFinding(
+                rule_id="scope.declared_exceeds_authorized",
+                confidence="high",
+                evidence={
+                    "declared_only_patterns": declared_only,
+                    "authorized_scope": {
+                        "allowed_paths": allowed_paths,
+                        "disallowed_paths": disallowed_paths,
+                    },
+                },
+                suggestion="Narrow declared task_scope or update authorized_scope.json.",
+                machine_action="update_scope",
+            ))
 
     if change.get("patch_id") and change.get("diff"):
         raw_findings.append(RuleFinding(
@@ -339,7 +487,11 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
                 subject={"file": path, "range": None},
                 evidence={
                     "changed_file": path,
-                    "allowed_paths": allowed_paths,
+                    "effective_scope": {
+                        "allowed_paths": allowed_paths,
+                        "disallowed_paths": disallowed_paths,
+                    },
+                    "authority_status": authority["status"],
                     "matched": False,
                 },
                 suggestion="Remove this file from the patch or update task scope.",
@@ -413,19 +565,32 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
                         ))
 
     findings = apply_policy(raw_findings, policy_profile)
-    return _result_dict(findings, digest)
+    return _result_dict(findings, digest, authority)
 
 
-def _result_dict(findings: list[GateFinding], digest: str) -> dict[str, Any]:
+def _result_dict(
+    findings: list[GateFinding],
+    digest: str,
+    authority: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     verdict = aggregate_verdict(findings)
     finding_dicts = [f.to_dict() for f in findings]
     gate_error = any(f.rule_id in _GATE_ERROR_RULES for f in findings)
+    authority = authority or {
+        "status": "unverified",
+        "run_id": None,
+        "declared_authority": None,
+        "source": "",
+        "authorized_scope_digest": "",
+        "authorized_scope_snapshot": {},
+    }
     return {
         "verdict": verdict,
         "audit_id": "gate_" + digest.removeprefix("sha256:")[:12],
         "inputs_digest": digest,
         "contract_version": CONTRACT_VERSION,
         "policy_version": POLICY_VERSION,
+        "authority": authority,
         "summary": _summary(verdict, finding_dicts),
         "gate_error": gate_error,
         "findings": finding_dicts,
