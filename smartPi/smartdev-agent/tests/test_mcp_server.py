@@ -20,6 +20,8 @@ from unittest.mock import patch
 
 import pytest
 
+pytest.importorskip("mcp")
+
 # ── formatter 测试 ─────────────────────────────────────────────────
 
 

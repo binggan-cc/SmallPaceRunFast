@@ -1163,6 +1163,39 @@ def _cmd_guard_run(args: argparse.Namespace) -> int:
     return 0 if result.overall_passed else 1
 
 
+def _cmd_gate_check(args: argparse.Namespace) -> int:
+    """gate check — run gate.check v1 and print contract JSON."""
+    import json as _json
+
+    from smartdev.core.gate import gate_check
+
+    project_path = Path(args.project).resolve()
+    if not project_path.exists():
+        print(f"错误: 项目路径不存在: {project_path}", file=sys.stderr)
+        return 1
+
+    request_source = args.request_json
+    try:
+        if request_source == "-":
+            raw = sys.stdin.read()
+        else:
+            raw = Path(request_source).read_text(encoding="utf-8")
+        request = _json.loads(raw)
+    except (OSError, UnicodeDecodeError, _json.JSONDecodeError) as e:
+        print(f"错误: 无法读取 gate.check request JSON: {e}", file=sys.stderr)
+        return 2
+
+    if not isinstance(request, dict):
+        print("错误: gate.check request JSON 必须是 object", file=sys.stderr)
+        return 2
+
+    result = gate_check(project_path, request)
+    print(_json.dumps(result, ensure_ascii=False, indent=2))
+    if result.get("gate_error"):
+        return 2
+    return 1 if result.get("verdict") == "block" else 0
+
+
 def main() -> None:
     """CLI 主入口"""
     parser = argparse.ArgumentParser(
@@ -1468,6 +1501,31 @@ def main() -> None:
 
     guard_parser.set_defaults(
         func=lambda a: (guard_parser.print_help(), sys.exit(1))
+    )
+
+    # gate 命令组（gate.check v1）
+    gate_parser = subparsers.add_parser(
+        "gate",
+        help="AI 变更准入闸门（gate.check v1，R0 只读）",
+    )
+    gate_subparsers = gate_parser.add_subparsers(dest="gate_command", help="gate 子命令")
+
+    gate_check_parser = gate_subparsers.add_parser(
+        "check",
+        help="运行 gate.check v1；输入契约 JSON，输出 verdict/findings/audit digest",
+    )
+    gate_check_parser.add_argument(
+        "--project", "-p", default=".",
+        help="项目根目录路径（默认当前目录）",
+    )
+    gate_check_parser.add_argument(
+        "--request-json", required=True,
+        help="gate.check request JSON 文件路径；传 '-' 从 stdin 读取",
+    )
+    gate_check_parser.set_defaults(func=_cmd_gate_check)
+
+    gate_parser.set_defaults(
+        func=lambda a: (gate_parser.print_help(), sys.exit(1))
     )
 
     # git 命令组（Phase 11A 新增）

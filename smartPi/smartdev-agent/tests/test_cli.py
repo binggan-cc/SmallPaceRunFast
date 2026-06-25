@@ -14,6 +14,7 @@ CLI 测试
 """
 
 import os
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -237,6 +238,109 @@ class TestCLIRunScopeCheck:
         )
         assert result.returncode == 1
         assert "不存在" in result.stdout or "不存在" in result.stderr
+
+
+class TestCLIGateCheck:
+    """gate check CLI exposes the gate.check contract JSON."""
+
+    def _request(self, changed_files):
+        return {
+            "contract_version": "2026-06-25.v1",
+            "task_scope": {
+                "description": "CLI gate test",
+                "allowed_paths": ["src/**"],
+                "disallowed_paths": [".smartdev/index.sqlite"],
+                "allowed_change_types": ["modify"],
+                "risk_level": "R2",
+            },
+            "change": {"changed_files": changed_files},
+            "options": {"policy_profile": "conservative", "emit_handoff": False},
+        }
+
+    def test_gate_check_request_file_outputs_contract_json(self, tmp_path: Path):
+        request_path = tmp_path / "gate-request.json"
+        request_path.write_text(
+            json.dumps(self._request([
+                {"path": ".smartdev/index.sqlite", "change_type": "modify"}
+            ])),
+            encoding="utf-8",
+        )
+
+        result = _run_cli(
+            "gate", "check",
+            "--project", str(tmp_path),
+            "--request-json", str(request_path),
+        )
+
+        assert result.returncode == 1
+        data = json.loads(result.stdout)
+        assert data["verdict"] == "block"
+        assert data["contract_version"] == "2026-06-25.v1"
+        assert any(
+            f["rule_id"] == "path.protected_modified"
+            and f["severity"] == "block"
+            for f in data["findings"]
+        )
+
+    def test_gate_check_stdin_outputs_warn_for_deps(self, tmp_path: Path):
+        result = _run_cli(
+            "gate", "check",
+            "--project", str(tmp_path),
+            "--request-json", "-",
+            input=json.dumps(self._request([
+                {"path": "pyproject.toml", "change_type": "modify"}
+            ])),
+        )
+
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["verdict"] == "warn"
+        assert any(
+            f["rule_id"] == "deps.manifest_changed_without_scope"
+            and f["severity"] == "warn"
+            for f in data["findings"]
+        )
+
+    def test_gate_check_malformed_request_returns_two(self, tmp_path: Path):
+        request_path = tmp_path / "gate-request.json"
+        request_path.write_text(
+            json.dumps({
+                "contract_version": "2026-06-25.v1",
+                "task_scope": {
+                    "description": "malformed",
+                    "allowed_paths": ["src/**"],
+                    "disallowed_paths": [],
+                    "risk_level": "R2",
+                },
+                "change": {},
+            }),
+            encoding="utf-8",
+        )
+
+        result = _run_cli(
+            "gate", "check",
+            "--project", str(tmp_path),
+            "--request-json", str(request_path),
+        )
+
+        assert result.returncode == 2
+        data = json.loads(result.stdout)
+        assert data["verdict"] == "warn"
+        assert data["gate_error"] is True
+        assert any(f["rule_id"] == "gate.malformed_request" for f in data["findings"])
+
+    def test_gate_check_invalid_json_returns_two(self, tmp_path: Path):
+        request_path = tmp_path / "bad-gate-request.json"
+        request_path.write_text("{bad json", encoding="utf-8")
+
+        result = _run_cli(
+            "gate", "check",
+            "--project", str(tmp_path),
+            "--request-json", str(request_path),
+        )
+
+        assert result.returncode == 2
+        assert "无法读取 gate.check request JSON" in result.stderr
 
 
 class TestCLIRunHandoffCode:

@@ -32,11 +32,13 @@ _INFO_RULES = {
     "gate.profile_downgraded",
     "gate.no_protected_paths_declared",
 }
+_GATE_ERROR_RULES = {"gate.malformed_request"}
 _MACHINE_ACTIONS = {
     "remove_file_from_patch",
     "revert_hunk",
     "update_scope",
     "rerun_with_index",
+    "rerun_patch_propose",
     "none",
 }
 _MANIFEST_FILES = {
@@ -207,6 +209,16 @@ def compute_inputs_digest(request: dict[str, Any]) -> str:
     return "sha256:" + hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
+def _malformed_finding(reason: str) -> RuleFinding:
+    return RuleFinding(
+        rule_id="gate.malformed_request",
+        confidence="high",
+        evidence={"reason": reason},
+        suggestion="Provide a complete gate.check request matching contract_version 2026-06-25.v1.",
+        machine_action="none",
+    )
+
+
 def adapt_scope_violation(violation: Any) -> RuleFinding:
     """Map legacy ScopeViolation to raw gate facts without copying severity."""
     rule_map = {
@@ -230,17 +242,35 @@ def adapt_scope_violation(violation: Any) -> RuleFinding:
 
 def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
     """Run gate.check v1 and return structured content."""
+    if not isinstance(request, dict):
+        digest = compute_inputs_digest({})
+        findings = apply_policy([_malformed_finding("request_not_object")])
+        return _result_dict(findings, digest)
+
     project_path = Path(project_path)
     digest = compute_inputs_digest(request)
     policy_profile = request.get("options", {}).get("policy_profile", "conservative")
 
-    if request.get("contract_version") != CONTRACT_VERSION:
+    contract_version = request.get("contract_version")
+    if contract_version in (None, ""):
+        findings = apply_policy([
+            RuleFinding(
+                rule_id="gate.contract_version_missing",
+                confidence="high",
+                evidence={"supported": CONTRACT_VERSION},
+                suggestion="Retry with contract_version 2026-06-25.v1.",
+                machine_action="none",
+            )
+        ], policy_profile)
+        return _result_dict(findings, digest)
+
+    if contract_version != CONTRACT_VERSION:
         findings = apply_policy([
             RuleFinding(
                 rule_id="gate.contract_version_unsupported",
                 confidence="high",
                 evidence={
-                    "received": request.get("contract_version"),
+                    "received": contract_version,
                     "supported": CONTRACT_VERSION,
                 },
                 suggestion="Retry with a supported gate.check contract version.",
@@ -252,6 +282,15 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
     raw_findings: list[RuleFinding] = []
     task_scope = request.get("task_scope", {})
     change = request.get("change", {})
+    if not isinstance(task_scope, dict):
+        raw_findings.append(_malformed_finding("task_scope_not_object"))
+        task_scope = {}
+    if not isinstance(change, dict):
+        raw_findings.append(_malformed_finding("change_not_object"))
+        change = {}
+    elif not isinstance(change.get("changed_files"), list):
+        raw_findings.append(_malformed_finding("change.changed_files_missing_or_not_array"))
+
     changed_files = [
         item for item in change.get("changed_files", [])
         if isinstance(item, dict)
@@ -370,7 +409,7 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
                                 "current_hash": current_hash,
                             },
                             suggestion="Re-run patch proposal; the file changed.",
-                            machine_action="none",
+                            machine_action="rerun_patch_propose",
                         ))
 
     findings = apply_policy(raw_findings, policy_profile)
@@ -380,6 +419,7 @@ def gate_check(project_path: Path, request: dict[str, Any]) -> dict[str, Any]:
 def _result_dict(findings: list[GateFinding], digest: str) -> dict[str, Any]:
     verdict = aggregate_verdict(findings)
     finding_dicts = [f.to_dict() for f in findings]
+    gate_error = any(f.rule_id in _GATE_ERROR_RULES for f in findings)
     return {
         "verdict": verdict,
         "audit_id": "gate_" + digest.removeprefix("sha256:")[:12],
@@ -387,6 +427,7 @@ def _result_dict(findings: list[GateFinding], digest: str) -> dict[str, Any]:
         "contract_version": CONTRACT_VERSION,
         "policy_version": POLICY_VERSION,
         "summary": _summary(verdict, finding_dicts),
+        "gate_error": gate_error,
         "findings": finding_dicts,
     }
 

@@ -107,6 +107,9 @@ _TOOL_REGISTRY: list[dict] = [
      "description": "Security review: input validation, path traversal, command injection, secrets, etc."},
     {"name": "smartdev_diff_explain",     "permission": "READ",          "status": "available",
      "description": "Patch-level diff explanation: logical grouping, test coverage, dependency match, review order."},
+    # gate.check v1: agent-neutral pre-apply safety gate
+    {"name": "smartdev_gate_check",        "permission": "READ",          "status": "available",
+     "description": "Run gate.check v1 on a proposed change. Returns verdict, findings, policy metadata, and audit digest."},
 ]
 
 
@@ -396,6 +399,49 @@ async def handle_graph_validate(arguments: dict, project_path: Path) -> list[Tex
                 f"Graph validation failed: {e}",
             ),
         )]
+
+
+async def handle_gate_check(arguments: dict, project_path: Path) -> list[TextContent]:
+    """Run gate.check v1 and return the contract output under data."""
+    request = arguments.get("request", arguments)
+
+    try:
+        from smartdev.core.gate import gate_check
+
+        data = gate_check(project_path, request)
+        risk_level = "R2" if data.get("verdict") == "block" else "R0"
+        return [TextContent(
+            type="text",
+            text=formatter.ok(
+                "smartdev_gate_check",
+                data,
+                risk_level=risk_level,
+                warnings=[
+                    f["rule_id"]
+                    for f in data.get("findings", [])
+                    if f.get("severity") == "warn"
+                ],
+                next_steps=_gate_next_steps(data),
+            ),
+        )]
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=formatter.error(
+                "smartdev_gate_check",
+                "INTERNAL_ERROR",
+                f"gate.check failed: {e}",
+            ),
+        )]
+
+
+def _gate_next_steps(data: dict) -> list[str]:
+    verdict = data.get("verdict")
+    if verdict == "block":
+        return ["Do not apply. Resolve block findings or update task_scope, then re-run smartdev_gate_check."]
+    if verdict == "warn":
+        return ["Review warning findings before applying. Re-run with stronger evidence if needed."]
+    return ["No gate blockers found. Continue with apply/review workflow."]
 
 
 

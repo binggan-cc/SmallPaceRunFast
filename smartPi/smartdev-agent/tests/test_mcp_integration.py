@@ -6,7 +6,7 @@ tests/test_mcp_integration.py — MCP Server 真实协议集成测试（Phase 10
 
 覆盖内容：
 - initialize 握手
-- tools/list 返回 14 个工具
+- tools/list 返回 registry 中的全部工具
 - smartdev_ping（最基础健康检查）
 - smartdev_version（版本 + 工具清单）
 - smartdev_repo_scan（无需索引，直接可用）
@@ -30,6 +30,8 @@ import time
 from pathlib import Path
 
 import pytest
+
+pytest.importorskip("mcp")
 
 # ── MCP 客户端辅助 ─────────────────────────────────────────────────
 
@@ -146,6 +148,8 @@ class TestMCPProtocol:
             # Phase 11D: Handoff Pack 工具
             "smartdev_handoff_code", "smartdev_handoff_doc",
             "smartdev_handoff_review",
+            # gate.check v1
+            "smartdev_gate_check",
         }
         assert required.issubset(names), f"Missing: {required - names}"
 
@@ -177,6 +181,45 @@ class TestBasicTools:
         # 所有工具都应标记为 available（v0 全量完成）
         statuses = {t["name"]: t["status"] for t in d["data"]["tools"]}
         assert all(s == "available" for s in statuses.values())
+
+
+class TestGateCheckTool:
+    def test_missing_contract_version_returns_structured_warning(self, client):
+        c, _ = client
+        d = c.call_tool("smartdev_gate_check", {"change": {"changed_files": []}})
+
+        assert d["ok"] is True
+        assert d["data"]["verdict"] == "warn"
+        assert any(
+            f["rule_id"] == "gate.contract_version_missing"
+            and f["severity"] == "warn"
+            for f in d["data"]["findings"]
+        )
+
+    def test_malformed_request_returns_structured_warning(self, client):
+        c, _ = client
+        d = c.call_tool(
+            "smartdev_gate_check",
+            {
+                "contract_version": "2026-06-25.v1",
+                "task_scope": {
+                    "description": "malformed",
+                    "allowed_paths": ["src/**"],
+                    "disallowed_paths": [],
+                    "risk_level": "R2",
+                },
+                "change": {},
+            },
+        )
+
+        assert d["ok"] is True
+        assert d["data"]["verdict"] == "warn"
+        assert d["data"]["gate_error"] is True
+        assert any(
+            f["rule_id"] == "gate.malformed_request"
+            and f["severity"] == "warn"
+            for f in d["data"]["findings"]
+        )
 
 
 # ── Context 工具（需先建索引）────────────────────────────────────

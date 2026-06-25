@@ -108,6 +108,8 @@ severity 偏序: info < warn < block
 }
 ```
 
+> MCP 暴露层不得用 JSON Schema `required` 直接拦截这些字段。`contract_version` / `task_scope` / `change` 是契约语义上的必填字段,但畸形输入必须进入 `gate.check` core,由 core 返回结构化 `warn` finding(见 §6),避免 MCP SDK 在 handler 前返回非契约错误文本。
+
 ### 2.1 `change_type` 闭集
 
 ```
@@ -196,8 +198,11 @@ remove_file_from_patch   // 把越界文件从 patch 移除
 revert_hunk              // 回退某个 hunk
 update_scope             // 请求更新 task_scope（需人确认）
 rerun_with_index         // 建议带 index_evidence 重跑以获得更强判定
+rerun_patch_propose      // 工作区已变化，重新生成 patch 草案
 none                     // 无可自动化动作
 ```
+
+**v1 保证:**所有 `severity = "block"` 的 finding 必须带非 `none` 的 `machine_action`。若无法给出机器可执行动作,policy 必须把该 finding 降级为 `warn`,避免上游 agent 收到不可自动修复的 block。
 
 ---
 
@@ -209,7 +214,7 @@ none                     // 无可自动化动作
 |-----------|------|-----------------------------------|
 | `scope.unlisted_file_modified` | 改了 `allowed_paths` 之外的文件 | 该文件 ∉ allowed_paths 且匹配的 change 确实存在；dependency manifest 文件除外，交由 warn-only deps 规则处理 |
 | `path.protected_modified` | 触碰 protected / disallowed 路径 | 文件匹配 `disallowed_paths` glob |
-| `patch.hash_mismatch` | 声明的 `old_hash` 与仓库现状不符(TOCTOU) | **须有 `patch_id` 或 `old_hash`**;无则降级 warn(§2.2) |
+| `patch.hash_mismatch` | 声明的 `old_hash` 与仓库现状不符(TOCTOU) | **须有 `patch_id` 或 `old_hash`**;无则降级 warn(§2.2);block finding 必须给出 `rerun_patch_propose` |
 | `patch.binary_or_generated_file_modified` | 改了二进制/生成文件 | 命中 `_BINARY_EXTS` 或已知 generated 路径 |
 
 > **已从 v1 blocklist 移除**:
@@ -245,8 +250,19 @@ none                     // 无可自动化动作
 ## 6. 版本兼容（保守降级）
 
 - 收到**未知 `contract_version`** → 返回 `verdict: "warn"` + finding `gate.contract_version_unsupported`(severity warn),**绝不 block,也绝不假装兼容**。
+- 缺失 `contract_version` → 返回 `verdict: "warn"` + finding `gate.contract_version_missing`(severity warn)。这是兼容性降级,不是 MCP/CLI 结构错误。
+- 缺失或类型错误的 `task_scope` / `change` / `change.changed_files` → 返回合法 gate 响应:`verdict: "warn"` + `gate.malformed_request` + `gate_error: true`。MCP 层不得抛异常或返回非契约 JSON。
+- MCP input schema 不得把上述语义必填字段放进 JSON Schema `required`;畸形输入必须进入 handler/core,由 `gate.malformed_request` / `gate.contract_version_missing` 结构化返回,而不是被 MCP SDK 提前拒绝。
 - `contract_version`(契约结构)与 `policy_version`(裁定逻辑)是**两条独立演进轴**;输出同时回显二者。
 - 破坏性结构变更 → bump `contract_version`;仅裁定阈值/blocklist 调整 → bump `policy_version`。
+
+### 6.1 CLI 退出码
+
+| 情况 | 退出码 |
+|------|--------|
+| `verdict = allow` 或 `warn` | `0` |
+| `verdict = block` | `1` |
+| gate 自身错误 / malformed request / JSON 读取失败 | `2` |
 
 ---
 

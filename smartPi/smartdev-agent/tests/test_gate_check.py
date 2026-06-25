@@ -156,6 +156,7 @@ def test_hash_mismatch_blocks(tmp_path: Path):
     assert result["verdict"] == "block"
     assert finding["severity"] == "block"
     assert finding["evidence"]["declared_old_hash"] != finding["evidence"]["current_hash"]
+    assert finding["machine_action"] == "rerun_patch_propose"
 
 
 def test_binary_file_modification_blocks(tmp_path: Path):
@@ -206,6 +207,62 @@ def test_unknown_contract_version_warns_and_never_blocks(tmp_path: Path):
     assert result["verdict"] == "warn"
     finding = _finding(result, "gate.contract_version_unsupported")
     assert finding["severity"] == "warn"
+
+
+def test_missing_contract_version_warns_with_dedicated_rule(tmp_path: Path):
+    from smartdev.core.gate import gate_check
+
+    request = _request([])
+    request.pop("contract_version")
+
+    result = gate_check(tmp_path, request)
+
+    assert result["verdict"] == "warn"
+    assert result["gate_error"] is False
+    finding = _finding(result, "gate.contract_version_missing")
+    assert finding["severity"] == "warn"
+    assert finding["confidence"] == "high"
+
+
+def test_block_findings_always_have_machine_action(tmp_path: Path):
+    from smartdev.core.gate import gate_check
+
+    target = tmp_path / "src" / "a.py"
+    target.parent.mkdir()
+    target.write_text("current\n")
+
+    scenarios = [
+        _request(
+            [{"path": "lib/outside.py", "change_type": "modify"}],
+            allowed_paths=["src/**"],
+        ),
+        _request(
+            [{"path": ".smartdev/index.sqlite", "change_type": "modify"}],
+            allowed_paths=["src/**"],
+            disallowed_paths=[".smartdev/index.sqlite"],
+        ),
+        _request(
+            [{
+                "path": "src/a.py",
+                "change_type": "modify",
+                "old_hash": "sha256:" + compute_content_hash("old\n"),
+            }],
+            allowed_paths=["src/**"],
+        ),
+        _request(
+            [{"path": "assets/logo.png", "change_type": "modify"}],
+            allowed_paths=["assets/**"],
+        ),
+    ]
+
+    for request in scenarios:
+        result = gate_check(tmp_path, request)
+        block_findings = [
+            finding for finding in result["findings"]
+            if finding["severity"] == "block"
+        ]
+        assert block_findings
+        assert all(finding["machine_action"] != "none" for finding in block_findings)
 
 
 def test_inputs_digest_is_stable_and_excludes_index_evidence(tmp_path: Path):

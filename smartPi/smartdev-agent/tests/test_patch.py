@@ -420,6 +420,34 @@ class TestApplyPatch:
         assert any("escape" in p for p, _ in result.skipped_files)
         assert not (tmp_path / "escape.py").exists()
 
+    def test_apply_write_failure_rolls_back_applied_files(self, tmp_path: Path, monkeypatch):
+        proj = self._project(tmp_path)
+        original = {
+            "a.css": (proj / "a.css").read_text(),
+            "b.css": (proj / "b.css").read_text(),
+        }
+        patch = build_find_replace_patch(
+            proj, "#22C55E", "var(--accent)", include_glob="**/*.css"
+        )
+        backup = proj / ".smartdev" / "patch_backups" / "t8"
+
+        real_write_text = Path.write_text
+
+        def fail_on_b_css(path: Path, *args, **kwargs):
+            if path.name == "b.css":
+                raise OSError("injected write failure")
+            return real_write_text(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "write_text", fail_on_b_css)
+
+        result = apply_patch(patch, proj, backup)
+
+        assert result.success is False
+        assert result.applied_files == []
+        assert (proj / "a.css").read_text() == original["a.css"]
+        assert (proj / "b.css").read_text() == original["b.css"]
+        assert any("已自动回滚" in error for error in result.errors)
+
 
 class TestRollbackPatch:
     """rollback_patch 从备份恢复"""
@@ -453,6 +481,23 @@ class TestRollbackPatch:
         assert rb.success
         # CREATE 被撤销 → 文件应删除
         assert not (proj / "new.py").exists()
+
+    def test_rollback_removes_empty_directories_created_by_patch(self, tmp_path: Path):
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        fp = create_file_patch("nested/dir/new.py", "", "print('hi')\n", reason="new")
+        patch = Patch(task_description="create nested", files=[fp])
+        backup = proj / ".smartdev" / "patch_backups" / "r3"
+
+        apply_patch(patch, proj, backup)
+        assert (proj / "nested" / "dir" / "new.py").exists()
+
+        rb = rollback_patch(backup, proj)
+
+        assert rb.success
+        assert not (proj / "nested" / "dir" / "new.py").exists()
+        assert not (proj / "nested").exists()
+        assert proj.exists()
 
     def test_rollback_missing_backup(self, tmp_path: Path):
         rb = rollback_patch(tmp_path / "nonexistent", tmp_path)

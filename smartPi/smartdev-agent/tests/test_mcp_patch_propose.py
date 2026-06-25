@@ -30,6 +30,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("mcp")
+
 
 # ── 辅助 ──────────────────────────────────────────────────────────
 

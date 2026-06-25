@@ -19,6 +19,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("mcp")
+
 from smartdev.mcp.server import create_server
 from smartdev.mcp.tools import (
     get_available_tools,

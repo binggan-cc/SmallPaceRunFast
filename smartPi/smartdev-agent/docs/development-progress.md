@@ -30,7 +30,7 @@ L4  执行层      code.patch(propose) → code.apply → code.rollback
 L5  版本治理层  git.status / git.diff.explain / git.commit.plan / git.release.plan / git.merge.check（Phase 11A ✅）
                manifest / snapshot / doc.map / doc.consistency / doc.update.plan / doc.patch.propose（Phase 11C ✅）
                dev.guard / dependency.guard / security.review / change.budget / diff.explain / guard.runner（Phase 11B ✅）
-L6  外部接入层  MCP Server → Claude / Kiro / Cursor / Codex（Phase 10 ✅，30 工具）
+L6  外部接入层  MCP Server → Claude / Kiro / Cursor / Codex（Phase 10 ✅，31 工具）
 L7  模型协作层  handoff pack / scope gate（Phase 11D ✅）→ model registry / task router（Phase 12，可选）
 ```
 
@@ -92,12 +92,12 @@ Phase 14  FileWatcher / Incremental Sync
 ## 2. 当前阶段 — Phase 11 全部完成
 
 > Phase 11A / 11B / 11C / 11D 已全部完成。SmartDev 当前为 standalone 工程协作工具。
-> 测试基线：**1925 passed, 1 skipped**。MCP 工具：**30 个**。
+> 测试基线：**1925 passed, 1 skipped**（完整环境含 mcp extra）。MCP 工具：**31 个**。
 > Phase 12 为可选后续增强（Model Router），非完整性前提。
 >
 > ### Phase 11 Closeout Step 5：更新入口文档（✅ 完成）
 >
-> - **`README.md`**：更新为 Phase 11 完成状态（架构/MCP 30/Skill 27/CLI 25/standalone 示例）
+> - **`README.md`**：更新为 Phase 11 完成状态（架构/MCP 31/Skill 27/CLI 26/standalone 示例）
 > - **`CLAUDE.md`**：更新为 Closeout 后项目规则（分层/L5-L7/协作角色/Phase 12 可选）
 >
 > ### Phase 11 Closeout Step 4：Standalone 烟测（✅ 完成）
@@ -732,7 +732,7 @@ Phase 11 完成后，MCP 可扩展增加只读 Git 工具：
 
 **Phase 12：Model Collaboration Layer（可选后续增强，非完整性前提）**
 
-> SmartDev 当前已可作为 standalone 工程协作工具独立使用：本地 CLI、run artifact / handoff、GuardRunner、Doc Governance、MCP 工具（30 个）、Git 提交建议/治理。Phase 12 为可选增强——自动 Model Router 和 Policy 配置。
+> SmartDev 当前已可作为 standalone 工程协作工具独立使用：本地 CLI、run artifact / handoff、GuardRunner、Doc Governance、MCP 工具（31 个）、Git 提交建议/治理。Phase 12 为可选增强——自动 Model Router 和 Policy 配置。
 
 SmartDev 不绑定某一个模型，而是把不同模型都纳入同一套项目上下文、任务边界、风险控制和验收流程里。Phase 12 为可选增强，分两步实现。
 

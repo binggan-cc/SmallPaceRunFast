@@ -2,7 +2,7 @@
 MCP Handoff Pack 工具测试 — Phase 11D Step 7
 
 覆盖：
-1. 三个工具在 version/list_tools 中已注册（当前 30 工具）
+1. 三个工具在 version/list_tools 中已注册（当前 31 工具）
 2. handle_handoff_code 成功路径 + 缺失 run_id
 3. handle_handoff_doc 成功路径 + 缺失 run_id
 4. handle_handoff_review 成功路径 + 缺失 run_id
@@ -18,6 +18,8 @@ import tempfile
 from pathlib import Path
 
 import pytest
+
+pytest.importorskip("mcp")
 
 from smartdev.core.run_artifact import ScopeConfig, create_run_artifact
 from smartdev.mcp.tools import (

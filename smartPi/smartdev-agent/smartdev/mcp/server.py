@@ -674,6 +674,44 @@ def create_server(project_path: Path):
                 "required": ["patch_files"],
             },
         ),
+        Tool(
+            name="smartdev_gate_check",
+            description=(
+                "Run gate.check v1 before applying an AI-generated code change. "
+                "Accepts the gate.check contract request and returns verdict, findings, "
+                "policy metadata, and inputs_digest. R0 read-only."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "contract_version": {
+                        "type": "string",
+                        "description": "gate.check contract version, e.g. 2026-06-25.v1",
+                    },
+                    "task_scope": {
+                        "type": "object",
+                        "description": "Declared change scope: description, allowed_paths, disallowed_paths, risk_level.",
+                    },
+                    "change": {
+                        "type": "object",
+                        "description": "Proposed change: changed_files plus optional patch_id or diff.",
+                    },
+                    "index_evidence": {
+                        "type": "object",
+                        "description": "Optional semantic index evidence used as an enhancement signal.",
+                    },
+                    "options": {
+                        "type": "object",
+                        "description": "Optional gate options, including policy_profile and emit_handoff.",
+                    },
+                    "request": {
+                        "type": "object",
+                        "description": "Optional wrapper containing the full gate.check request.",
+                    },
+                },
+                "required": [],
+            },
+        ),
         # Phase 11D Step 7: Handoff Pack 工具
         Tool(
             name="smartdev_handoff_code",
@@ -792,6 +830,7 @@ def create_server(project_path: Path):
         "smartdev_dependency_guard": t.handle_dependency_guard,
         "smartdev_security_review": t.handle_security_review,
         "smartdev_diff_explain":    t.handle_diff_explain,
+        "smartdev_gate_check":      t.handle_gate_check,
         # Phase 11D Step 7: Handoff Pack 工具
         "smartdev_handoff_code":     t.handle_handoff_code,
         "smartdev_handoff_doc":      t.handle_handoff_doc,

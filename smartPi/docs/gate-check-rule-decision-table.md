@@ -50,7 +50,7 @@
 | **required_inputs** | `change.patch_id`(主)**或** `changed_files[].old_hash`(fallback);项目工作区可读 |
 | **high_confidence_evidence** | 对某 `MODIFY/DELETE` 文件,重新读盘计算当前内容 sha256,与 `old_hash`(或 patch_id 指向的持久化 old_hash)**不一致**。evidence 须含:`{file, declared_old_hash, current_hash}` —— 两个 hash 都落审计,可复核 TOCTOU |
 | **downgrade_to_warn_when** | 既无 `patch_id` 又无 `old_hash`(§2.2 `patch.unverifiable_source`,confidence=low → warn);或目标文件读取失败(IO/编码,confidence=medium → warn,evidence 记 reason) |
-| **machine_action** | `rerun_with_index \| none`(hash 不一致须重新 propose,非简单 remove) |
+| **machine_action** | `rerun_patch_propose`(hash 不一致须重新 propose,非简单 remove;block finding 不得为 `none`) |
 | **positive_test** | 文件落盘内容 hash=X,patch 声明 old_hash=Y(X≠Y) → confidence=high,severity=block,evidence 含 X 与 Y |
 | **negative_test** | 文件落盘 hash=X,patch 声明 old_hash=X → 无 mismatch finding,verdict=allow(其他规则不触发时) |
 
@@ -93,9 +93,10 @@
 | **INV-3 deps 永不 block** | `deps.manifest_changed_without_scope` 在任何 profile / confidence 下,policy severity ≤ warn |
 | **INV-4 verdict 聚合** | findings=[info, warn] → verdict=warn;findings=[warn, block] → verdict=block;findings=[] → allow |
 | **INV-5 无 patch_id 降级** | block 类 hash 规则在无 patch_id 且无 old_hash 时,severity 降为 warn,产出 `patch.unverifiable_source` |
-| **INV-6 未知 contract_version** | 传入未知版本 → verdict=warn + `gate.contract_version_unsupported`,**绝不 block** |
+| **INV-6 contract_version 降级** | 缺失版本 → verdict=warn + `gate.contract_version_missing`;未知版本 → verdict=warn + `gate.contract_version_unsupported`;二者**绝不 block** |
 | **INV-7 inputs_digest 可复现** | 相同输入两次调用 → 相同 `inputs_digest`;改变 `index_evidence` → digest 不变(增强信号不入 digest) |
 | **INV-8 旧 severity 不透传** | 喂入带 `severity="error"` 的旧 `ScopeViolation`,gate 适配层重过 policy,不得直接产出 block(§7.1 迁移注记回归) |
+| **INV-9 block finding 可机器处理** | 任意 `severity=block` finding 必须带非 `none` 的闭集 `machine_action`;无动作则 policy 降级 warn |
 
 ---
 

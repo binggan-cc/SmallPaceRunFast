@@ -23,7 +23,7 @@ L4  执行层      code.patch(propose) → code.apply → code.rollback
 L5  版本治理层  git.status / git.diff.explain / git.commit.plan / git.release.plan / git.merge.check（11A ✅）
                manifest / snapshot / doc.map / doc.consistency / doc.update.plan / doc.patch.propose（11C ✅）
                dev.guard / dependency.guard / security.review / change.budget / diff.explain / guard.runner（11B ✅）
-L6  外部接入层  MCP Server v0 → 30 工具 → Claude / Kiro / Cursor / Codex（Phase 10 ✅）
+L6  外部接入层  MCP Server v0 → 31 工具 → Claude / Kiro / Cursor / Codex（Phase 10 ✅）
 L7  模型协作层  handoff pack / scope gate（11D ✅）→ model registry / task router（Phase 12，可选增强）
 ```
 
@@ -40,7 +40,7 @@ pip install -e .
 
 ---
 
-## CLI 命令（25 条）
+## CLI 命令（26 条）
 
 | 命令 | 说明 |
 |------|------|
@@ -57,6 +57,7 @@ pip install -e .
 | `smartdev run context <id> --role` | 打印角色激活包到 stdout（可管道/复制给目标模型）|
 | `smartdev run report <id> --tests --status` | Code Agent 完成后写回 agent-output/（changed-files / test-report / result）|
 | `smartdev guard run --changed-files` | 运行全部 5 个 Guard（change.budget / dev.guard / dependency.guard / security.review / diff.explain）|
+| `smartdev gate check --request-json` | 运行 gate.check v1 变更准入闸门 |
 | `smartdev index --project --force` | 构建语义索引 |
 | `smartdev search --project <query> --limit` | FTS5 代码搜索 |
 | `smartdev impact --project <target> --depth` | 影响分析 |
@@ -78,11 +79,11 @@ pip install -e .
 smartdev mcp --project .
 ```
 
-启动后通过 stdio transport 暴露 **30 个工具**：
+启动后通过 stdio transport 暴露 **31 个工具**：
 
 | 权限级别 | 数量 | 工具 |
 |---------|------|------|
-| READ | 25 | ping / version / list_tools / code_search / code_impact / project_map / graph_validate / repo_scan / risk_check / architecture_map / task_plan / qa_checklist / git_status / git_diff_explain / git_commit_plan / git_release_plan / git_merge_check / doc_consistency / doc_update_plan / guard_run / change_budget / dev_guard / dependency_guard / security_review / diff_explain |
+| READ | 26 | ping / version / list_tools / code_search / code_impact / project_map / graph_validate / repo_scan / risk_check / architecture_map / task_plan / qa_checklist / git_status / git_diff_explain / git_commit_plan / git_release_plan / git_merge_check / doc_consistency / doc_update_plan / guard_run / change_budget / dev_guard / dependency_guard / security_review / diff_explain / gate_check |
 | CACHE_WRITE | 4 | code_index / handoff_code / handoff_doc / handoff_review（只写 .smartdev/runs/）|
 | PATCH_PROPOSE | 1 | patch_propose |
 
@@ -162,9 +163,9 @@ smartdev run scope-check my-fix --changed-files "smartdev/core/a.py" "tests/test
 - **Phase**：Phase 11 已全部完成 — Standalone Hardened（11A / 11B / 11C / 11D ✅）
 - **Version**：0.5.0
 - **测试**：1925 passed，1 skipped
-- **MCP 工具**：30 个（READ×25 + CACHE_WRITE×4 + PATCH_PROPOSE×1）
+- **MCP 工具**：31 个（READ×26 + CACHE_WRITE×4 + PATCH_PROPOSE×1）
 - **Skill**：27 个
-- **CLI 命令**：25 条
+- **CLI 命令**：26 条
 - Phase 12（Model Router）为可选后续增强，非完整性前提
 
 ---
@@ -174,6 +175,7 @@ smartdev run scope-check my-fix --changed-files "smartdev/core/a.py" "tests/test
 ```bash
 # 运行全部测试
 cd smartPi/smartdev-agent && python -m pytest tests/ -q
+# 完整测试基线依赖 mcp extra；JS/TS pipeline 测试还依赖 Node bridge 环境。
 
 # 构建语义索引
 smartdev index --project .
